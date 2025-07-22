@@ -1,0 +1,82 @@
+@forward 'input';
+@use "variables";
+
+@import './reset.css';
+@import 'primeicons/primeicons.css';
+@import 'bootstrap/dist/css/bootstrap.css';
+@import 'bootstrap-vue/dist/bootstrap-vue.css';
+@import 'bootstrap-icons/font/bootstrap-icons.css';
+
+
+$appBackgroundColor: red;
+
+//:root {
+//  font-family: "Comic Sans MS", sans-serif;
+//  font-size: 12px;
+//  line-height: 1.5;
+//  font-weight: 400;
+//
+//  color-scheme: light light;
+//  color: black;
+//  background-color: white;
+//
+//  font-synthesis: none;
+//  text-rendering: optimizeLegibility;
+//  -webkit-font-smoothing: antialiased;
+//  -moz-osx-font-smoothing: grayscale;
+//
+
+//
+//}
+
+:root {
+  font-size: 1rem !important;
+
+  --app-bg-color: #f4f4f4;
+
+  --tab-border: 1px solid #888888;
+  --tab-bg-color: #dddddd;
+  --tab-bg-color-active: #cccccc;
+  --icon-bg-color: var(--app-bg-color);
+  --icon-bg-color-active: #cccccc;
+
+  --table-border: 1px solid #666666;
+  --table-header-bg-color: #dddddd;
+
+  --defined-env-variable-color: #007bff;
+  --undefined-env-variable-color:  #8B4513;
+  --defined-uri-param: #166316;
+
+  @mixin hidden-scrollbar {
+    /* Chrome, Safari, Edge * /
+    &::-webkit-scrollbar {
+      display: none;
+    }
+
+    /* Firefox */
+    scrollbar-width: none;
+
+    /* IE/Edge Legacy */
+    -ms-overflow-style: none;
+  }
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  font-family: "Calibri", Arial, sans-serif !important;
+  line-height: 1em;
+}
+
+#app {
+  max-width: 100vw;
+  max-height: 100vh;
+  height: 100vh;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  background-color: var(--app-bg-color);
+}

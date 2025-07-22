@@ -1,0 +1,108 @@
+<script setup lang="ts">
+import { ref, inject, onMounted, watch } from 'vue'
+import type { Ref } from 'vue'
+import type { RouteInfo } from '@/types'
+
+import PayloadParamTab from '@/app/Request/Editor/Payload/ParamTab/PayloadParamTab.vue'
+import PayloadHeaderTab from '@/app/Request/Editor/Payload/HeaderTab/PayloadHeaderTab.vue'
+import PayloadBodyTab from '@/app/Request/Editor/Payload/BodyTab/PayloadBodyTab.vue'
+import ToggleLeftIcon from '@/assets/svg/feathericons/toggle-left.svg'
+import ToggleRightIcon from '@/assets/svg/feathericons/toggle-right.svg'
+import ToggleMenuItemDetail from '@/app/Generals/ToggleMenu/ToggleMenuItemDetail.vue'
+import ToggleMenuItemAction from '@/app/Generals/ToggleMenu/ToggleMenuItemAction.vue'
+import SwitchableTabs from '@/app/Generals/SwitchableTab/SwitchableTabs.vue'
+import SwitchableTab from '@/app/Generals/SwitchableTab/SwitchableTab.vue'
+import ResponseJsonTab from "@/app/Request/Editor/Response/JsonTab/ResponseJsonTab.vue";
+import ResponseHtmlTab from "@/app/Request/Editor/Response/HtmlTab/ResponseHtmlTab.vue";
+import ResponseRawTab from "@/app/Request/Editor/Response/RawTab/ResponseRawTab.vue";
+
+const props = defineProps<{ route: RouteInfo }>()
+
+// --- Logic Toggle (Giữ nguyên) ---
+const toggleStates = inject<Ref<boolean[]>>('toggleStates')!
+const toggleMenuItemIndexRef = inject<Ref<number>>('toggleMenuItemIndexRef')!
+const toggleActive = ref(true)
+onMounted(() => {
+  toggleActive.value = toggleStates.value[toggleMenuItemIndexRef.value]
+})
+watch(() => toggleStates.value[toggleMenuItemIndexRef.value], (val) => {
+  toggleActive.value = val
+})
+
+// --- Định nghĩa danh sách Tabs ---
+const tabs = [
+  { id: 'json', name: 'JSON', 'component': ResponseJsonTab },
+  { id: 'html', name: 'HTML', 'component': ResponseHtmlTab },
+  { id: 'raw', name: 'Raw', 'component': ResponseRawTab },
+];
+</script>
+
+<template>
+  <div class="payload" :data-tab-detail-active="toggleActive">
+    <SwitchableTabs :tabs="tabs" :default-active-tab-index="0">
+
+      <template #actions>
+        <ToggleMenuItemAction class="tab-toggle">
+          <ToggleRightIcon v-if="toggleActive" class="env-action-svg" />
+          <ToggleLeftIcon v-else class="env-action-svg" />
+        </ToggleMenuItemAction>
+      </template>
+
+      <ToggleMenuItemDetail>
+        <div class="tab-detail">
+          <div class="tab-detail-content-wrap">
+            <SwitchableTab v-for="(tab, index) in tabs" :key="tab.id" :index="index">
+              <component :is="tab.component" :route="props.route" />
+            </SwitchableTab>
+          </div>
+        </div>
+      </ToggleMenuItemDetail>
+
+    </SwitchableTabs>
+  </div>
+</template>
+
+<style scoped lang="scss">
+@use "@/assets/styles/elements";
+
+.payload {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  max-height: 100%;
+  overflow: hidden;
+  gap: 10px;
+
+  &[data-tab-detail-active="false"] {
+    min-height: auto;
+  }
+}
+
+.env-action-svg {
+  cursor: pointer;
+  display: block;
+  height: 32px;
+  width: auto;
+  stroke-width: 1;
+  transform: scale(1.1, 1.0);
+
+  &:hover {
+    fill: #cccccc;
+  }
+}
+
+.tab-detail {
+  overflow: hidden;
+  padding: 0;
+  flex: 1;
+  display: flex;
+  min-height: 0;
+}
+
+.tab-detail-content-wrap {
+  height: 100%;
+  overflow-y: auto;
+  padding: 0;
+  @include elements.scrollbar-hidden;
+}
+</style>

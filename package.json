@@ -1,0 +1,51 @@
+{
+  "name": "apii-app",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "build:production": "set NODE_ENV=production && vite build",
+    "preview": "vite preview",
+    "type-check": "vue-tsc --noEmit"
+  },
+  "dependencies": {
+    "@fortawesome/fontawesome-svg-core": "^6.7.2",
+    "@fortawesome/free-solid-svg-icons": "^6.7.2",
+    "@fortawesome/vue-fontawesome": "^3.0.8",
+    "@heroicons/vue": "^2.2.0",
+    "@iconify/vue": "^5.0.0",
+    "@mdi/js": "^7.4.47",
+    "@remixicon/vue": "^4.6.0",
+    "@tabler/icons-vue": "^3.34.0",
+    "@tailwindcss/vite": "^4.1.10",
+    "bootstrap-icons": "^1.13.1",
+    "bootstrap-icons-vue": "^1.11.3",
+    "bootstrap-vue": "^2.23.1",
+    "brace-expansion": "^4.0.1",
+    "braces": "^3.0.3",
+    "feather-icons": "^4.29.2",
+    "lodash": "^4.17.21",
+    "lucide-vue-next": "^0.515.0",
+    "mdi-vue": "^3.0.13",
+    "nanoid": "^5.1.5",
+    "pinia": "^3.0.3",
+    "primeicons": "^7.0.0",
+    "vue": "^3.5.13",
+    "vue-unicons": "^3.3.1",
+    "vuestic-ui": "^1.10.3"
+  },
+  "devDependencies": {
+    "@esbuild-plugins/node-globals-polyfill": "^0.2.3",
+    "@types/vue-feather-icons": "^5.0.8",
+    "@vitejs/plugin-vue": "^5.2.3",
+    "@vue/tsconfig": "^0.7.0",
+    "sass": "^1.89.1",
+    "terser": "^5.41.0",
+    "typescript": "^5.8.3",
+    "vite": "^6.3.5",
+    "vite-svg-loader": "^5.1.0",
+    "vue-tsc": "^2.2.10"
+  }
+}

@@ -1,0 +1,33 @@
+<script setup lang="ts">
+import {inject, type Ref} from 'vue'
+
+const toggleStates = inject<Ref<boolean[]>>('toggleStates')!
+const toggleMenuItemIndexRef = inject<Ref<number>>('toggleMenuItemIndexRef')!
+
+const onClick = (event: MouseEvent) => {
+  console.log("action-toggleMenuItemIndex: ", toggleMenuItemIndexRef.value)
+  toggleStates.value[toggleMenuItemIndexRef.value] = !toggleStates.value[toggleMenuItemIndexRef.value]
+}
+</script>
+
+<template>
+  <div class="toggle-menu-item-action" @click="onClick">
+    <slot />
+  </div>
+</template>
+
+<style scoped>
+.toggle-menu-item-action {
+  position: absolute;
+  top: 12px;
+  right: 1.2rem;
+  cursor: pointer;
+  user-select: none;
+  color: #666;
+  transition: color 0.2s ease;
+}
+
+.toggle-menu-item-action:hover {
+  color: #333;
+}
+</style>
