@@ -11,6 +11,26 @@ const props = defineProps<{
   Headers Tab
   <p>METHOD: {{ props.route?.method }}</p>
   <p>ROUTE: {{ props.route?.route }}</p>
+  <p>tmp</p>
+  <p>tmp</p>
+  <p>tmp</p>
+  <p>tmp</p>
+  <p>tmp</p>
+  <p>tmp</p>
+  <p>tmp</p>
+  <p>tmp</p>
+  <p>tmp</p>
+  <p>tmp</p>
+  <p>tmp</p>
+  <p>tmp</p>
+  <p>tmp</p>
+  <p>tmp</p>
+  <p>tmp</p>
+  <p>tmp</p>
+  <p>tmp</p>
+  <p>tmp</p>
+  <p>tmp</p>
+  <p>tmp</p>
 </template>
 
 <style scoped>

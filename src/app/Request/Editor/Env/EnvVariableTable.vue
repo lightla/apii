@@ -57,10 +57,10 @@ const onClickEraserEmptyLine = (event: MouseEvent): void => {
     <div class="table-scroll-wrap">
       <table class="table-scroll">
         <colgroup>
-          <col style="width: 9%;">
-          <col style="width: 43%;">
-          <col style="width: 43%;">
-          <col style="width: 5%;">
+          <col style="width:2.4rem;">
+          <col style="">
+          <col style="">
+          <col style="width:2.4rem">
         </colgroup>
         <thead>
         <tr>

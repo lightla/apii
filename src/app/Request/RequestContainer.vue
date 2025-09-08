@@ -63,8 +63,6 @@ watch(containerLeftWidth, (newVal) => {
 </template>
 
 <style scoped lang="scss">
-@use "@/assets/styles/variables";
-
 .container {
   display: flex;
   height: 96vh;
@@ -72,7 +70,7 @@ watch(containerLeftWidth, (newVal) => {
   overflow: hidden;
   border: 1px solid #aaaaaa;
 
-  background-color: variables.$appBackgroundColor;
+  background-color: var(--app-bg-color);
 
   .resizer {
     padding: 0;

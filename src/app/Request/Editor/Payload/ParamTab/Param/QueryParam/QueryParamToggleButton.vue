@@ -3,7 +3,6 @@ import {ref} from 'vue'
 import {Square, SquareCheck} from "lucide-vue-next"
 import { useEnvStorage } from "@/storages";
 
-
 const queryParamStorage = useEnvStorage;
 
 const props = defineProps<{

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import {ref} from 'vue'
+import {ref, watch} from 'vue'
 import type {RouteInfo} from '@/types'
 import EditorEnv from "@/app/Request/Editor/EditorEnv.vue";
 import EditorUrlBar from "@/app/Request/Editor/EditorUrlBar.vue";
@@ -8,12 +8,21 @@ import ToggleMenuItem from "@/app/Generals/ToggleMenu/ToggleMenuItem.vue";
 import EditorPayload from "@/app/Request/Editor/EditorPayload.vue";
 import EditorResponse from "@/app/Request/Editor/EditorResponse.vue";
 import ToggleMenu from "@/app/Generals/ToggleMenu/ToggleMenu.vue";
+import {useEnvStorage} from "@/storages"
 
 const props = defineProps<{
   route: RouteInfo
 }>()
 
+const envStorage = useEnvStorage();
+
 const editorRef = ref<HTMLDivElement | null>(null);
+
+watch(props.route, (newValue) => {
+  if (newValue) {
+
+  }
+})
 
 </script>
 

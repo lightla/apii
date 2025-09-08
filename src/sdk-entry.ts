@@ -1,7 +1,7 @@
 // src/sdk-entry.ts
 import {createVueApp} from "@/bootstrap.ts";
 
-export default class Apii {
+class ApiiApp {
   private app: any
   private data: any = []
   private saveUrl: string = ''
@@ -22,3 +22,17 @@ export default class Apii {
     })
   }
 }
+
+class Logger {
+  log(msg: string) {
+    console.log("[Logger]:", msg);
+  }
+}
+
+// expose namespace
+const Apii = {
+  newApp: () => new ApiiApp(),
+  newLogger: () => new Logger(),
+};
+
+export default Apii;
