@@ -14,6 +14,7 @@ import Unicon from 'vue-unicons'
 
 // @ts-ignore
 import { uniLayerGroupMonochrome, uniCarWash, uniToggleOff } from 'vue-unicons/dist/icons'
+import { appStyleManager } from "@/app-style-manager.ts";
 
 Unicon.add([uniLayerGroupMonochrome, uniCarWash, uniToggleOff])
 
@@ -29,11 +30,11 @@ export function createVueApp(options: {
         saveUrl,
     })
 
+    appStyleManager.loadStyles(mountId);
+
     app.use(createPinia())
     app.use(createVuestic())
-    app.use(mdiVue, {
-        icons: mdijs
-    })
+    app.use(mdiVue, {icons: mdijs})
     app.use(Unicon as unknown as Plugin)
 
     installFontAwesome(app)

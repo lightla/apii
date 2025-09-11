@@ -14,7 +14,7 @@ class ApiiApp {
     this.saveUrl = url
   }
 
-  run(appId: string = '#apii-app') {
+  run(appId: string = '#apii-app1') {
     this.app = createVueApp({
       requestsData: this.data,
       saveUrl: this.saveUrl,
