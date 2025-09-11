@@ -9,6 +9,7 @@ import VariableCellValueInput from "@/app/Request/Editor/Env/VariableTableCell/V
 import {Eraser, SquarePlus, SquareX} from "lucide-vue-next";
 import {IconSquareRoundedPlus} from "@tabler/icons-vue";
 import EnvCellNameInput from "@/app/Request/Editor/Env/EnvTableCell/EnvCellNameInput.vue";
+import ScrollTable from "@/app/Generals/ScrollTable/ScrollTable.vue";
 
 const props = defineProps<{
   route: RouteInfo
@@ -54,43 +55,37 @@ const onClickEraserEmptyLine = (event: MouseEvent): void => {
       <span class="env-variable-table-toolbar-title">ENV</span>
       <IconSquareRoundedPlus @click="" stroke-width="1" class="icon-button-add-row"/>
     </div>
-    <div class="table-scroll-wrap">
-      <table class="table-scroll">
-        <colgroup>
-          <col style="width:2.4rem;">
-          <col style="">
-          <col style="">
-          <col style="width:2.4rem">
-        </colgroup>
-        <thead>
-        <tr>
-          <th>No</th>
-          <th>Name</th>
-          <th>Code</th>
-          <th></th>
-        </tr>
-        </thead>
-        <tbody>
-          <tr
-            v-for="(env, envIndex) in envStorage.definedEnvs"
-            :data-env-index="envIndex"
-            :key="env.id"
-          >
-            <td>{{envIndex + 1}}</td>
-            <td>
-              <span class="text-value" v-if="(env.code === 'no-environment')">{{env.name}}</span>
-              <EnvCellNameInput v-else :env-index="envIndex"/>
-            </td>
-            <td>{{env.code}}</td>
-            <td class="cell-icon">
-              <div class="icon-action-wrap" v-if="(env.code !== 'no-environment')">
-                <SquareX v-if="! clickToConfirmed" @click="onClickButton" class="icon-action" stroke-width="0.9" :size="30" width="30px" height="30px"/>
-              </div>
-            </td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
+
+    <ScrollTable :items="envStorage.definedEnvs" height="360px">
+      <!-- Header cells -->
+      <template #header>
+        <th style="width:7%">No</th>
+        <th>Name</th>
+        <th>Code</th>
+        <th style="width:5%">Tmp</th>
+      </template>
+
+      <!-- Row cells (nhận { item, index }) -->
+
+      <template #row="{ item, index }">
+        <td>{{ index + 1 }}</td>
+        <td>
+          <EnvCellNameInput :placeholder="'Env Name'" :env-index="index" />
+        </td>
+        <td>{{ item.code }}</td>
+        <td>
+          Tmp
+          <div class="cell-icon-action"><!-- action buttons --></div>
+        </td>
+      </template>
+
+      <!-- (tuỳ chọn) empty state -->
+      <template #empty>
+        Chưa có biến môi trường
+      </template>
+    </ScrollTable>
+
+
 
     <div class="table-scroll-wrap"
          :class="{ 'no-data': envStorage.definedEnvs.length === 0 }"
@@ -211,7 +206,8 @@ const onClickEraserEmptyLine = (event: MouseEvent): void => {
   padding: 10px;
   max-height: 100%;
   min-height: 100%;
-  overflow: hidden;
+  //overflow: hidden;
+  overflow: visible;
 }
 
 .env-variable-table-toolbar {
@@ -241,6 +237,8 @@ const onClickEraserEmptyLine = (event: MouseEvent): void => {
   }
 }
 
+
+
 .table-scroll-wrap {
   box-sizing: border-box;
   display: flex;
@@ -250,6 +248,8 @@ const onClickEraserEmptyLine = (event: MouseEvent): void => {
   @include elements.scrollbar-hidden;
   width: 100%;
   max-height: calc(3*(40px) + 3*(30px - 6px));
+
+  position: relative;   // cho sticky có containing block ổn
 
   border-bottom: var(--table-border);
 }
@@ -284,7 +284,7 @@ const onClickEraserEmptyLine = (event: MouseEvent): void => {
   }
 
   tr:last-child td {
-    border-bottom: none;
+    border-bottom: none !important;
   }
 
   .text-value {
@@ -314,6 +314,29 @@ const onClickEraserEmptyLine = (event: MouseEvent): void => {
       fill: var(--icon-bg-color-active);
     }
   }
+}
+
+/* Bảng */
+.table-scroll {
+  border-collapse: separate;
+  border-spacing: 0;
+  width: 100%;
+}
+
+/* Sticky header */
+.table-scroll th {
+  position: sticky;
+  top: 0;
+  z-index: 2;                 // để che body
+  background: var(--table-header-bg-color);
+  /* nên có background để không “trong suốt” khi đè lên rows */
+}
+
+/* Tránh cắt hàng cuối khi đụng đáy container */
+.table-scroll tbody tr:last-child td {
+  /* nếu bị “dính” đáy, thêm khoảng đệm 1 chút: */
+  /* padding-bottom: 1px; hoặc giữ border-bottom thay vì none */
+  border-bottom: 1px solid #666666; // đừng bỏ hẳn border-bottom
 }
 
 .env-variable-table {

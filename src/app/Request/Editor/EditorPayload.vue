@@ -12,6 +12,7 @@ import ToggleMenuItemDetail from '@/app/Generals/ToggleMenu/ToggleMenuItemDetail
 import ToggleMenuItemAction from '@/app/Generals/ToggleMenu/ToggleMenuItemAction.vue'
 import SwitchableTabs from '@/app/Generals/SwitchableTab/SwitchableTabs.vue'
 import SwitchableTab from '@/app/Generals/SwitchableTab/SwitchableTab.vue'
+import ScrollContainer from "@/app/Generals/ScrollContainer/ScrollContainer.vue";
 
 const props = defineProps<{ route: RouteInfo }>()
 
@@ -47,11 +48,19 @@ const tabs = [
 
       <ToggleMenuItemDetail>
         <div class="tab-detail">
-          <div class="tab-detail-content-wrap">
-            <SwitchableTab v-for="(tab, index) in tabs" :key="tab.id" :index="index">
-              <component :is="tab.component" :route="props.route" />
-            </SwitchableTab>
-          </div>
+
+          <ScrollContainer>
+              <SwitchableTab v-for="(tab, index) in tabs" :key="tab.id" :index="index">
+                <component :is="tab.component" :route="props.route" />
+              </SwitchableTab>
+          </ScrollContainer>
+
+
+<!--          <div class="tab-detail-content-wrap">-->
+<!--            <SwitchableTab v-for="(tab, index) in tabs" :key="tab.id" :index="index">-->
+<!--              <component :is="tab.component" :route="props.route" />-->
+<!--            </SwitchableTab>-->
+<!--          </div>-->
         </div>
       </ToggleMenuItemDetail>
     </SwitchableTabs>
