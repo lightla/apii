@@ -1,29 +1,33 @@
 <!-- src\apii\RequestContainer.vue -->
-
 <script setup lang="ts">
 import { ref, onMounted, watch } from 'vue'
 import type { RouteInfo } from '@/types'
 import RequestManager from './RequestManager.vue'
 import Resizer from '../Generals/Resizer.vue'
 import RequestEditor from '@/app/Request/RequestEditor.vue'
+import RequestInfo from "@/app/Request/RequestInfo.vue";
 
-// Import các icon của bạn
 import IconEditor from '@/assets/svg/feathericons/edit.svg'
 import IconInfo from '@/assets/svg/feathericons/info.svg'
-import RequestInfo from "@/app/Request/RequestInfo.vue";
 
 const props = defineProps<{
   requestsData: RouteInfo[]
 }>()
 
-// --- State cho layout ---
+// --- Định nghĩa các hằng số ---
+const STORAGE_KEY_LEFT_WIDTH = 'containerLeftWidth'
+const STORAGE_KEY_ACTIVE_TAB = 'activeRightTab'
+type RightTab = 'editor' | 'info'
+
+// --- State ---
 const containerLeftWidth = ref(40)
 const clickedRoute = ref<RouteInfo | null>(null)
-
-// --- State cho các tab bên phải ---
-type RightTab = 'editor' | 'info'
 const activeRightTab = ref<RightTab>('editor')
 
+// State cho các trường tìm kiếm. Sẽ được cập nhật động.
+const searchableFields = ref<string[]>(['route', 'group']) // Bắt đầu với giá trị mặc định
+
+// --- Hàm xử lý ---
 const updateLeftWidth = (newWidth: number) => {
   containerLeftWidth.value = newWidth
 }
@@ -32,49 +36,61 @@ const clickRoute = (route: RouteInfo) => {
   clickedRoute.value = route
 }
 
-// --- Logic lưu/tải chiều rộng ---
+// Hàm này nhận các trường từ RequestInfo và cập nhật state
+const updateSearchableFields = (customKeys: string[]) => {
+  // Luôn bắt đầu với các trường mặc định và thêm các trường tùy chỉnh vào
+  searchableFields.value = [...new Set(['route', 'group', ...customKeys])]
+  console.log('Container: Đã nhận và cập nhật searchableFields ->', searchableFields.value);
+}
+
+// --- Logic `onMounted` và `watch` ---
 onMounted(() => {
-  const savedLeftWidthStr = localStorage.getItem('containerLeftWidth')
+  // Tải chiều rộng cột
+  const savedLeftWidthStr = localStorage.getItem(STORAGE_KEY_LEFT_WIDTH)
   if (savedLeftWidthStr) {
     containerLeftWidth.value = Number(savedLeftWidthStr)
   }
+
+  // Tải tab đang active
+  const savedActiveTab = localStorage.getItem(STORAGE_KEY_ACTIVE_TAB)
+  if (savedActiveTab === 'editor' || savedActiveTab === 'info') {
+    activeRightTab.value = savedActiveTab
+  }
 })
 
+// Theo dõi và lưu chiều rộng
 watch(containerLeftWidth, (newVal) => {
-  localStorage.setItem('containerLeftWidth', String(newVal))
+  localStorage.setItem(STORAGE_KEY_LEFT_WIDTH, String(newVal))
+})
+
+// Theo dõi và lưu tab đang active
+watch(activeRightTab, (newTab) => {
+  localStorage.setItem(STORAGE_KEY_ACTIVE_TAB, newTab)
 })
 </script>
 
 <template>
-  <!--
-    QUAY LẠI CẤU TRÚC HTML GỐC CỦA BẠN.
-    CHỈ THÊM `position: relative` VÀO ĐÂY.
-  -->
   <div class="container">
-    <!-- Cột bên trái -->
     <div class="container-left" :style="{ width: containerLeftWidth + '%' }">
+      <!-- Truyền các trường tìm kiếm đã được cập nhật xuống -->
       <RequestManager
           :requests="props.requestsData"
+          :search-fields="searchableFields"
           @click="clickRoute"
       />
     </div>
 
-    <!-- Resizer -->
-    <Resizer class="resizer"
-             :initial-width="containerLeftWidth"
-             @resize="updateLeftWidth"
-    />
+    <Resizer class="resizer" @resize="updateLeftWidth" />
 
-    <!-- Cột bên phải -->
     <div class="container-right">
       <RequestEditor v-if="activeRightTab === 'editor'" :route="clickedRoute" />
-      <RequestInfo v-if="activeRightTab === 'info'" :route="clickedRoute" />
+      <RequestInfo
+          v-if="activeRightTab === 'info'"
+          :route="clickedRoute"
+          @update:searchable-fields="updateSearchableFields"
+      />
     </div>
 
-    <!--
-      Thanh tab được đặt ở đây.
-      Nó sẽ được định vị tuyệt đối so với .container.
-    -->
     <div class="right-tabs">
       <div
           class="tab-icon"
@@ -97,73 +113,14 @@ watch(containerLeftWidth, (newVal) => {
 </template>
 
 <style scoped lang="scss">
-.container {
-  display: flex;
-  height: 96vh;
-  width: 100%;
-  /* Bỏ overflow: hidden đi để icon có thể lòi ra */
-  /* overflow: hidden; */
-  border: 1px solid #aaaaaa;
-  background-color: var(--app-bg-color);
-
-  /* --- CHÌA KHÓA DUY NHẤT LÀ ĐÂY --- */
-  position: relative;
-}
-
+.container { display: flex; height: 96vh; width: 100%; border: 1px solid #aaaaaa; background-color: var(--app-bg-color); position: relative; }
 .resizer { padding: 0; }
 .container-left { padding: 10px; overflow: auto; max-width: 90%; min-width: 200px; }
 .container-right { flex: 1; padding: 10px; min-width: 150px; overflow: auto; }
-.info-panel { padding: 10px; }
-
-/* --- CSS CHO THANH TAB "ĐÍNH" VÀO NGOÀI RÌA --- */
-.right-tabs {
-  position: absolute; /* Định vị tuyệt đối so với .container */
-  top: 15px;
-
-  /*
-    Đây là "phép thuật" cuối cùng và đúng nhất:
-    - `right: 0` đẩy nó sát cạnh phải của .container.
-    - `transform: translateX(100%)` dịch chuyển nó sang phải một đoạn bằng 100% chiều rộng của chính nó.
-    - `padding-left` tạo khoảng hở.
-  */
-  right: 0;
-  transform: translateX(100%);
-  padding-left: 0;
-
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  z-index: 1; /* Đảm bảo nó nổi lên trên các phần tử khác nếu có */
-}
-
-.tab-icon {
-  width: 32px;
-  height: 32px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  background-color: #f8f9fa;
-  border: 1px solid #aaaaaa;
-  border-radius: 0;
-  box-shadow: 0 1px 2px rgba(0,0,0,0.05);
-
-  :deep(svg) {
-    width: 18px;
-    height: 18px;
-    color: #495057;
-  }
-
-  &:hover {
-    background-color: #e9ecef;
-  }
-
-  &.active {
-    background-color: #e9ecef;
-    border-color: #007bff;
-    :deep(svg) {
-      color: #007bff;
-    }
-  }
-}
+.right-tabs { position: absolute; top: 15px; right: 0; transform: translateX(100%); padding-left: 8px; display: flex; flex-direction: column; gap: 8px; z-index: 1; }
+.tab-icon { width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; cursor: pointer; background-color: #f8f9fa; border: 1px solid #aaaaaa; border-radius: 0; box-shadow: 0 1px 2px rgba(0,0,0,0.05); }
+.tab-icon :deep(svg) { width: 18px; height: 18px; color: #495057; }
+.tab-icon:hover { background-color: #e9ecef; }
+.tab-icon.active { background-color: #e9ecef; border-color: #007bff; }
+.tab-icon.active :deep(svg) { color: #007bff; }
 </style>
