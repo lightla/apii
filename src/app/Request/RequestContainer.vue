@@ -132,7 +132,7 @@ watch(containerLeftWidth, (newVal) => {
 
   display: flex;
   flex-direction: column;
-  gap: 5px;
+  gap: 8px;
   z-index: 1; /* Đảm bảo nó nổi lên trên các phần tử khác nếu có */
 }
 
