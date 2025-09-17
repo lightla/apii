@@ -3,7 +3,7 @@
 <script setup lang="ts">
 import { ref, onMounted, watch } from 'vue'
 import type { RouteInfo } from '@/types'
-import RequestList from './RequestList.vue'
+import RequestManager from './RequestManager.vue'
 import Resizer from '../Generals/Resizer.vue'
 import RequestEditor from '@/app/Request/RequestEditor.vue'
 
@@ -47,7 +47,7 @@ watch(containerLeftWidth, (newVal) => {
 <template>
   <div class="container">
     <div class="container-left" :style="{ width: containerLeftWidth + '%' }">
-      <RequestList 
+      <RequestManager
         :requests="props.requestsData" 
         @click="clickRoute"
       />
@@ -77,7 +77,7 @@ watch(containerLeftWidth, (newVal) => {
   }
 
   .container-left {
-    padding: 10px;
+    padding: 10px 0;
     overflow: auto;
     max-width: 90%;
     width: 30%;
@@ -85,7 +85,7 @@ watch(containerLeftWidth, (newVal) => {
 
   .container-right {
     flex: 1;
-    padding: 10px;
+    padding: 10px 0;
     min-width: 150px;
   }
 }
