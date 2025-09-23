@@ -1,7 +1,14 @@
 <!-- File: src\app\Request\RequestInfo.vue -->
 <script setup lang="ts">
-import { ref, watch } from 'vue'
-import type { RouteInfo } from '@/types'
+import {ref, watch} from 'vue'
+import type {RouteInfo} from '@/types'
+import MilkdownEditor from "@/app/TextEditor/Milkdown/MilkdownEditor.vue";
+import TiptapEditor from "@/app/TextEditor/Tiptap/TiptapEditor.vue";
+import NovelEditor from "@/app/TextEditor/Novel/NovelEditor.vue";
+import EditorJs from "@/app/TextEditor/EditorJS/EditorJs.vue";
+import CrepeEditor from "@/app/TextEditor/Milkdown/CrepeEditor.vue";
+import TinymceEditor from "@/app/TextEditor/Tinymce/TinymceEditor.vue";
+import QuillEditor from "@/app/TextEditor/Quill/QuillEditor.vue";
 
 interface SearchField { id: number; key: string; value: string; searchable: boolean; }
 const props = defineProps<{ route: RouteInfo | null }>()
@@ -56,6 +63,7 @@ watch(searchFields, () => {
 function addField() { searchFields.value.push({ id: Date.now(), key: '', value: '', searchable: false }) }
 function deleteField(id: number) { searchFields.value = searchFields.value.filter(field => field.id !== id) }
 function deleteAllFields() { if (confirm('Bạn có chắc muốn xóa tất cả các trường cho request này?')) { searchFields.value = [] } }
+
 </script>
 
 <template>
@@ -68,6 +76,13 @@ function deleteAllFields() { if (confirm('Bạn có chắc muốn xóa tất c�
         <div><strong>Group:</strong> <span>{{ props.route.group }}</span></div>
       </div>
       <p v-else>Chưa chọn route nào.</p>
+    </div>
+    <hr class="separator">
+    <div>
+      <h1>Ghi chú</h1>
+      <div class="milkdown-editor-container">
+        <EditorJs />
+      </div>
     </div>
     <hr class="separator">
     <div class="search-config-section" v-if="props.route">
@@ -113,4 +128,11 @@ function deleteAllFields() { if (confirm('Bạn có chắc muốn xóa tất c�
 .text-center { text-align: center; }
 .delete-row-btn { background: none; border: none; color: #dc3545; font-weight: bold; cursor: pointer; font-size: 1.1em; }
 .empty-row { color: #6c757d; padding: 20px; }
+
+
+.milkdown-editor-container {
+    min-height: 0;
+    height: 500px;
+    overflow-y: auto;
+}
 </style>
