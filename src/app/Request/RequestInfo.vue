@@ -9,6 +9,7 @@ import EditorJs from "@/app/TextEditor/EditorJS/EditorJs.vue";
 import CrepeEditor from "@/app/TextEditor/Milkdown/CrepeEditor.vue";
 import TinymceEditor from "@/app/TextEditor/Tinymce/TinymceEditor.vue";
 import QuillEditor from "@/app/TextEditor/Quill/QuillEditor.vue";
+import RequestTagManager from "@/app/Generals/TagManager/RequestTagManager.vue";
 
 interface SearchField { id: number; key: string; value: string; searchable: boolean; }
 const props = defineProps<{ route: RouteInfo | null }>()
@@ -64,10 +65,16 @@ function addField() { searchFields.value.push({ id: Date.now(), key: '', value: 
 function deleteField(id: number) { searchFields.value = searchFields.value.filter(field => field.id !== id) }
 function deleteAllFields() { if (confirm('Bạn có chắc muốn xóa tất cả các trường cho request này?')) { searchFields.value = [] } }
 
+
+const handleTagsUpdate = (updatedTags: any) => {
+  console.log('Danh sách tag đã được cập nhật:', updatedTags);
+  // Bạn có thể làm gì đó với danh sách tag mới ở đây
+};
 </script>
 
 <template>
   <div class="info-panel">
+    <RequestTagManager v-if="props.route" :route="props.route" @tags-updated="handleTagsUpdate" />
     <div class="info-section">
       <h2>Thông tin Route</h2>
       <div v-if="props.route" class="info-details">

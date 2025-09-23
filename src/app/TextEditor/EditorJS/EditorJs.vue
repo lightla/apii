@@ -27,7 +27,61 @@ onMounted(() => {
     tools: {
       header: { class: Header, inlineToolbar: ['Color', 'Marker', 'bold', 'italic'] },
       list: { class: List, inlineToolbar: true },
-      code: CodeMirror,
+      codeMirror: {
+        class: CodeMirror,
+        config: {
+          languages: [
+            {
+              name: 'Javascript',
+              mode: "text/javascript"
+            }, {
+              name: 'HTML',
+              mode: "text/html"
+            }, {
+              name: 'CSS',
+              mode: "text/css"
+            },
+            {
+              name: 'Shell',
+              mode: "application/x-sh"
+            }, {
+              name: 'JSX',
+              mode: "text/typescript-jsx"
+            }, {
+              name: 'Vue',
+              mode: "text/x-vue"
+            }, {
+              name: 'MarkDown',
+              mode: "text/x-markdown"
+            }, {
+              name: 'SASS',
+              mode: "text/x-sass"
+            }
+          ],
+          codeMirrorConfig: {
+            tabSize: 2,
+            fontSize: 12,
+            styleActiveLine: { nonEmpty: true },
+            styleActiveSelected: true,
+            line: false,
+            foldGutter: true,
+            autofocus: true,
+            styleSelectedText: true,
+            showCursorWhenSelecting: true,
+            dragDrop: true,
+            lint: true,
+            theme: 'default',
+            extraKeys: { 'Ctrl': 'autocomplete' },
+            hintOptions: {
+              completeSingle: false
+            },
+            lineNumbers: true,
+            matchBrackets: true,
+            autoCloseTags: true,
+            keyMap: "sublime",
+          }
+        }
+      },
       inlineCode: InlineCode,
       table: Table,
       Color: {
