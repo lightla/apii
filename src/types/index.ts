@@ -7,5 +7,6 @@ export * from './variable-input.ts'
 export interface RouteInfo {
   group: string
   method: string
-  route: string
+  route: string,
+  tags: string[],
 }

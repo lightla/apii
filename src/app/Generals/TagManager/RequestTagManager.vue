@@ -133,7 +133,7 @@
   </div>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { ref, computed, watch, onMounted, onBeforeUnmount, nextTick } from 'vue';
 import { vOnClickOutside } from '@vueuse/components';
 import { nanoid } from 'nanoid';
@@ -141,7 +141,7 @@ import { cssColor, rgb2hsv, hsv2rgb, rgb2hex } from '@swiftcarrot/color-fns';
 
 // --- PROPS & EMITS ---
 const props = defineProps({ route: { type: Object, required: true } });
-const emit = defineEmits(['tags-updated']);
+const emit = defineEmits(['tags-updated', 'click:outside']);
 
 // --- STATE MANAGEMENT ---
 const searchQuery = ref('');
@@ -230,6 +230,7 @@ const loadDataFromStorage = (key) => {
   const data = localStorage.getItem(key);
   selectedTags.value = data ? JSON.parse(data) : [];
   emit('tags-updated', selectedTags.value);
+
 };
 
 const saveDataToStorage = (key, data) => {
@@ -298,9 +299,11 @@ const saveEditedTag = () => {
   cancelEdit();
 };
 
-const handleClickOutside = () => {
+const handleClickOutside = (event: MouseEvent) => {
   closeDropdown();
   if (editingTagId.value) saveEditedTag();
+
+  emit('click:outside', event, selectedTags.value)
 };
 
 const handleColorPick = (color) => {
@@ -319,6 +322,8 @@ const selectTag = (tag) => {
 const removeTagFromSelection = (tagToRemove) => {
   selectedTags.value = selectedTags.value.filter(tag => tag.id !== tagToRemove.id);
   saveDataToStorage(currentStorageKey.value, selectedTags.value);
+
+  emit('tags-updated', selectedTags.value);
 };
 
 const addNewTag = (tagName) => {

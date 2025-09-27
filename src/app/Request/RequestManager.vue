@@ -1,42 +1,40 @@
 <!-- File: src\app\Request\RequestManager.vue -->
 <script setup lang="ts">
-import { ref, watch, computed } from 'vue'
+import { ref, watch, computed, toRaw } from 'vue'
 import type { RouteInfo } from '@/types'
 import SearchComponent from "@/app/Generals/Search/SearchComponent.vue";
+import RequestTagManager from "@/app/Generals/TagManager/RequestTagManager.vue";
 
 interface SearchFieldConfig { id: number; key: string; value: string; searchable: boolean; }
 
 const props = defineProps<{
   requests: RouteInfo[],
-  searchFields: string[] // Nhận các trường tìm kiếm từ RequestContainer
+  searchFields: string[]
 }>()
 
 const emit = defineEmits(['click'])
 
-// --- TRÁI TIM CỦA LOGIC REACTIVITY MỚI ---
+// --- STATE ---
+const searchTitleValue = ref<string>("");
+const filteredTags = ref<any[]>([]);
+const tagFilterMode = ref<'AND' | 'OR'>('OR');
 
-// 1. Dùng `ref` thay vì `computed` để có thể cập nhật nó một cách chủ động
+// 🔥 SỬA 1: KHÔI PHỤC LẠI `reactiveEnrichedRequests` VÀ HÀM "LÀM GIÀU"
 const reactiveEnrichedRequests = ref<RouteInfo[]>([]);
-const searchResults = ref<RouteInfo[]>([]);
 
-// Hàm tạo key duy nhất, phải giống hệt hàm trong RequestInfo.vue
-function generateStorageKey(route: RouteInfo): string {
-  const safeRoute = route.route.replace(/[^a-zA-Z0-9]/g, '_')
-  return `request_info_${route.method}_${safeRoute}`
-}
-
-// 2. Hàm "Làm giàu dữ liệu" - linh hồn của giải pháp
+// Hàm "Làm giàu dữ liệu" - đọc localStorage cho các trường tìm kiếm tùy chỉnh
 function enrichAndRefreshData() {
-  console.log("Manager: BẮT ĐẦU LÀM GIÀU DỮ LIỆU (enrichAndRefreshData)...");
   const enriched = props.requests.map(request => {
     const newRequest = { ...request };
-    const storageKey = generateStorageKey(request);
+    // Key này phải giống hệt key trong RequestInfo.vue
+    const storageKey = `request_info_search_fields_${request.method}_${request.route.replace(/[^a-zA-Z0-9]/g, '_')}`;
     const savedData = localStorage.getItem(storageKey);
 
     if (savedData) {
       try {
         const customFields: SearchFieldConfig[] = JSON.parse(savedData);
         for (const field of customFields) {
+          // Chỉ thêm các trường có key vào object
           if (field.key) {
             (newRequest as any)[field.key] = field.value;
           }
@@ -47,35 +45,62 @@ function enrichAndRefreshData() {
     }
     return newRequest;
   });
-
-  // Cập nhật `ref` với dữ liệu mới nhất
   reactiveEnrichedRequests.value = enriched;
-  console.log("Manager: ĐÃ LÀM GIÀU XONG. Dữ liệu mới đã sẵn sàng.");
 }
 
-// 3. THEO DÕI SỰ THAY ĐỔI VÀ KÍCH HOẠT LÀM MỚI
-// Khi `searchFields` thay đổi (do người dùng tích/bỏ tích checkbox),
-// chúng ta biết rằng cấu hình đã thay đổi và cần làm giàu lại dữ liệu.
-watch(() => props.searchFields, () => {
-  console.log("Manager: Phát hiện `searchFields` thay đổi. Chuẩn bị làm giàu lại dữ liệu.");
+// Kích hoạt làm mới khi props thay đổi
+watch(() => [props.requests, props.searchFields], () => {
   enrichAndRefreshData();
 }, {
-  deep: true, // Cần thiết để theo dõi thay đổi bên trong mảng
-  immediate: true // Chạy ngay lần đầu tiên để có dữ liệu ban đầu
+  deep: true,
+  immediate: true
 });
 
-// 4. `grouped` được tính toán dựa trên `searchResults` (không đổi)
+
+// --- LOGIC LỌC TỔNG HỢP ---
+const filteredRequests = computed(() => {
+  // 🔥 SỬA 2: Bắt đầu lọc từ `reactiveEnrichedRequests` đã được làm giàu
+  let result = reactiveEnrichedRequests.value;
+
+  // 1️⃣ LỌC THEO TỪ KHÓA TÌM KIẾM
+  if (searchTitleValue.value) {
+    const lowerCaseTerm = searchTitleValue.value.toLowerCase();
+    result = result.filter(item => {
+      // Logic này bây giờ sẽ tìm trên các trường đã được làm giàu
+      return Object.values(item).some(value =>
+          value && String(value).toLowerCase().includes(lowerCaseTerm)
+      );
+    });
+  }
+
+  // 2️⃣ LỌC THEO TAG (với logic AND/OR)
+  if (filteredTags.value && filteredTags.value.length > 0) {
+    const selectedTagIds = filteredTags.value.map(tag => tag.id);
+    result = result.filter(req => {
+      if (!req.tags || req.tags.length === 0) return false;
+      const requestTagIds = new Set(req.tags.map(tag => tag.id));
+      if (tagFilterMode.value === 'AND') {
+        return selectedTagIds.every(id => requestTagIds.has(id));
+      } else {
+        return selectedTagIds.some(id => requestTagIds.has(id));
+      }
+    });
+  }
+
+  return result;
+});
+
+// --- CÁC HÀM KHÁC (giữ nguyên) ---
 const grouped = computed(() => {
   const result: Record<string, RouteInfo[]> = {};
-  for (const item of searchResults.value) {
+  for (const item of filteredRequests.value) {
     const group = item.group || 'UNGROUPED';
-    if (!result[group]) { result[group] = []; }
+    if (!result[group]) result[group] = [];
     result[group].push(item);
   }
   return result;
 });
 
-// --- Các hàm xử lý (không đổi) ---
 function handleClick(item: RouteInfo) {
   emit('click', item)
 }
@@ -87,15 +112,28 @@ function formatRoute(route: string) {
 
 <template>
   <div class="request-manager">
-    <!--
-      BỎ :key ĐI. Nó là nguyên nhân gây reset ô input.
-      SearchComponent bây giờ sẽ tự động phản ứng khi `items` của nó thay đổi.
-    -->
     <SearchComponent
         :items="reactiveEnrichedRequests"
         :fields="props.searchFields"
-        @update:results="searchResults = $event"
+        @search:value="searchTitleValue = $event"
     />
+
+    <!-- Bố cục hàng ngang với nút kiểu cột (ĐÃ SỬA LẠI CHO ĐÚNG) -->
+    <div class="tag-filter-container-horizontal">
+      <RequestTagManager
+          class="tag-manager-input"
+          route=""
+          @tags-updated="filteredTags=$event"
+      />
+      <button
+          class="filter-mode-toggle-column"
+          @click="tagFilterMode = (tagFilterMode === 'OR' ? 'AND' : 'OR')"
+          :title="`Chế độ lọc tag: ${tagFilterMode}. Click để chuyển.`"
+      >
+        <div :class="{ 'active': tagFilterMode === 'OR' }">OR</div>
+        <div :class="{ 'active': tagFilterMode === 'AND' }">AND</div>
+      </button>
+    </div>
 
     <!-- Hiển thị kết quả đã được gom nhóm -->
     <div class="request-list">
@@ -117,11 +155,55 @@ function formatRoute(route: string) {
 </template>
 
 <style scoped lang="scss">
-/* CSS giữ nguyên như của bạn */
+/* CSS cũ của bạn giữ nguyên */
 .request-manager { padding: 0 10px; display: flex; flex-direction: column; height: 100%; gap: 10px; }
 .request-list { border: 1px solid #888888; padding: 5px; flex-grow: 1; overflow-y: auto; }
 .group-title { font-weight: bold; margin-top: 10px; margin-bottom: 5px; padding-bottom: 5px; border-bottom: 1px solid #eee; }
 .route-line { cursor: pointer; color: black; padding: 3px 6px; margin-bottom: 4px; line-height: 1.3; user-select: none; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: flex; flex-direction: row; gap: 3px; }
 .route-line:hover { background: #e2e2e2; }
 .no-results { padding: 20px; text-align: center; color: #6c757d; }
+
+/* CSS cho layout hàng ngang và nút kiểu cột (ĐÃ SỬA LẠI CHO ĐÚNG) */
+.tag-filter-container-horizontal {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.tag-manager-input {
+  flex-grow: 1;
+}
+
+.filter-mode-toggle-column {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  padding: 10px 4px;
+  background-color: #f8f9fa;
+  cursor: pointer;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  user-select: none;
+  transition: all 0.2s ease;
+
+  &:hover {
+    border-color: #999;
+    background-color: #f1f3f5;
+  }
+
+  div {
+    font-size: 10px;
+    font-weight: 700;
+    line-height: 1.1;
+    color: #adb5bd;
+    transition: color 0.2s ease;
+
+    &.active {
+      color: #007bff;
+    }
+  }
+}
 </style>

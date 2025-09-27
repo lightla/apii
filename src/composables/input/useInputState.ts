@@ -1,6 +1,6 @@
 import {toRef} from 'vue'
 import {useInputStorage} from "@/storages";
-import {HighlightInputService} from "@/services/input";
+import {HighlightInputService} from "@/services/app/input";
 import type {HighlightInputParam} from "@/types";
 
 export const useInputState = () => {

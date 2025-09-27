@@ -9,7 +9,7 @@ const props = defineProps<{
   fields: string[]
 }>()
 
-const emit = defineEmits(['update:results'])
+const emit = defineEmits(['search:value'])
 
 const keyword = ref('')
 const fullHistory = ref<string[]>([])
@@ -50,7 +50,7 @@ function performSearchAndSaveHistory() {
           )
       )
       : [...props.items]
-  emit('update:results', results)
+  emit('search:value', term)
 
   // Yêu cầu 2: Đóng popup lịch sử sau khi tìm kiếm
   isHistoryVisible.value = false

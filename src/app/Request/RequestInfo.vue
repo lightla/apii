@@ -1,29 +1,33 @@
-<!-- File: src\app\Request\RequestInfo.vue -->
+<!-- File: src/app/Request/RequestInfo.vue -->
 <script setup lang="ts">
-import {ref, watch} from 'vue'
-import type {RouteInfo} from '@/types'
-import MilkdownEditor from "@/app/TextEditor/Milkdown/MilkdownEditor.vue";
-import TiptapEditor from "@/app/TextEditor/Tiptap/TiptapEditor.vue";
-import NovelEditor from "@/app/TextEditor/Novel/NovelEditor.vue";
+import { ref, watch } from 'vue'
+import type { RouteInfo } from '@/types'
 import EditorJs from "@/app/TextEditor/EditorJS/EditorJs.vue";
-import CrepeEditor from "@/app/TextEditor/Milkdown/CrepeEditor.vue";
-import TinymceEditor from "@/app/TextEditor/Tinymce/TinymceEditor.vue";
-import QuillEditor from "@/app/TextEditor/Quill/QuillEditor.vue";
 import RequestTagManager from "@/app/Generals/TagManager/RequestTagManager.vue";
+import AccordionContainer from "@/app/Generals/Accordion/AccordionContainer.vue";
+import AccordionItem from "@/app/Generals/Accordion/AccordionItem.vue";
 
 interface SearchField { id: number; key: string; value: string; searchable: boolean; }
 const props = defineProps<{ route: RouteInfo | null }>()
-const emit = defineEmits(['update:searchableFields'])
+const emit = defineEmits(['update:searchableFields', 'route-tags-updated'])
 
+// --- STATE ---
 const searchFields = ref<SearchField[]>([])
-const currentStorageKey = ref<string | null>(null)
+const searchFieldsStorageKey = ref<string | null>(null)
+const editorStorageKey = ref<string | null>(null)
 
-function generateStorageKey(route: RouteInfo): string {
+// --- CÁC HÀM TẠO KEY ---
+function generateSearchFieldsStorageKey(route: RouteInfo): string {
   const safeRoute = route.route.replace(/[^a-zA-Z0-9]/g, '_')
-  return `request_info_${route.method}_${safeRoute}`
+  return `request_info_search_fields_${route.method}_${safeRoute}`
 }
 
-// Hàm emit các trường searchable
+function generateEditorStorageKey(route: RouteInfo): string {
+  const safeRoute = route.route.replace(/[^a-zA-Z0-9]/g, '_')
+  return `request_info_editor_content_${route.method}_${safeRoute}`
+}
+
+// --- LOGIC CHO BẢNG CẤU HÌNH ---
 function emitSearchableKeys() {
   const searchableKeys = searchFields.value
       .filter(field => field.searchable && field.key)
@@ -31,97 +35,136 @@ function emitSearchableKeys() {
   emit('update:searchableFields', searchableKeys)
 }
 
-function loadDataFromStorage(key: string) {
+function loadSearchFieldsFromStorage(key: string) {
   const savedData = localStorage.getItem(key)
   searchFields.value = savedData ? JSON.parse(savedData) : []
-  // QUAN TRỌNG: Emit ngay sau khi tải dữ liệu để đồng bộ hóa trạng thái ban đầu
   emitSearchableKeys()
 }
 
-function saveDataToStorage() {
-  if (currentStorageKey.value) {
-    localStorage.setItem(currentStorageKey.value, JSON.stringify(searchFields.value))
+function saveSearchFieldsToStorage() {
+  if (searchFieldsStorageKey.value) {
+    localStorage.setItem(searchFieldsStorageKey.value, JSON.stringify(searchFields.value))
   }
 }
 
+// --- WATCHER CHÍNH: THEO DÕI ROUTE THAY ĐỔI ---
 watch(() => props.route, (newRoute) => {
   if (newRoute && newRoute.route) {
-    const newKey = generateStorageKey(newRoute)
-    currentStorageKey.value = newKey
-    loadDataFromStorage(newKey)
+    const newSearchKey = generateSearchFieldsStorageKey(newRoute)
+    searchFieldsStorageKey.value = newSearchKey
+    loadSearchFieldsFromStorage(newSearchKey)
+
+    editorStorageKey.value = generateEditorStorageKey(newRoute)
   } else {
     searchFields.value = []
-    currentStorageKey.value = null
-    emitSearchableKeys() // Emit mảng rỗng khi không có route nào được chọn
+    searchFieldsStorageKey.value = null
+    editorStorageKey.value = null
+    emitSearchableKeys()
   }
 }, { immediate: true })
 
+// Watcher riêng cho bảng cấu hình
 watch(searchFields, () => {
-  saveDataToStorage()
-  emitSearchableKeys() // Emit mỗi khi bảng thay đổi (thêm, xóa, sửa, tích checkbox)
+  saveSearchFieldsToStorage()
+  emitSearchableKeys()
 }, { deep: true })
 
+// --- CÁC HÀM XỬ LÝ SỰ KIỆN ---
 function addField() { searchFields.value.push({ id: Date.now(), key: '', value: '', searchable: false }) }
 function deleteField(id: number) { searchFields.value = searchFields.value.filter(field => field.id !== id) }
 function deleteAllFields() { if (confirm('Bạn có chắc muốn xóa tất cả các trường cho request này?')) { searchFields.value = [] } }
 
-
 const handleTagsUpdate = (updatedTags: any) => {
-  console.log('Danh sách tag đã được cập nhật:', updatedTags);
-  // Bạn có thể làm gì đó với danh sách tag mới ở đây
+  // Logic này đã được chuyển sang handleTagsOutsideClick để emit một lần
+};
+
+const handleTagsOutsideClick = (event: MouseEvent, selectedTags: any[]) => {
+  if (props.route) {
+    emit('route-tags-updated', { routeId: props.route.id, tags: selectedTags });
+  }
 };
 </script>
 
 <template>
   <div class="info-panel">
-    <RequestTagManager v-if="props.route" :route="props.route" @tags-updated="handleTagsUpdate" />
-    <div class="info-section">
-      <h2>Thông tin Route</h2>
-      <div v-if="props.route" class="info-details">
-        <div><strong>Method:</strong> <span>{{ props.route.method }}</span></div>
-        <div><strong>Route:</strong> <span>{{ props.route.route }}</span></div>
-        <div><strong>Group:</strong> <span>{{ props.route.group }}</span></div>
-      </div>
-      <p v-else>Chưa chọn route nào.</p>
-    </div>
-    <hr class="separator">
-    <div>
-      <h1>Ghi chú</h1>
-      <div class="milkdown-editor-container">
-        <EditorJs />
-      </div>
-    </div>
-    <hr class="separator">
-    <div class="search-config-section" v-if="props.route">
-      <div class="table-header">
-        <h2>Cấu hình trường tìm kiếm</h2>
-        <div>
-          <button @click="addField" class="action-btn add-btn">Thêm</button>
-          <button @click="deleteAllFields" class="action-btn delete-all-btn">Xóa tất cả</button>
+    <!-- ================================================================ -->
+    <!-- SỬA LỖI: Toàn bộ khối này chỉ render khi có props.route hợp lệ -->
+    <!-- ================================================================ -->
+    <template v-if="props.route">
+      <RequestTagManager
+          :route="props.route"
+          @tags-updated="handleTagsUpdate"
+          @click:outside="handleTagsOutsideClick"
+      />
+      <div class="info-section">
+        <div class="info-details">
+          <div>
+            <span>[{{ props.route.method }}] {{ props.route.route }}</span>
+          </div>
         </div>
       </div>
-      <table class="config-table">
-        <thead><tr><th>Key</th><th>Value</th><th>Searchable</th><th>Action</th></tr></thead>
-        <tbody>
-        <tr v-for="field in searchFields" :key="field.id">
-          <td><input type="text" v-model="field.key" placeholder="Tên trường..."></td>
-          <td><input type="text" v-model="field.value" placeholder="Giá trị..."></td>
-          <td class="text-center"><input type="checkbox" v-model="field.searchable"></td>
-          <td class="text-center"><button @click="deleteField(field.id)" class="delete-row-btn">X</button></td>
-        </tr>
-        <tr v-if="searchFields.length === 0"><td colspan="4" class="text-center empty-row">Chưa có trường nào.</td></tr>
-        </tbody>
-      </table>
+
+      <!-- Accordion Ghi chú -->
+      <AccordionContainer>
+        <AccordionItem :start-open="true">
+          <template #summary>Ghi chú</template>
+          <template #details>
+            <div class="editor-padding">
+              <div class="milkdown-editor-container">
+                <!-- v-if="editorStorageKey" ở đây là một lớp bảo vệ nữa -->
+                <EditorJs
+                    v-if="editorStorageKey"
+                    :key="editorStorageKey"
+                    :storage-key="editorStorageKey"
+                />
+              </div>
+            </div>
+          </template>
+        </AccordionItem>
+      </AccordionContainer>
+
+      <hr class="separator">
+
+      <!-- Bảng cấu hình trường tìm kiếm -->
+      <div class="search-config-section">
+        <div class="table-header">
+          <h2>Cấu hình trường tìm kiếm</h2>
+          <div>
+            <button @click="addField" class="action-btn add-btn">Thêm</button>
+            <button @click="deleteAllFields" class="action-btn delete-all-btn">Xóa tất cả</button>
+          </div>
+        </div>
+        <table class="config-table">
+          <thead><tr><th>Key</th><th>Value</th><th>Searchable</th><th>Action</th></tr></thead>
+          <tbody>
+          <tr v-for="field in searchFields" :key="field.id">
+            <td><input type="text" v-model="field.key" placeholder="Tên trường..."></td>
+            <td><input type="text" v-model="field.value" placeholder="Giá trị..."></td>
+            <td class="text-center"><input type="checkbox" v-model="field.searchable"></td>
+            <td class="text-center"><button @click="deleteField(field.id)" class="delete-row-btn">X</button></td>
+          </tr>
+          <tr v-if="searchFields.length === 0"><td colspan="4" class="text-center empty-row">Chưa có trường nào.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </template>
+
+    <!-- ================================================================ -->
+    <!-- Chỉ hiển thị thông báo này khi không có route nào được chọn -->
+    <!-- ================================================================ -->
+    <div v-else class="empty-state">
+      <p>Chưa chọn route nào.</p>
+      <p>Hãy chọn một request từ danh sách để xem chi tiết và cấu hình.</p>
     </div>
-    <div v-else><p>Hãy chọn một request để xem và cấu hình.</p></div>
   </div>
 </template>
 
 <style scoped lang="scss">
+// Giữ nguyên toàn bộ style của bạn, chỉ thêm 2 class mới
+
 .info-panel { padding: 15px; display: flex; flex-direction: column; gap: 20px; }
 .info-section h2, .search-config-section h2 { margin-top: 0; margin-bottom: 15px; font-size: 1.2em; }
 .info-details { display: flex; flex-direction: column; gap: 8px; background-color: #f8f9fa; padding: 10px; border-radius: 4px; font-size: 0.95em; }
-.info-details strong { display: inline-block; width: 80px; color: #495057; }
 .info-details span { font-family: monospace; }
 .separator { border: none; border-top: 1px solid #dee2e6; }
 .table-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
@@ -136,10 +179,26 @@ const handleTagsUpdate = (updatedTags: any) => {
 .delete-row-btn { background: none; border: none; color: #dc3545; font-weight: bold; cursor: pointer; font-size: 1.1em; }
 .empty-row { color: #6c757d; padding: 20px; }
 
+.editor-padding {
+  padding: 0 1.5rem 1.5rem 1.5rem;
+}
 
 .milkdown-editor-container {
-    min-height: 0;
-    height: 500px;
-    overflow-y: auto;
+  min-height: 200px;
+  height: 200px;
+  width: 100%;
+  overflow-y: auto;
+  overflow-x: hidden;
+  border: 1px solid #dee2e6;
+  border-radius: 4px;
+  overscroll-behavior: contain;
+}
+
+.empty-state {
+  text-align: center;
+  padding: 40px 20px;
+  color: #6c757d;
+  background-color: #f8f9fa;
+  border-radius: 8px;
 }
 </style>
