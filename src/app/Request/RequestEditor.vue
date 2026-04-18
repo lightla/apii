@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import {ref, watch} from 'vue'
 import type {RouteInfo} from '@/types'
-import EditorEnv from "@/app/Request/Editor/EditorEnv.vue";
 import EditorUrlBar from "@/app/Request/Editor/EditorUrlBar.vue";
 import EditorPopupMenu from "@/app/Request/Editor/EditorPopupMenu.vue";
 import ToggleMenuItem from "@/app/Generals/ToggleMenu/ToggleMenuItem.vue";
@@ -29,7 +28,8 @@ watch(props.route, (newValue) => {
 <template>
   <div class="editor" ref="editorRef">
     <EditorPopupMenu :editor="editorRef"/>
-    <EditorEnv :route="props.route"/>
+    
+    <!-- Environment settings have been moved to its own Tab in RequestContainer.vue -->
 
     <div class="editor-request">
       <EditorUrlBar :route="props.route"/>
