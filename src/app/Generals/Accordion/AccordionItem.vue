@@ -14,7 +14,7 @@
   </details>
 </template>
 
-<script setup>
+<script setup lang="ts">
 // Component này bây giờ rất đơn giản, chỉ nhận prop và cung cấp slot.
 // Chúng ta quay lại sử dụng hành vi gốc của thẻ <details> để đảm bảo sự đơn giản và ổn định.
 defineProps({
@@ -91,7 +91,7 @@ summary::after {
 
 /* Nội dung bên trong */
 .content {
-  padding-top: 1.5rem; /* Padding đều 4 phía khi hiển thị */
+  padding: 1rem 1.5rem; /* Padding đều 4 phía khi hiển thị */
   line-height: 1.6;
   color: #4b4f56;
 }

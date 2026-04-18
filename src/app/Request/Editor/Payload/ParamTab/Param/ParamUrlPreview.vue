@@ -1,26 +1,24 @@
 <script setup lang="ts">
-import type {RouteInfo} from '@/types'
-import {ClipboardDocumentIcon} from '@heroicons/vue/24/solid'
+import type { RouteInfo } from '@/types'
 import FileCopy from '@/assets/svg/svgrepo/file-copy.svg'
-const props = defineProps<{
-  route: RouteInfo
-}>()
+import { useRequestParamsStorage } from '@/storages/payload.ts'
+
+const props = defineProps<{ route: RouteInfo }>()
+const store = useRequestParamsStorage()
+
+function copyUrl() {
+  navigator.clipboard.writeText(store.urlPreview)
+}
 </script>
 
 <template>
   <div class="url-preview">
     <h4>URL Preview</h4>
     <div class="url-preview-detail">
-<!--      <textarea class="url-preview-input" readonly>http://fffasdfas/fffdfadffffffffdfadffffffffffffffffffffffffffffffffffdfadffffffffffffffffffffffffffffffffffdfadffffffffffffffffffffffffffffffffffdfadffffffffffffffffffffffffffffffffffdfadfffffffffffffffffffffffffffffdfadffffffffffffffffffffffffffffffffffdfadffffffffffffffffffffffffffffffffffdfadffffffffffffffffffffffffffffffffffdfadffffffffffffffffffffffffffffffffffdfadffffffffffffffffffffffffffffffdfadffffffffffffffffffffffffffffffffffdfadffffffffffffffffffffffffffffffffffdfadffffffffffffffffffffffffffffffffffdfadffffffffffffffffffffffffffffffffffdfadffffffffffffffffffffffffffffffffffdfadffffffffffffffffffffffffffdfadffffffffffffffffffffffffffffffffffdfadffffffffffffffffffffffffffffffffffdfadffffffffffffffffffffffffffffffffffdfadffffffffffffffffffffffffffffffffffdfadffffffffffffffffffffffffffffffffffdfadffffffffffffffffffffffffffffffffffdfadffffffffffffffffffffffffffffffffffdfadffffffffffffffffffffffffffffffff/ffffffffffdfadfffffffffffffffffffffffffffffff/fffffffdfadfffffffffffffffffffffffffffffffff/ffff/fffffffffffffffffffffffffffdfadffffffffffffffffffffffffffffffffffdfadfffffffffffffffffffffffffffffffdfasdfa/fffdfadffffffffffffffffffffffffffffffffffdfadfffffffffffffffffffffffffffffff/sdfafffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff?</textarea>-->
-
       <div class="url-preview-input-wrap">
-        <div class="url-preview-input-content">
-          http://fffasdfas/fffdfadffffffffdfadffffffffffffffffffffffffffffff/fffdfadffffffffdfadffffffffffffffffffffffffffffff/fffdfadffffffffdfadffffffffffffffffffffffffffffff/fffdfadffffffffdfadffffffffffffffffffffffffffffff/fffdfadffffffffdfadffffffffffffffffffffffffffffff/fffdfadffffffffdfadffffffffffffffffffffffffffffff http://fffasdfas/fffdfadffffffffdfadffffffffffffffffffffffffffffff/fffdfadffffffffdfadffffffffffffffffffffffffffffff/fffdfadffffffffdfadffffffffffffffffffffffffffffff/fffdfadffffffffdfadffffffffffffffffffffffffffffff/fffdfadffffffffdfadffffffffffffffffffffffffffffff/fffdfadffffffffdfadffffffffffffffffffffffffffffff
-        </div>
+        <div class="url-preview-input-content">{{ store.urlPreview }}</div>
       </div>
-
-<!--      <textarea class="url-preview-input" readonly>http://fffasdfas/fffdfadffffffffdfadffffffffffffffffffffffffffffff/fffdfadffffffffdfadffffffffffffffffffffffffffffff/fffdfadffffffffdfadffffffffffffffffffffffffffffff/fffdfadffffffffdfadffffffffffffffffffffffffffffff/fffdfadffffffffdfadffffffffffffffffffffffffffffff/fffdfadffffffffdfadffffffffffffffffffffffffffffff</textarea>-->
-      <FileCopy stroke-width="1" class="icon-button-copy" />
+      <FileCopy stroke-width="1" class="icon-button-copy" @click="copyUrl" />
     </div>
   </div>
 </template>
@@ -29,11 +27,11 @@ const props = defineProps<{
 @use "@/assets/styles/elements";
 
 .url-preview {
-  //border-bottom: 1px solid #aaaaaa;
-  //padding: 10px;
   display: flex;
   flex-direction: column;
   gap: 5px;
+  flex-shrink: 0;
+  min-height: 0;
 }
 
 .url-preview-detail {
@@ -48,6 +46,7 @@ const props = defineProps<{
   padding: 5px;
   background-color: #e6e6e6;
   border: 1px solid #888888;
+  min-width: 0;
 }
 
 .url-preview-input-content {
@@ -58,19 +57,14 @@ const props = defineProps<{
   font-size: 0.9em;
 }
 
-.icon-copy-cover {
-  display: flex;
-  align-items: center;
-}
-
 .icon-button-copy {
   width: 32px !important;
   height: 28px;
   cursor: pointer;
-
   fill: transparent;
   stroke: #333333;
   stroke-width: 1px;
+  flex-shrink: 0;
 
   &:hover {
     fill: var(--icon-bg-color-active);

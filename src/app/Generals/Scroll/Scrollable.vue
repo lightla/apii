@@ -42,7 +42,7 @@ onMounted(() => {
     const deltaY = startY - e.touches[0].clientY
     if (clampScroll(deltaY)) {
       e.preventDefault()
-      e.stopPropagation()
+        e.stopPropagation()
     } else {
       startY = e.touches[0].clientY
     }

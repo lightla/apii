@@ -1,17 +1,17 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { watch } from 'vue'
 import type { RouteInfo } from '@/types'
-import ParamUrlPreview
-  from "@/app/Request/Editor/Payload/ParamTab/Param/ParamUrlPreview.vue";
-import ParamPathVariable
-  from "@/app/Request/Editor/Payload/ParamTab/Param/ParamPathVariable.vue";
-import ParamQueryParam
-  from "@/app/Request/Editor/Payload/ParamTab/Param/ParamQueryParam.vue";
+import ParamUrlPreview from "@/app/Request/Editor/Payload/ParamTab/Param/ParamUrlPreview.vue";
+import ParamPathVariable from "@/app/Request/Editor/Payload/ParamTab/Param/ParamPathVariable.vue";
+import ParamQueryParam from "@/app/Request/Editor/Payload/ParamTab/Param/ParamQueryParam.vue";
+import { useRequestParamsStorage } from '@/storages/payload.ts'
 
-const props = defineProps<{
-  route: RouteInfo
-}>()
+const props = defineProps<{ route: RouteInfo }>()
+const store = useRequestParamsStorage()
 
+watch(() => props.route?.route, (url) => {
+  if (url) store.baseUrl = url
+}, { immediate: true })
 </script>
 
 <template>
@@ -27,6 +27,13 @@ const props = defineProps<{
   display: flex;
   flex-direction: column;
   gap: 10px;
-  //border: 1px solid black;
+  height: 100%;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: #ccc transparent;
+
+  &::-webkit-scrollbar { width: 5px; }
+  &::-webkit-scrollbar-track { background: transparent; }
+  &::-webkit-scrollbar-thumb { background: #ccc; border-radius: 3px; }
 }
 </style>

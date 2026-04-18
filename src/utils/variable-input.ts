@@ -99,13 +99,15 @@ export const replaceHighlightVariables = (param: HighlightVariableParam) => {
         }
     });
 
-    param.target.innerHTML = highlightContent;
+    // Strip trailing <br> that browsers add to contenteditable before comparing
+    const currentHTML = param.target.innerHTML.replace(/<br\s*\/?>\s*$/i, '');
 
-    console.log("target.innerHTML:" + param.target.innerHTML);
+    if (currentHTML !== highlightContent) {
+        param.target.innerHTML = highlightContent;
 
-    if (param.withCursor) {
-        // 5. Đặt lại vị trí con trỏ theo offset gốc
-        setCursorAtTextOffset(param.target, cursor.preCursorOffset)
+        if (param.withCursor) {
+            setCursorAtTextOffset(param.target, cursor.preCursorOffset)
+        }
     }
 }
 

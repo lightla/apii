@@ -1,48 +1,30 @@
 <script setup lang="ts">
-import {ref} from 'vue'
-import type {RouteInfo} from "@/types";
+import { computed, watch } from 'vue'
+import type { RouteInfo } from '@/types'
 import TrackedVariableInput from "@/app/Generals/TrackedVariableInput.vue";
+import { useRequestParamsStorage } from '@/storages/payload.ts'
 
-const props = defineProps<{
-  route: RouteInfo
-}>()
+const props = defineProps<{ route: RouteInfo }>()
+const store = useRequestParamsStorage()
 
-// Fake URI params
-const uriParams = ref<string[]>(['ab', 'dc', 'activeStructureCode',
-  'activeStructureCodeactiveStructureCodeStructureCodeStructureCodeStructureCode',
-  'activeStructureCodeactiveStructureCodeStructureCodeStf',
-  'activeStructureCodeactiveStructureCodeStructureCods',
-  'activeStructureCodeactiveStructureCodeStructureCod',
-  'activeStructureCodeactiveStructu',
-  'activeStructureCodeactiveStructureCo',
-  'activeStructureCodeactiveStructureCodeStructureCodeStructureCodeSt',
-  'activeStructureCodeactiveStructureCodeStructureCodeStructureCodeSt',
-  'activeStructureCodeactiveS',
-  'activeStructureCodeactiveStructureCodeStructureCodeStructureCodeSt',
-  'activeStructureCodeacti',
-  'activeStructureCodeactiveStructureCodeStructureCodeSgCodeSt',
-  'activeStructureCodeactiveStructureCodeStructureCoffodeSt',
-  'activeStructureCodeactiveStructureCodeStructureCodssodeSt',
-  'activeStructureCodeactiveStructureCodeStructureCodeStructureCodeSt',
-  'activeStructureCodeactiveStructureCodeStructuaa',
-  'activeStructureCodeactiveStructureCodeStructuưuctureCodeSt',
-  'activeStructureCodeactiveStructureCodeStructureCodeStrueeSt',
-])
-
-// Map value của từng param
-const uriParamValues = ref<Record<string, string>>({
-  ab: 'ff',
-  dc: 'aa',
-  activeStructureCode: 'activeStructureCode-activeStructureCode',
-  // activeStructureCodeactiveStructureCode: 'activeStructureCodeactiveStructureCode'
+// Extract path variable names from the live URL (store.baseUrl)
+const pathVarNames = computed<string[]>(() => {
+  const matches = [...(store.baseUrl || '').matchAll(/(?<!{)\{([^{}]+)\}(?!})/g)]
+  return [...new Set(matches.map(m => m[1]))]
 })
 
-// Khi user nhập vào input
-function onInput(e: Event, param: string) {
-  const target = e.target as HTMLElement
-  uriParamValues.value[param] = target.innerText
-  console.log('Param input:', param, '->', target.innerText)
+// Sync store.pathVariables when URL changes
+watch(pathVarNames, (names) => {
+  store.pathVariables = names.map(name => ({
+    name,
+    value: store.pathVariables.find(v => v.name === name)?.value ?? ''
+  }))
+}, { immediate: true })
+
+function getVarValue(name: string) {
+  return store.pathVariables.find(v => v.name === name)?.value ?? ''
 }
+
 </script>
 
 <template>
@@ -50,25 +32,31 @@ function onInput(e: Event, param: string) {
     <h4>Path Variables</h4>
     <table class="table-path-variable">
       <colgroup>
-        <col style="width: 30%;">
+        <col style="width: 35%;">
         <col style="width: auto;">
       </colgroup>
-      <thead></thead>
+      <thead>
+        <tr>
+          <th>Variable</th>
+          <th>Value</th>
+        </tr>
+      </thead>
       <tbody>
-        <tr
-            v-for="param in uriParams"
-            :key="param"
-            class="uri-param-row11123223"
-        >
-          <td><span class="defined-uri-param">{{ `\{${param}\}` }}</span></td>
+        <tr v-for="name in pathVarNames" :key="name">
+          <td><span class="defined-uri-param">{{ '{' + name + '}' }}</span></td>
           <td>
             <div class="uri-param-value">
               <TrackedVariableInput
-                  :route="props.route"
-                  :enabled-env-variable="true"
+                :route="props.route"
+                :value="getVarValue(name)"
+                :enabled-env-variable="true"
+                @text-change="val => store.updatePathVariable(name, val)"
               />
             </div>
           </td>
+        </tr>
+        <tr v-if="pathVarNames.length === 0">
+          <td colspan="2" class="empty-row">No path variables in URL</td>
         </tr>
       </tbody>
     </table>
@@ -80,12 +68,21 @@ function onInput(e: Event, param: string) {
   display: flex;
   flex-direction: column;
   gap: 5px;
+  flex-shrink: 0;
 }
 
 .table-path-variable {
   table-layout: fixed;
   border: 1px solid #666666;
   width: 100%;
+
+  th {
+    border: 1px solid #666666;
+    background-color: #dddddd;
+    padding: 5px;
+    font-size: 13px;
+    text-align: left;
+  }
 
   td {
     border: 1px solid #666666;
@@ -97,29 +94,21 @@ function onInput(e: Event, param: string) {
   }
 
   .uri-param-value {
-    padding: 4px 6px;
+    padding: 2px 4px;
   }
 }
 
-//
-//.uri-params-container {
-//  display: flex;
-//  flex-direction: column;
-//  gap: 10px;
-//}
-//
-//.param-row {
-//  display: flex;
-//  align-items: center;
-//  gap: 10px;
-//}
-//
-//.uri-param {
-//  color: #369a6e;
-//  font-weight: 600;
-//  border: 1px solid #ccc;
-//  padding: 6px 10px;
-//  min-width: 150px;
-//  min-height: 24px;
-//}
+.empty-row {
+  text-align: center;
+  color: #aaa;
+  font-size: 12px;
+  padding: 8px;
+  border: 1px solid #666;
+}
+
+.defined-uri-param {
+  color: var(--defined-uri-param);
+  font-weight: 600;
+  font-size: 13px;
+}
 </style>

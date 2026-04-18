@@ -6,6 +6,13 @@ import EditorJs from "@/app/TextEditor/EditorJS/EditorJs.vue";
 import RequestTagManager from "@/app/Generals/TagManager/RequestTagManager.vue";
 import AccordionContainer from "@/app/Generals/Accordion/AccordionContainer.vue";
 import AccordionItem from "@/app/Generals/Accordion/AccordionItem.vue";
+import CodeMirrorContainer from "@/app/Generals/CodeEditor/CodeMirrorContainer.vue";
+import BrowserTabContainer from "@/app/Generals/BrowserTab/BrowserTabContainer.vue";
+import BrowserTab from "@/app/Generals/BrowserTab/BrowserTab.vue";
+import RequestBrowserTabManager from "./RequestBrowserTabManager.vue";
+import RequestBrowserTabManager2 from "./RequestBrowserTabManager2.vue";
+import RequestBrowserTabManager4 from "./RequestBrowserTabManager4.vue";
+import RequestBrowserTabManager3 from "@/app/Request/RequestBrowserTabManager3.vue";
 
 interface SearchField { id: number; key: string; value: string; searchable: boolean; }
 const props = defineProps<{ route: RouteInfo | null }>()
@@ -83,6 +90,28 @@ const handleTagsOutsideClick = (event: MouseEvent, selectedTags: any[]) => {
     emit('route-tags-updated', { routeId: props.route.id, tags: selectedTags });
   }
 };
+
+
+
+const requests = ref([]);
+let requestCounter = 0;
+
+const addRequestTab = () => {
+  requestCounter++;
+  requests.value.push({
+    id: `req_${requestCounter}`,
+    title: `Request ${requestCounter}`,
+    content: JSON.stringify({ id: `req_${requestCounter}`, method: "GET" }, null, 2),
+  });
+};
+
+const closeRequestTab = (index) => {
+  requests.value.splice(index, 1);
+};
+
+// Thêm tab đầu tiên khi tải trang
+addRequestTab();
+
 </script>
 
 <template>
@@ -109,16 +138,42 @@ const handleTagsOutsideClick = (event: MouseEvent, selectedTags: any[]) => {
         <AccordionItem :start-open="true">
           <template #summary>Ghi chú</template>
           <template #details>
-            <div class="editor-padding">
-              <div class="milkdown-editor-container">
-                <!-- v-if="editorStorageKey" ở đây là một lớp bảo vệ nữa -->
-                <EditorJs
-                    v-if="editorStorageKey"
-                    :key="editorStorageKey"
-                    :storage-key="editorStorageKey"
-                />
-              </div>
+            <div class="milkdown-editor-container">
+              <!-- v-if="editorStorageKey" ở đây là một lớp bảo vệ nữa -->
+              <TinymceEditor
+                  v-if="editorStorageKey"
+                  :key="editorStorageKey"
+                  :storage-key="editorStorageKey"
+              />
             </div>
+          </template>
+        </AccordionItem>
+
+        <AccordionItem :start-open="true">
+          <template #summary>Requests</template>
+          <template #details>
+            <RequestBrowserTabManager :route="props.route"></RequestBrowserTabManager>
+          </template>
+        </AccordionItem>
+
+        <AccordionItem :start-open="true">
+          <template #summary>Requests2</template>
+          <template #details>
+            <RequestBrowserTabManager2 :route="props.route"></RequestBrowserTabManager2>
+          </template>
+        </AccordionItem>
+
+        <AccordionItem :start-open="true">
+          <template #summary>Requests4</template>
+          <template #details>
+            <RequestBrowserTabManager4 :route="props.route"></RequestBrowserTabManager4>
+          </template>
+        </AccordionItem>
+
+        <AccordionItem :start-open="true">
+          <template #summary>Requests3</template>
+          <template #details>
+            <RequestBrowserTabManager3 :route="props.route"></RequestBrowserTabManager3>
           </template>
         </AccordionItem>
       </AccordionContainer>
@@ -190,7 +245,6 @@ const handleTagsOutsideClick = (event: MouseEvent, selectedTags: any[]) => {
   overflow-y: auto;
   overflow-x: hidden;
   border: 1px solid #dee2e6;
-  border-radius: 4px;
   overscroll-behavior: contain;
 }
 
@@ -199,6 +253,5 @@ const handleTagsOutsideClick = (event: MouseEvent, selectedTags: any[]) => {
   padding: 40px 20px;
   color: #6c757d;
   background-color: #f8f9fa;
-  border-radius: 8px;
 }
 </style>

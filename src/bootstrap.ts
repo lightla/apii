@@ -20,7 +20,7 @@ import App from './App.vue'
 import { createPinia } from 'pinia'
 import installFontAwesome from './plugins/fontawesome'
 import mdiVue from 'mdi-vue/v3'
-import * as mdijs from '@mdi/js'
+// import * as mdijs from '@mdi/js'
 
 // @ts-ignore
 import { appStyleManager } from "@/app-style-manager.ts";
@@ -42,7 +42,7 @@ export function createVueApp(options: {
 
     app.use(createPinia())
     app.use(createVuestic())
-    app.use(mdiVue, {icons: mdijs})
+    // app.use(mdiVue, {icons: mdijs})
 
     installFontAwesome(app)
     app.mount(mountId)

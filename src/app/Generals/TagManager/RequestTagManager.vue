@@ -121,7 +121,10 @@
               @click.stop="handleDeleteClick(tag)"
               :title="tagToDeleteId === tag.id ? 'Click lần nữa để xóa vĩnh viễn' : 'Xóa tag này khỏi hệ thống'"
           >
-            &times;
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="18" y1="6" x2="6" y2="18"></line>
+              <line x1="6" y1="6" x2="18" y2="18"></line>
+            </svg>
           </button>
         </li>
       </ul>
@@ -766,29 +769,41 @@ watch(selectedTags, () => {
 }
 
 .delete-tag-btn {
+  // Reset
   background: none;
-  border: none;
-  color: #aaa;
-  font-size: 20px;
-  font-weight: bold;
+  border: 1px solid #aaaaaa;
+  padding: 0;
   cursor: pointer;
-  padding: 0 8px;
-  border-radius: 4px;
-  line-height: 1;
   transition: all 0.2s ease;
   flex-shrink: 0;
 
+  // Kích thước và hình dạng
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+
+  // Canh giữa SVG bên trong
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  // Màu sắc của icon SVG sẽ được kế thừa từ đây
+  color: #aaa;
+
   &:hover {
-    color: var(--confirm-red);
+    color: var(--confirm-red );
     background-color: #fbeeee;
+    border-color: #ff3838;
   }
 
   &.confirm {
-    color: #fff;
+    color: #ffd3d3;
     background-color: var(--confirm-red);
     transform: scale(1.1);
+    border-color: #ff3838;
   }
 }
+
 
 .dropdown-info {
   padding: 10px 12px;

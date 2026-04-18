@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tab Hoàn thiện - Bản cuối cùng</title>
+
+    <!-- Tải một danh sách RẤT LỚN các theme của CodeMirror -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.15/codemirror.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.15/theme/3024-day.min.css"><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.15/theme/3024-night.min.css"><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.15/theme/abbott.min.css"><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.15/theme/abcdef.min.css"><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.15/theme/ambiance.min.css"><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.15/theme/ayu-dark.min.css"><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.15/theme/ayu-mirage.min.css"><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.15/theme/base16-dark.min.css"><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.15/theme/base16-light.min.css"><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.15/theme/bespin.min.css"><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.15/theme/blackboard.min.css"><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.15/theme/cobalt.min.css"><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.15/theme/darcula.min.css"><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.15/theme/dracula.min.css"><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.15/theme/duotone-dark.min.css"><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.15/theme/duotone-light.min.css"><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.15/theme/eclipse.min.css"><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.15/theme/elegant.min.css"><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.15/theme/erlang-dark.min.css"><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.15/theme/gruvbox-dark.min.css"><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.15/theme/hopscotch.min.css"><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.15/theme/icecoder.min.css"><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.15/theme/idea.min.css"><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.15/theme/isotope.min.css"><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.15/theme/juejin.min.css"><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.15/theme/lesser-dark.min.css"><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.15/theme/liquibyte.min.css"><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.15/theme/lucario.min.css"><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.15/theme/material-darker.min.css"><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.15/theme/material-ocean.min.css"><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.15/theme/material-palenight.min.css"><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.15/theme/material.min.css"><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.15/theme/mbo.min.css"><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.15/theme/mdn-like.min.css"><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.15/theme/midnight.min.css"><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.15/theme/monokai.min.css"><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.15/theme/moxer.min.css"><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.15/theme/neat.min.css"><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.15/theme/neo.min.css"><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.15/theme/night.min.css"><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.15/theme/nord.min.css"><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.15/theme/oceanic-next.min.css"><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.15/theme/panda-syntax.min.css"><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.15/theme/paraiso-dark.min.css"><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.15/theme/paraiso-light.min.css"><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.15/theme/pastel-on-dark.min.css"><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.15/theme/railscasts.min.css"><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.15/theme/rubyblue.min.css"><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.15/theme/seti.min.css"><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.15/theme/shadowfox.min.css"><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.15/theme/solarized.min.css"><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.15/theme/ssms.min.css"><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.15/theme/the-matrix.min.css"><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.15/theme/tomorrow-night-bright.min.css"><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.15/theme/tomorrow-night-eighties.min.css"><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.15/theme/ttcn.min.css"><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.15/theme/twilight.min.css"><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.15/theme/vibrant-ink.min.css"><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.15/theme/xq-dark.min.css"><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.15/theme/xq-light.min.css"><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.15/theme/yeti.min.css"><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.15/theme/yonce.min.css"><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.15/theme/zenburn.min.css">
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.15/codemirror.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.15/mode/javascript/javascript.min.js"></script>
+
+    <style>
+        /* CSS gốc của bạn, chỉ thêm CSS cho popup theme */
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background-color: #f0f2f5; margin: 0; padding: 20px; }
+        .tabs-container { width: 100%; max-width: 90%; margin: 0 auto; background-color: #ffffff; border-radius: 8px; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1 ); overflow: hidden; display: flex; flex-direction: column; height: 80vh; position: relative; }
+        .tabs-header { display: flex; align-items: center; background-color: #f0f0f0; border-bottom: 1px solid #dcdcdc; padding: 5px 10px; flex-shrink: 0; }
+        .scroll-button { flex-shrink: 0; width: 30px; height: 36px; border-radius: 4px; border: 1px solid #dcdcdc; background-color: #f7f7f7; cursor: pointer; font-size: 18px; display: none; place-items: center; margin: 0 2px; transition: opacity 0.2s, cursor 0.2s; }
+        .scroll-button:hover:not(:disabled) { background-color: #e9e9e9; }
+        .scroll-button.visible { display: grid; }
+        .scroll-button:disabled { opacity: 0.5; cursor: not-allowed; }
+        .tabs-list-wrapper { flex-grow: 1; overflow: hidden; position: relative; display: flex; }
+        .tabs-list { display: flex; flex-wrap: nowrap; position: relative; }
+        .tab-button { flex-grow: 1; flex-shrink: 1; min-width: 100px; max-width: 220px; height: 36px; padding: 0 15px; padding-right: 35px; cursor: pointer; border: none; border-right: 1px solid #c8c8c8; background-color: transparent; font-size: 14px; color: #333; position: relative; transition: background-color 0.3s; white-space: nowrap; display: flex; align-items: center; overflow: hidden; }
+        .tab-button .tab-title { overflow: hidden; text-overflow: ellipsis; }
+        .tab-button:last-child { border-right: none; }
+        .tab-button:hover { background-color: #e9e9e9; }
+        .tab-button.active { background-color: #ffffff; }
+        .close-tab-button { position: absolute; right: 8px; top: 50%; transform: translateY(-50%); width: 20px; height: 20px; border-radius: 50%; border: none; background-color: transparent; color: #666; font-size: 16px; display: flex; justify-content: center; align-items: center; line-height: 1; }
+        .close-tab-button:hover { background-color: #dcdcdc; color: #000; }
+        .add-tab-button { flex-shrink: 0; width: 36px; height: 36px; border-radius: 4px; border: 1px solid #dcdcdc; background-color: #f7f7f7; color: #333; font-size: 22px; cursor: pointer; margin-left: 5px; display: flex; justify-content: center; align-items: center; transition: background-color 0.3s; }
+        .add-tab-button:hover { background-color: #e9e9e9; }
+        .tabs-content { flex-grow: 1; position: relative; overflow: hidden; }
+        .tab-content { display: none; height: 100%; width: 100%; position: absolute; }
+        .tab-content.active { display: block; }
+        .copy-code-button { position: absolute; top: 10px; right: 10px; z-index: 10; background: #f0f0f0; border: 1px solid #ccc; border-radius: 4px; cursor: pointer; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; opacity: 0.8; transition: opacity 0.2s, background-color 0.2s; }
+        .copy-code-button:hover { opacity: 1; background-color: #e0e0e0; }
+        .copy-code-button svg { width: 16px; height: 16px; }
+        .CodeMirror { height: 100% !important; font-size: 14px; border: none; }
+
+        /* --- CSS CHO POPUP THEME (ĐÃ CẢI TIẾN) --- */
+        .theme-selector-container { position: absolute; bottom: 10px; right: 10px; z-index: 20; }
+        .theme-icon-button { width: 32px; height: 32px; border-radius: 4px; border: 1px solid #ccc; background-color: #fff; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+        .theme-icon-button:hover { background-color: #f0f0f0; }
+        .theme-icon-button svg { width: 18px; height: 18px; }
+        .theme-popup { position: absolute; bottom: 110%; right: 0; background: white; border: 1px solid #ccc; border-radius: 6px; box-shadow: 0 2px 8px rgba(0,0,0,.15); max-height: 250px; overflow-y: auto; display: none; padding: 5px 0; min-width: 200px; }
+        .theme-popup.visible { display: block; }
+        .theme-option { padding: 8px 15px; cursor: pointer; white-space: nowrap; position: relative; }
+        .theme-option.highlighted { background-color: #e9e9e9; }
+        .theme-option.selected::before { content: '✓'; position: absolute; left: 15px; color: #007aff; font-weight: bold; }
+        .theme-option.selected { padding-left: 35px; }
+    </style>
+</head>
+<body>
+
+<div class="tabs-container">
+    <div class="tabs-header">
+        <button class="scroll-button left" id="scroll-left">‹</button>
+        <div class="tabs-list-wrapper" id="tabs-list-wrapper">
+            <div class="tabs-list" id="tabs-list"></div>
+        </div>
+        <button class="scroll-button right" id="scroll-right">›</button>
+        <button class="add-tab-button" onclick="addTab()">+</button>
+    </div>
+    <div class="tabs-content" id="tabs-content"></div>
+    <!-- Container cho bộ chọn theme sẽ được thêm vào đây -->
+</div>
+
+<script>
+    // Toàn bộ JS gốc của bạn
+    const tabsContainer = document.querySelector('.tabs-container');
+    const tabsList = document.getElementById('tabs-list');
+    const tabsContent = document.getElementById('tabs-content');
+    const tabsWrapper = document.getElementById('tabs-list-wrapper');
+    const scrollLeftBtn = document.getElementById('scroll-left');
+    const scrollRightBtn = document.getElementById('scroll-right');
+    let tabCounter = 0;
+    const editors = {};
+    let currentTheme = 'eclipse';
+
+    tabsWrapper.addEventListener('wheel', (e) => { if (tabsWrapper.scrollWidth > tabsWrapper.clientWidth) { e.preventDefault(); tabsWrapper.scrollLeft += e.deltaY; } });
+    const checkScroll = () => { setTimeout(() => { const hasOverflow = tabsWrapper.scrollWidth > tabsWrapper.clientWidth; scrollLeftBtn.classList.toggle('visible', hasOverflow); scrollRightBtn.classList.toggle('visible', hasOverflow); if (hasOverflow) { scrollLeftBtn.disabled = tabsWrapper.scrollLeft <= 0; scrollRightBtn.disabled = tabsWrapper.scrollLeft >= tabsWrapper.scrollWidth - tabsWrapper.clientWidth - 1; } }, 100); };
+    scrollRightBtn.addEventListener('click', () => tabsWrapper.scrollBy({ left: 200, behavior: 'smooth' }));
+    scrollLeftBtn.addEventListener('click', () => tabsWrapper.scrollBy({ left: -200, behavior: 'smooth' }));
+    tabsWrapper.addEventListener('scroll', checkScroll);
+    window.addEventListener('resize', checkScroll);
+
+    function showTab(tabId) { if (!document.querySelector(`.tab-button[data-tab="${tabId}"]`)) return; document.querySelectorAll('.tab-button.active').forEach(b => b.classList.remove('active')); document.querySelectorAll('.tab-content.active').forEach(c => c.classList.remove('active')); const activeButton = document.querySelector(`.tab-button[data-tab="${tabId}"]`); const activeContent = document.querySelector(`.tab-content[data-tab="${tabId}"]`); activeButton.classList.add('active'); activeContent.classList.add('active'); if (editors[tabId]) editors[tabId].refresh(); if (!activeButton.matches(':focus-within')) { activeButton.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' }); } }
+    function closeTab(tabId) { const tabToClose = document.querySelector(`.tab-button[data-tab="${tabId}"]`); if (!tabToClose) return; const wasActive = tabToClose.classList.contains('active'); const nextTab = tabToClose.nextElementSibling?.dataset.tab; const prevTab = tabToClose.previousElementSibling?.dataset.tab; tabToClose.remove(); document.querySelector(`.tab-content[data-tab="${tabId}"]`).remove(); delete editors[tabId]; if (wasActive && tabsList.childElementCount > 0) { showTab(nextTab || prevTab || tabsList.firstElementChild.dataset.tab); } else if (tabsList.childElementCount === 0) { const themeContainer = document.querySelector('.theme-selector-container'); if (themeContainer) themeContainer.style.display = 'none'; } checkScroll(); }
+    function renameTab(tabTitleElement) { const currentTitle = tabTitleElement.textContent; const input = document.createElement('input'); input.type = 'text'; input.value = currentTitle; Object.assign(input.style, { width: '100%', border: 'none', background: 'transparent', 'font-size': '14px', height: '100%' }); tabTitleElement.replaceWith(input); input.focus(); input.select(); const finishEditing = () => { tabTitleElement.textContent = input.value.trim() || currentTitle; input.replaceWith(tabTitleElement); }; input.addEventListener('blur', finishEditing); input.addEventListener('keydown', (e) => { if (e.key === 'Enter') input.blur(); else if (e.key === 'Escape') { input.value = currentTitle; input.blur(); } }); }
+    function addTab() { const themeContainer = document.querySelector('.theme-selector-container'); if (themeContainer) themeContainer.style.display = 'block'; tabCounter++; const newTabId = `tab${tabCounter}`; const newTabButton = document.createElement('button'); newTabButton.className = 'tab-button'; newTabButton.dataset.tab = newTabId; const tabTitle = document.createElement('span'); tabTitle.className = 'tab-title'; tabTitle.textContent = `Request ${tabCounter}`; newTabButton.appendChild(tabTitle); newTabButton.onclick = () => showTab(newTabId); newTabButton.ondblclick = () => renameTab(tabTitle); newTabButton.onmousedown = (e) => { if (e.button === 1) { e.preventDefault(); closeTab(newTabId); } }; const closeButton = document.createElement('button'); closeButton.className = 'close-tab-button'; closeButton.innerHTML = '&times;'; closeButton.onclick = (e) => { e.stopPropagation(); closeTab(newTabId); }; newTabButton.appendChild(closeButton); const newTabContent = document.createElement('div'); newTabContent.className = 'tab-content'; newTabContent.dataset.tab = newTabId; const textArea = document.createElement('textarea'); newTabContent.appendChild(textArea); tabsList.appendChild(newTabButton); tabsContent.appendChild(newTabContent); const editor = CodeMirror.fromTextArea(textArea, { lineNumbers: true, mode: { name: "javascript", json: true }, theme: currentTheme, lineWrapping: true, autofocus: true }); editors[newTabId] = editor; editor.setValue(JSON.stringify({ "id": `req_${tabCounter}`, "method": "GET", "url": "https://api.example.com/data" }, null, 2 )); const editorWrapper = editor.getWrapperElement(); const copyButton = document.createElement('button'); copyButton.className = 'copy-code-button'; copyButton.title = 'Sao chép code'; copyButton.innerHTML = `<svg fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>`; copyButton.onclick = ( ) => { navigator.clipboard.writeText(editor.getValue()); }; editorWrapper.appendChild(copyButton); showTab(newTabId); checkScroll(); }
+
+    // --- LOGIC CHO BỘ CHỌN THEME (ĐƯỢC TÍCH HỢP CẨN THẬN) ---
+    document.addEventListener('DOMContentLoaded', () => {
+        // 1. Tạo cấu trúc HTML
+        const themeContainer = document.createElement('div');
+        themeContainer.className = 'theme-selector-container';
+        const themeButton = document.createElement('button');
+        themeButton.className = 'theme-icon-button';
+        themeButton.title = 'Chọn theme';
+        themeButton.innerHTML = `<svg fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01"></path></svg>`;
+        const themePopup = document.createElement('div' );
+        themePopup.className = 'theme-popup';
+        themeContainer.appendChild(themeButton);
+        themeContainer.appendChild(themePopup);
+        tabsContainer.appendChild(themeContainer);
+        themeContainer.style.display = 'none';
+
+        // 2. Khai báo biến và danh sách theme
+        const themes = [ 'default', '3024-day', '3024-night', 'abbott', 'abcdef', 'ambiance', 'ayu-dark', 'ayu-mirage', 'base16-dark', 'base16-light', 'bespin', 'blackboard', 'cobalt', 'darcula', 'dracula', 'duotone-dark', 'duotone-light', 'eclipse', 'elegant', 'erlang-dark', 'gruvbox-dark', 'hopscotch', 'icecoder', 'idea', 'isotope', 'juejin', 'lesser-dark', 'liquibyte', 'lucario', 'material', 'material-darker', 'material-ocean', 'material-palenight', 'mbo', 'mdn-like', 'midnight', 'monokai', 'moxer', 'neat', 'neo', 'night', 'nord', 'oceanic-next', 'panda-syntax', 'paraiso-dark', 'paraiso-light', 'pastel-on-dark', 'railscasts', 'rubyblue', 'seti', 'shadowfox', 'solarized', 'ssms', 'the-matrix', 'tomorrow-night-bright', 'tomorrow-night-eighties', 'ttcn', 'twilight', 'vibrant-ink', 'xq-dark', 'xq-light', 'yeti', 'yonce', 'zenburn' ];
+        let highlightedIndex = themes.indexOf(currentTheme);
+
+        // 3. Các hàm điều khiển
+        const previewTheme = (theme) => Object.values(editors).forEach(ed => ed.setOption('theme', theme));
+        const selectTheme = (theme) => { currentTheme = theme; previewTheme(theme); updatePopupUI(); };
+        const updatePopupUI = () => {
+            document.querySelectorAll('.theme-option').forEach((opt, index) => {
+                opt.classList.remove('highlighted', 'selected');
+                if (index === highlightedIndex) opt.classList.add('highlighted');
+                if (opt.dataset.theme === currentTheme) opt.classList.add('selected');
+            });
+            const highlightedEl = themePopup.querySelector('.highlighted');
+            if (highlightedEl) highlightedEl.scrollIntoView({ block: 'nearest' });
+        };
+
+        // 4. Đổ dữ liệu và gán sự kiện cho các mục trong popup
+        themes.forEach((themeName, index) => {
+            const option = document.createElement('div');
+            option.className = 'theme-option';
+            option.dataset.theme = themeName;
+            option.textContent = themeName;
+            option.addEventListener('mouseenter', () => { highlightedIndex = index; previewTheme(themeName); updatePopupUI(); });
+            option.addEventListener('click', () => { selectTheme(themeName); themePopup.classList.remove('visible'); });
+            themePopup.appendChild(option);
+        });
+
+        // 5. Logic điều khiển popup và phím
+        themeButton.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const isVisible = themePopup.classList.toggle('visible');
+            if (isVisible) { highlightedIndex = themes.indexOf(currentTheme); updatePopupUI(); }
+            else { previewTheme(currentTheme); }
+        });
+        document.addEventListener('click', () => { if (themePopup.classList.contains('visible')) { themePopup.classList.remove('visible'); previewTheme(currentTheme); } });
+        themePopup.addEventListener('click', (e) => e.stopPropagation());
+        document.addEventListener('keydown', (e) => {
+            if (themePopup.classList.contains('visible')) {
+                e.preventDefault();
+                if (e.key === 'ArrowDown') { highlightedIndex = (highlightedIndex + 1) % themes.length; }
+                else if (e.key === 'ArrowUp') { highlightedIndex = (highlightedIndex - 1 + themes.length) % themes.length; }
+                else if (e.key === 'Enter') { selectTheme(themes[highlightedIndex]); themePopup.classList.remove('visible'); return; }
+                else if (e.key === 'Escape') { themePopup.classList.remove('visible'); previewTheme(currentTheme); return; }
+                previewTheme(themes[highlightedIndex]);
+                updatePopupUI();
+            }
+        });
+
+        // Khởi tạo tab đầu tiên
+        addTab();
+        checkScroll();
+    });
+</script>
+
+</body>
+</html>

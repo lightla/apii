@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import {onMounted, ref} from 'vue'
+import {onMounted, ref, watch, nextTick} from 'vue'
 import type {RouteInfo} from '@/types'
 import {type HighlightInputParam, type HighlightVariableOptionParam} from "@/types/variable-input.ts";
 import {useEnvStorage, useInputStorage} from "@/storages/env-variables-tmp.ts";
@@ -7,6 +7,8 @@ import {useEnvStorage, useInputStorage} from "@/storages/env-variables-tmp.ts";
 import {useInputState} from "@/composables/input"
 
 const { highlightInput, rescanHighlightAllInputs } = useInputState()
+
+const emit = defineEmits<{ 'text-change': [value: string] }>()
 
 const props = withDefaults(defineProps<{
   route: RouteInfo
@@ -38,23 +40,29 @@ const popupText = ref<string>("")
 console.log("var-input:run:");
 
 onMounted(() => {
-  console.log("var-input.onMounted:");
-
   if (variableInputRef.value) {
-    // variableInputRef.value.addEventListener('keydown', (e: KeyboardEvent) => {
-    //   if (e.key === 'Enter' && variableInputRef.value) {
-    //     e.preventDefault()
-    //   }
-    // })
+    variableInputRef.value.innerText = props.value || '';
 
-    console.log("var-input.tracked:");
-
-    console.log("var-input.trackedHighlightInputs.onMounted:", inputStorage.trackedHighlightInputs.length);
     inputStorage.trackedHighlightInputs.push(variableInputRef.value);
-
     variableIndex.value = inputStorage.trackedHighlightInputs.length - 1;
+  }
+})
 
-    console.log("var-input.trackedHighlightInputs.variableIndex:", variableIndex.value);
+watch(() => props.value, (newVal) => {
+  if (variableInputRef.value && variableInputRef.value.innerText.trim() !== (newVal ?? '').trim()) {
+    variableInputRef.value.innerText = newVal || '';
+    
+    // trigger highlight on update
+    nextTick(() => {
+      const highlightOptions = <HighlightVariableOptionParam>{
+        definedEnvVariables: envStorage.collectEnvVariableNames(),
+      };
+      highlightInput({
+        inputIndex: variableIndex.value,
+        options: highlightOptions,
+        withCursor: false
+      });
+    });
   }
 })
 
@@ -91,8 +99,13 @@ const onKeyUp = (event: KeyboardEvent) => {
 
 const variableIndex = ref<number>(0)
 
+defineExpose({
+  getText: () => variableInputRef.value?.innerText?.trim() ?? ''
+})
+
 const onVariableInputChange = (event: Event): void => {
   const target = event.target as HTMLDivElement
+  emit('text-change', target.textContent ?? '')
   console.log("var-input.onInputChange:" + target.innerText + "|")
 
   const isEmpty = !target.textContent?.trim();
@@ -139,7 +152,7 @@ const onVariableInputChange = (event: Event): void => {
         @input="onVariableInputChange"
         @keydown="onKeyDown"
         @keyup="onKeyUp"
-    >{{props.value}}</div>
+    ></div>
   </div>
 
   <div v-if="showPopup" class="popup">

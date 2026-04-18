@@ -12,7 +12,7 @@ const isActive = computed(() => activeIndex.value === props.index)
 </script>
 
 <template>
-  <div v-show="isActive">
+  <div v-show="isActive" style="height: 100%; overflow: hidden;">
     <slot />
   </div>
 </template>

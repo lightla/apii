@@ -25,8 +25,10 @@ watch(() => toggleStates.value[toggleMenuItemIndexRef.value], (val) => {
 .toggle-menu-item-detail {
   display: flex;
   flex-direction: row;
+  flex: 1;
   min-height: 0;
   max-height: 100%;
+  overflow: hidden;
   //margin-top: 12px;
   //border-top: 1px solid #ccc;
   //padding-top: 12px;

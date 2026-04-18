@@ -1,9 +1,12 @@
 import { defineStore } from 'pinia'
+import { nanoid } from 'nanoid'
 
 export interface QueryParam {
+  id: string
   key: string
   value: string
   enabled: boolean
+  description: string
 }
 
 export interface PathVariable {
@@ -17,7 +20,7 @@ export const useRequestParamsStorage = defineStore('requestParams', {
     pathVariables: [] as PathVariable[],
     baseUrl: '',
     method: 'GET',
-    headers: [] as { key: string; value: string; enabled: boolean }[],
+    headers: [] as { id: string; key: string; value: string; enabled: boolean; description: string }[],
     body: '',
     requestName: '',
     // ... các state khác của request
@@ -28,15 +31,16 @@ export const useRequestParamsStorage = defineStore('requestParams', {
       // Tạo URL preview từ baseUrl + pathVariables + queryParams
       let url = this.baseUrl
 
-      // Replace path variables
+      // Replace path variables (only when value is non-empty)
       this.pathVariables.forEach(variable => {
-        url = url.replace(`{${variable.name}}`, variable.value)
+        const val = variable.value.trim()
+        if (val) url = url.replace(`{${variable.name}}`, val)
       })
 
-      // Add query parameters
+      // Add query parameters (skip empty keys)
       const enabledQueries = this.queryParams
-        .filter(param => param.enabled)
-        .map(param => `${param.key}=${param.value}`)
+        .filter(param => param.enabled && param.key.trim() !== '')
+        .map(param => `${encodeURIComponent(param.key.trim())}=${encodeURIComponent(param.value)}`)
 
       if (enabledQueries.length > 0) {
         url += '?' + enabledQueries.join('&')
@@ -54,9 +58,11 @@ export const useRequestParamsStorage = defineStore('requestParams', {
     // Query Params
     addQueryParam() {
       this.queryParams.push({
+        id: nanoid(),
         key: '',
         value: '',
-        enabled: true
+        enabled: true,
+        description: ''
       })
     },
 
@@ -70,21 +76,32 @@ export const useRequestParamsStorage = defineStore('requestParams', {
 
     // Path Variables
     updatePathVariable(name: string, value: string) {
+      const trimmed = value.trim()
       const index = this.pathVariables.findIndex(v => v.name === name)
       if (index !== -1) {
-        this.pathVariables[index].value = value
+        this.pathVariables[index].value = trimmed
       } else {
-        this.pathVariables.push({ name, value })
+        this.pathVariables.push({ name, value: trimmed })
       }
     },
 
     // Headers
     addHeader() {
       this.headers.push({
+        id: nanoid(),
         key: '',
         value: '',
-        enabled: true
+        enabled: true,
+        description: ''
       })
+    },
+
+    removeHeader(index: number) {
+      this.headers.splice(index, 1)
+    },
+
+    toggleHeader(index: number) {
+      this.headers[index].enabled = !this.headers[index].enabled
     },
 
     // Request actions

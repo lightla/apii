@@ -48,19 +48,11 @@ const tabs = [
 
       <ToggleMenuItemDetail>
         <div class="tab-detail">
-
-          <ScrollContainer>
-              <SwitchableTab v-for="(tab, index) in tabs" :key="tab.id" :index="index">
-                <component :is="tab.component" :route="props.route" />
-              </SwitchableTab>
-          </ScrollContainer>
-
-
-<!--          <div class="tab-detail-content-wrap">-->
-<!--            <SwitchableTab v-for="(tab, index) in tabs" :key="tab.id" :index="index">-->
-<!--              <component :is="tab.component" :route="props.route" />-->
-<!--            </SwitchableTab>-->
-<!--          </div>-->
+          <div class="tab-detail-content-wrap">
+            <SwitchableTab v-for="(tab, index) in tabs" :key="tab.id" :index="index">
+              <component :is="tab.component" :route="props.route" />
+            </SwitchableTab>
+          </div>
         </div>
       </ToggleMenuItemDetail>
     </SwitchableTabs>
@@ -73,12 +65,13 @@ const tabs = [
 .payload {
   display: flex;
   flex-direction: column;
+  height: 100%;
   min-height: 0;
-  max-height: 100%;
   overflow: hidden;
   gap: 10px;
 
   &[data-tab-detail-active="false"] {
+    height: auto;
     min-height: auto;
   }
 }
@@ -105,9 +98,17 @@ const tabs = [
 }
 
 .tab-detail-content-wrap {
-  height: 100%;
-  overflow-y: auto;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
   padding: 0;
-  @include elements.scrollbar-hidden;
+  display: flex;
+  flex-direction: column;
+
+  & > :deep(div) {
+    flex: 1;
+    min-height: 0;
+    overflow: hidden;
+  }
 }
 </style>
