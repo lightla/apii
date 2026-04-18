@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia'
 import { nanoid } from 'nanoid'
+import { useEnvStorage } from '@/storages/env-variables-tmp.ts'
 
 export interface QueryParam {
   id: string
@@ -23,27 +24,50 @@ export const useRequestParamsStorage = defineStore('requestParams', {
     headers: [] as { id: string; key: string; value: string; enabled: boolean; description: string }[],
     body: '',
     requestName: '',
-    // ... các state khác của request
   }),
 
   getters: {
     urlPreview(): string {
-      // Tạo URL preview từ baseUrl + pathVariables + queryParams
-      let url = this.baseUrl
+      const envStorage = useEnvStorage()
+      
+      // Hàm helper để replace env variables {{name}} -> value
+      const resolveEnvVariables = (text: string): string => {
+        let result = text
+        envStorage.definedEnvVariables.forEach(variable => {
+          if (variable.name && variable.value) {
+            const escapedName = variable.name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            result = result.replace(new RegExp(escapedName, 'g'), variable.value);
+          }
+        });
+        return result
+      }
 
-      // Replace path variables (only when value is non-empty)
+      // Tạo URL preview từ baseUrl + pathVariables + queryParams
+      // Bước 1: Resolve env variables trực tiếp trong baseUrl (ví dụ: {{domain}}/api/...)
+      let url = resolveEnvVariables(this.baseUrl)
+
+      // Bước 2: Replace path variables (ví dụ: {workspaceId})
       this.pathVariables.forEach(variable => {
         const val = variable.value.trim()
-        if (val) url = url.replace(`{${variable.name}}`, val)
+        if (val) {
+          // Nếu giá trị của path variable lại chứa env variable (ví dụ: val = "{{my_id}}")
+          // thì ta cũng resolve nó luôn
+          const resolvedVal = resolveEnvVariables(val)
+          url = url.replace(`{${variable.name}}`, resolvedVal)
+        }
       })
 
-      // Add query parameters (skip empty keys)
+      // Bước 3: Add query parameters
       const enabledQueries = this.queryParams
         .filter(param => param.enabled && param.key.trim() !== '')
-        .map(param => `${encodeURIComponent(param.key.trim())}=${encodeURIComponent(param.value)}`)
+        .map(param => {
+          const key = resolveEnvVariables(param.key.trim())
+          const value = resolveEnvVariables(param.value)
+          return `${encodeURIComponent(key)}=${encodeURIComponent(value)}`
+        })
 
       if (enabledQueries.length > 0) {
-        url += '?' + enabledQueries.join('&')
+        url += (url.includes('?') ? '&' : '?') + enabledQueries.join('&')
       }
 
       return url
