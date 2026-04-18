@@ -1,4 +1,3 @@
-
 <script setup lang="ts">
 import {computed, onMounted, nextTick} from 'vue'
 import type {RouteInfo} from '@/types'
@@ -54,18 +53,24 @@ const onClickEraserEmptyLine = (event: MouseEvent): void => {
     <div class="env-variable-table-toolbar">
       <span class="env-variable-table-toolbar-title">ENV</span>
       <IconSquareRoundedPlus @click="" stroke-width="1" class="icon-button-add-row"/>
+      
+      <!-- ĐƯA SELECT VÀO ĐÂY VÀ DỒN SANG PHẢI -->
+      <div class="env-toolbar-select-wrap">
+        <select class="env-select-in-toolbar">
+          <option v-for="env in envStorage.definedEnvs" :key="env.id" :value="env.code">
+            {{env.name}}
+          </option>
+        </select>
+      </div>
     </div>
 
     <ScrollTable :items="envStorage.definedEnvs" height="360px">
-      <!-- Header cells -->
       <template #header>
         <th style="width:7%">No</th>
         <th>Name</th>
         <th>Code</th>
         <th style="width:5%">Tmp</th>
       </template>
-
-      <!-- Row cells (nhận { item, index }) -->
 
       <template #row="{ item, index }">
         <td>{{ index + 1 }}</td>
@@ -75,69 +80,16 @@ const onClickEraserEmptyLine = (event: MouseEvent): void => {
         <td>{{ item.code }}</td>
         <td>
           Tmp
-          <div class="cell-icon-action"><!-- action buttons --></div>
+          <div class="cell-icon-action"></div>
         </td>
       </template>
 
-      <!-- (tuỳ chọn) empty state -->
       <template #empty>
         Chưa có biến môi trường
       </template>
     </ScrollTable>
 
-
-
-    <div class="table-scroll-wrap"
-         :class="{ 'no-data': envStorage.definedEnvs.length === 0 }"
-         style="display: none;"
-    >
-      <table class="table-scroll">
-        <colgroup>
-          <col style="width: 7%;">
-          <col style="width: auto;">
-          <col style="width: auto;">
-          <col style="width: 5%;">
-        </colgroup>
-        <thead>
-        <tr>
-          <th>No</th>
-          <th>Name</th>
-          <th>Code</th>
-          <th>Tmp
-<!--            <Eraser @click="onClickEraserEmptyLine" stroke-width="1" class="icon-button" width="100%" height="100%"/>-->
-          </th>
-        </tr>
-        </thead>
-        <tbody>
-        <tr
-            v-for="(item, envIndex) in envStorage.definedEnvs"
-            :data-env-variable-index="envIndex"
-            :key="item.id"
-        >
-          <td>{{ envIndex + 1 }}</td>
-          <td>
-            <EnvCellNameInput
-                :placeholder="'Env Name'"
-                :env-index="envIndex"
-            />
-          </td>
-          <td>
-            {{item.code}}
-          </td>
-          <td>Tmp
-            <div class="cell-icon-action">
-
-<!--              <VariableCellButton-->
-<!--                  :action="'delete'"-->
-<!--                  :env-variable-index="envIndex"-->
-<!--              />-->
-            </div>
-          </td>
-        </tr>
-        </tbody>
-      </table>
-    </div>
-    <div class="env-variable-table-toolbar">
+    <div class="env-variable-table-toolbar" style="margin-top: 20px;">
       <span class="env-variable-table-toolbar-title">ENV Variable</span>
       <SquarePlus @click="onClickAddRowButton" stroke-width="1" class="icon-button-add-row"/>
     </div>
@@ -202,11 +154,10 @@ const onClickEraserEmptyLine = (event: MouseEvent): void => {
   display: flex;
   flex-direction: column;
   gap: 8px;
-  border: 1px solid #888888;
-  padding: 10px;
+  border: none;
+  padding: 0;
   max-height: 100%;
   min-height: 100%;
-  //overflow: hidden;
   overflow: visible;
 }
 
@@ -218,6 +169,20 @@ const onClickEraserEmptyLine = (event: MouseEvent): void => {
   width: 100%;
 }
 
+.env-toolbar-select-wrap {
+  margin-left: auto; /* LỆNH QUAN TRỌNG ĐỂ CĂN PHẢI */
+  display: flex;
+  align-items: center;
+}
+
+.env-select-in-toolbar {
+  border: 1px solid #888888;
+  padding: 2px 5px;
+  font-size: 12px;
+  min-width: 120px;
+  background: #fff;
+}
+
 .env-variable-table-toolbar-title {
   padding: 5px;
   background-color: rgba(221, 221, 221, 0.65);
@@ -225,19 +190,13 @@ const onClickEraserEmptyLine = (event: MouseEvent): void => {
 }
 
 .env-table-scroll-wrapper {
-  max-height: 30.7%; /* 48px cho mỗi hàng, 40px cho header */
+  flex: 1;
   overflow-y: auto;
   box-sizing: border-box;
-
   @include elements.scrollbar-hidden;
   border-bottom: var(--table-border);
-
-  &.no-data {
-    border-bottom: none;
-  }
+  &.no-data { border-bottom: none; }
 }
-
-
 
 .table-scroll-wrap {
   box-sizing: border-box;
@@ -248,9 +207,7 @@ const onClickEraserEmptyLine = (event: MouseEvent): void => {
   @include elements.scrollbar-hidden;
   width: 100%;
   max-height: calc(3*(40px) + 3*(30px - 6px));
-
-  position: relative;   // cho sticky có containing block ổn
-
+  position: relative;
   border-bottom: var(--table-border);
 }
 
@@ -258,11 +215,8 @@ const onClickEraserEmptyLine = (event: MouseEvent): void => {
   border-spacing: 0;
   border-collapse: separate;
   table-layout: fixed;
-  gap: 0;
-  padding: 0;
   width: 100%;
   text-align: left;
-
   th, td {
     border-bottom: 1px solid #666666;
     border-left: 1px solid #666666;
@@ -271,72 +225,14 @@ const onClickEraserEmptyLine = (event: MouseEvent): void => {
     vertical-align: middle;
     overflow: hidden;
   }
-
   th {
     border-top: 1px solid #666666;
     background-color: var(--table-header-bg-color);
     position: sticky;
     top: 0;
   }
-
-  tr td:last-child, tr th:last-child {
-    border-right: 1px solid #666666;
-  }
-
-  tr:last-child td {
-    border-bottom: none !important;
-  }
-
-  .text-value {
-    display: flex;
-    align-items: center;
-    height: 30px;
-  }
-
-  .cell-icon {
-    padding: 0px;
-  }
-
-  .icon-action-wrap {
-    display: flex;
-    justify-content: center;
-  }
-
-  .icon-action {
-    width: 30px !important; /* Cố định kích thước */
-    height: 30px !important;
-    min-width: 30px; /* Ngăn co nhỏ */
-    min-height: 30px;
-
-    fill: var(--icon-bg-color);
-
-    &:hover {
-      fill: var(--icon-bg-color-active);
-    }
-  }
-}
-
-/* Bảng */
-.table-scroll {
-  border-collapse: separate;
-  border-spacing: 0;
-  width: 100%;
-}
-
-/* Sticky header */
-.table-scroll th {
-  position: sticky;
-  top: 0;
-  z-index: 2;                 // để che body
-  background: var(--table-header-bg-color);
-  /* nên có background để không “trong suốt” khi đè lên rows */
-}
-
-/* Tránh cắt hàng cuối khi đụng đáy container */
-.table-scroll tbody tr:last-child td {
-  /* nếu bị “dính” đáy, thêm khoảng đệm 1 chút: */
-  /* padding-bottom: 1px; hoặc giữ border-bottom thay vì none */
-  border-bottom: 1px solid #666666; // đừng bỏ hẳn border-bottom
+  tr td:last-child, tr th:last-child { border-right: 1px solid #666666; }
+  tr:last-child td { border-bottom: none !important; }
 }
 
 .env-variable-table {
@@ -344,68 +240,35 @@ const onClickEraserEmptyLine = (event: MouseEvent): void => {
   width: 100%;
   border-collapse: separate;
   border-spacing: 0;
-
-  %env-variable-table-cell {
+  th, td {
     border-left: var(--table-border);
     border-bottom: var(--table-border);
     padding: 8px;
     vertical-align: middle;
-    justify-content: center;
-    max-height: 48px;
-    min-height: 48px;
   }
-
   th {
-    @extend %env-variable-table-cell;
     position: sticky;
     top: 0;
     z-index: 1;
     background-color: var(--table-header-bg-color);
     border-top: var(--table-border);
   }
-
-  tr th:last-child, td:last-child {
-    border-right: var(--table-border);
-    padding: 2px 2px;
-  }
-
-  td {
-    @extend %env-variable-table-cell
-  }
-
-  tr:last-child {
-    td {
-      border-bottom: none;
-    }
-  }
+  tr th:last-child, td:last-child { border-right: var(--table-border); }
+  tr:last-child td { border-bottom: none; }
 }
 
-.cell-icon-action {
-  display: flex;
-  justify-content: center; // nếu muốn icon ở giữa
-  width: 100%; // hoặc kích thước phù hợp bạn mong muốn
-  height: 100%;
-  padding: 0;
-}
+.cell-icon-action { display: flex; justify-content: center; width: 100%; }
 
 .icon-button-add-row {
   width: 30px !important;
   height: 30px;
   cursor: pointer;
-  transition: fill 0.2s ease;
-
-  &:hover {
-    fill: #cccccc;
-  }
+  &:hover { fill: #cccccc; }
 }
 
 .icon-button {
   cursor: pointer;
-  transition: fill 0.2s ease;
   fill: var(--icon-bg-color);
-
-  &:hover {
-    fill: var(--icon-bg-color-active);
-  }
+  &:hover { fill: var(--icon-bg-color-active); }
 }
 </style>
