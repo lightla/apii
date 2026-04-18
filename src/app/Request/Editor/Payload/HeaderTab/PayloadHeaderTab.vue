@@ -1,14 +1,38 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import type { RouteInfo } from '@/types'
 import TrackedVariableInput from '@/app/Generals/TrackedVariableInput.vue'
-import { SquarePlus, SquareCheck, Square, SquareX, ShieldAlert } from 'lucide-vue-next'
+import { SquarePlus, SquareCheck, Square, SquareX, ShieldAlert, Eraser } from 'lucide-vue-next'
 import { useRequestParamsStorage } from '@/storages/payload.ts'
 
 const props = defineProps<{ route: RouteInfo }>()
 
 const store = useRequestParamsStorage()
 
+// Logic cho Master Toggle ở Header
+const isAnyHeaderEnabled = computed(() => {
+  return store.headers.length > 0 && store.headers.some(h => h.enabled)
+})
+
+// Logic cho Master Delete ở Header
+const isConfirmingDeleteAll = ref(false)
+let deleteAllTimer: ReturnType<typeof setTimeout> | undefined
+
+function onMasterDeleteClick() {
+  if (isConfirmingDeleteAll.value) {
+    store.removeAllHeaders()
+    isConfirmingDeleteAll.value = false
+    clearTimeout(deleteAllTimer)
+  } else {
+    isConfirmingDeleteAll.value = true
+    clearTimeout(deleteAllTimer)
+    deleteAllTimer = setTimeout(() => {
+      isConfirmingDeleteAll.value = false
+    }, 3000)
+  }
+}
+
+// Per-row delete confirm state
 const confirmDeleteIndex = ref<number | null>(null)
 let confirmTimer: ReturnType<typeof setTimeout> | undefined
 
@@ -47,16 +71,18 @@ function onDeleteClick(index: number) {
       <thead>
         <tr>
           <th>
-            <div class="header-control-icon">
-              <SquareCheck stroke-width="1" class="header-control-button-add-row" />
+            <div class="header-control-icon" @click="store.toggleAllHeaders()">
+              <SquareCheck v-if="isAnyHeaderEnabled" stroke-width="1" class="header-control-button-add-row" />
+              <Square v-else stroke-width="1" class="header-control-button-add-row" />
             </div>
           </th>
           <th>Key</th>
           <th>Value</th>
           <th>Description</th>
           <th>
-            <div class="header-control-icon">
-              <SquarePlus @click="store.addHeader()" stroke-width="1" class="header-control-button-add-row" />
+            <div class="header-control-icon" @click="onMasterDeleteClick">
+              <ShieldAlert v-if="isConfirmingDeleteAll" stroke-width="1" class="icon-button-warning confirming" />
+              <Eraser v-else stroke-width="1" class="icon-button-warning" />
             </div>
           </th>
         </tr>

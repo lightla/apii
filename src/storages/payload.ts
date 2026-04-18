@@ -94,8 +94,18 @@ export const useRequestParamsStorage = defineStore('requestParams', {
       this.queryParams.splice(index, 1)
     },
 
+    removeAllQueryParams() {
+      this.queryParams = []
+    },
+
     toggleQueryParam(index: number) {
       this.queryParams[index].enabled = !this.queryParams[index].enabled
+    },
+
+    toggleAllQueryParams() {
+      const isAnyEnabled = this.queryParams.some(p => p.enabled)
+      const targetState = !isAnyEnabled
+      this.queryParams.forEach(p => p.enabled = targetState)
     },
 
     // Path Variables
@@ -126,6 +136,16 @@ export const useRequestParamsStorage = defineStore('requestParams', {
 
     toggleHeader(index: number) {
       this.headers[index].enabled = !this.headers[index].enabled
+    },
+
+    toggleAllHeaders() {
+      const isAnyEnabled = this.headers.some(h => h.enabled)
+      const targetState = !isAnyEnabled
+      this.headers.forEach(h => h.enabled = targetState)
+    },
+
+    removeAllHeaders() {
+      this.headers = []
     },
 
     // Request actions

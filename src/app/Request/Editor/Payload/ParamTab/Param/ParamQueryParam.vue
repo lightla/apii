@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import type { RouteInfo } from "@/types";
 import TrackedVariableInput from "@/app/Generals/TrackedVariableInput.vue";
 import {
@@ -8,6 +8,7 @@ import {
   Square,
   SquareX,
   ShieldAlert,
+  Eraser,
 } from "lucide-vue-next";
 import { useRequestParamsStorage } from '@/storages/payload.ts'
 
@@ -16,6 +17,29 @@ const props = defineProps<{
 }>()
 
 const store = useRequestParamsStorage()
+
+// Logic cho Master Toggle ở Header
+const isAnyParamEnabled = computed(() => {
+  return store.queryParams.length > 0 && store.queryParams.some(p => p.enabled)
+})
+
+// Logic cho Master Delete ở Header
+const isConfirmingDeleteAll = ref(false)
+let deleteAllTimer: ReturnType<typeof setTimeout> | undefined
+
+function onMasterDeleteClick() {
+  if (isConfirmingDeleteAll.value) {
+    store.removeAllQueryParams()
+    isConfirmingDeleteAll.value = false
+    clearTimeout(deleteAllTimer)
+  } else {
+    isConfirmingDeleteAll.value = true
+    clearTimeout(deleteAllTimer)
+    deleteAllTimer = setTimeout(() => {
+      isConfirmingDeleteAll.value = false
+    }, 3000)
+  }
+}
 
 // Per-row delete confirm state
 const confirmDeleteIndex = ref<number | null>(null)
@@ -55,16 +79,20 @@ function onDeleteClick(index: number) {
       <thead>
         <tr>
           <th>
-            <div class="param-control-icon">
-              <SquareCheck stroke-width="1" class="param-control-button-add-row"/>
+            <div class="param-control-icon" @click="store.toggleAllQueryParams()">
+              <SquareCheck v-if="isAnyParamEnabled" stroke-width="1" class="param-control-button-add-row"/>
+              <Square v-else stroke-width="1" class="param-control-button-add-row"/>
             </div>
           </th>
           <th>Variable</th>
           <th>Value</th>
           <th>Description</th>
           <th>
-            <div class="param-control-icon">
-              <SquarePlus @click="store.addQueryParam()" stroke-width="1" class="param-control-button-add-row"/>
+            <div class="param-control-icon" @click="onMasterDeleteClick">
+              <!-- Master Delete with Confirmation -->
+              <ShieldAlert v-if="isConfirmingDeleteAll"
+                           stroke-width="1" class="icon-button-warning confirming" />
+              <Eraser v-else stroke-width="1" class="icon-button-warning" />
             </div>
           </th>
         </tr>
