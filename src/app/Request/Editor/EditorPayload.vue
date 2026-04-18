@@ -40,10 +40,12 @@ const tabs = [
     <SwitchableTabs :tabs="tabs" :default-active-tab-index="0">
 
       <template #actions>
-        <ToggleMenuItemAction class="tab-toggle">
-          <ToggleRightIcon v-if="toggleActive" class="env-action-svg" />
-          <ToggleLeftIcon v-else class="env-action-svg" />
-        </ToggleMenuItemAction>
+        <div class="tab-bar-right">
+          <ToggleMenuItemAction class="tab-toggle">
+            <ToggleRightIcon v-if="toggleActive" class="env-action-svg" />
+            <ToggleLeftIcon v-else class="env-action-svg" />
+          </ToggleMenuItemAction>
+        </div>
       </template>
 
       <ToggleMenuItemDetail>
@@ -73,6 +75,19 @@ const tabs = [
   &[data-tab-detail-active="false"] {
     height: auto;
     min-height: auto;
+  }
+}
+
+.tab-bar-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-right: 4px;
+
+  :deep(.toggle-menu-item-action) {
+    position: relative;
+    top: auto;
+    right: auto;
   }
 }
 

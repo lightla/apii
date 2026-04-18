@@ -1,0 +1,10 @@
+{
+  "mcpServers": {
+    "smartwriter": {
+      "command": "/home/light/workspace/ai/smartwriter-mcp/dist/bin/smartwriter",
+      "args": [
+        "--auto-port"
+      ]
+    }
+  }
+}

@@ -19,12 +19,13 @@ const onClick = (event: MouseEvent) => {
 <style scoped>
 .toggle-menu-item-action {
   position: absolute;
-  top: 12px;
+  top: 0;
   right: 1.2rem;
   cursor: pointer;
   user-select: none;
   color: #666;
   transition: color 0.2s ease;
+  z-index: 10;
 }
 
 .toggle-menu-item-action:hover {

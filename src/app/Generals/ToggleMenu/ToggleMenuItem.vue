@@ -28,9 +28,9 @@ onMounted(() => {
 .toggle-menu-item {
   max-height: 100%;
   min-height: 0;
-  border: 1px solid #888;
+  border: none;
   border-radius: 0;
-  padding: 12px;
+  padding: 0;
   background-color: var(--app-bg-color);
   transition: background-color 0.3s ease;
   position: relative;
