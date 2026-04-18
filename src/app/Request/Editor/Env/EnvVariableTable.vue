@@ -54,7 +54,6 @@ const onClickEraserEmptyLine = (event: MouseEvent): void => {
       <span class="env-variable-table-toolbar-title">ENV</span>
       <IconSquareRoundedPlus @click="" stroke-width="1" class="icon-button-add-row"/>
       
-      <!-- ĐƯA SELECT VÀO ĐÂY VÀ DỒN SANG PHẢI -->
       <div class="env-toolbar-select-wrap">
         <select class="env-select-in-toolbar">
           <option v-for="env in envStorage.definedEnvs" :key="env.id" :value="env.code">
@@ -64,7 +63,8 @@ const onClickEraserEmptyLine = (event: MouseEvent): void => {
       </div>
     </div>
 
-    <ScrollTable :items="envStorage.definedEnvs" height="360px">
+    <!-- Tăng chiều cao bảng ENV lên 500px -->
+    <ScrollTable :items="envStorage.definedEnvs" height="500px">
       <template #header>
         <th style="width:7%">No</th>
         <th>Name</th>
@@ -93,6 +93,8 @@ const onClickEraserEmptyLine = (event: MouseEvent): void => {
       <span class="env-variable-table-toolbar-title">ENV Variable</span>
       <SquarePlus @click="onClickAddRowButton" stroke-width="1" class="icon-button-add-row"/>
     </div>
+    
+    <!-- Cho bảng Variable chiếm trọn phần không gian còn lại -->
     <div class="env-table-scroll-wrapper"
          :class="{ 'no-data': envStorage.definedEnvVariables.length === 0 }"
     >
@@ -156,9 +158,10 @@ const onClickEraserEmptyLine = (event: MouseEvent): void => {
   gap: 8px;
   border: none;
   padding: 0;
+  height: 100%;
   max-height: 100%;
   min-height: 100%;
-  overflow: visible;
+  overflow: hidden;
 }
 
 .env-variable-table-toolbar {
@@ -167,20 +170,23 @@ const onClickEraserEmptyLine = (event: MouseEvent): void => {
   gap: 5px;
   align-items: center;
   width: 100%;
+  flex-shrink: 0;
 }
 
 .env-toolbar-select-wrap {
-  margin-left: auto; /* LỆNH QUAN TRỌNG ĐỂ CĂN PHẢI */
+  margin-left: auto;
   display: flex;
   align-items: center;
 }
 
 .env-select-in-toolbar {
   border: 1px solid #888888;
-  padding: 2px 5px;
-  font-size: 12px;
-  min-width: 120px;
-  background: #fff;
+  padding: 5px 10px;
+  font-size: 14px;
+  min-width: 140px;
+  min-height: 32px;
+  background-color: #f8f9fa;
+  cursor: pointer;
 }
 
 .env-variable-table-toolbar-title {
@@ -190,7 +196,7 @@ const onClickEraserEmptyLine = (event: MouseEvent): void => {
 }
 
 .env-table-scroll-wrapper {
-  flex: 1;
+  flex: 1; /* Tự động giãn ra chiếm hết chiều cao còn lại */
   overflow-y: auto;
   box-sizing: border-box;
   @include elements.scrollbar-hidden;
