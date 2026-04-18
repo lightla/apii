@@ -7,7 +7,7 @@ import Resizer from '../Generals/Resizer.vue'
 import RequestEditor from '@/app/Request/RequestEditor.vue'
 import RequestInfo from "@/app/Request/RequestInfo.vue";
 import EditorEnv from "@/app/Request/Editor/EditorEnv.vue";
-import { IconSettings } from '@tabler/icons-vue'
+import { IconSettings, IconCode, IconInfoCircle } from '@tabler/icons-vue'
 
 import IconEditor from '@/assets/svg/feathericons/edit.svg'
 import IconInfo from '@/assets/svg/feathericons/info.svg'
@@ -92,11 +92,21 @@ watch(activeRightTab, (newTab) => localStorage.setItem(STORAGE_KEY_ACTIVE_TAB, n
       <div class="tab-icon" :class="{ active: activeRightTab === 'settings' }" @click="activeRightTab = 'settings'" title="Settings">
         <IconSettings />
       </div>
-      <div class="tab-icon" :class="{ active: activeRightTab === 'editor' }" @click="activeRightTab = 'editor'" title="Editor">
-        <IconEditor />
+      <div
+          class="tab-icon"
+          :class="{ active: activeRightTab === 'editor' }"
+          @click="activeRightTab = 'editor'"
+          title="Editor"
+      >
+        <IconCode />
       </div>
-      <div class="tab-icon" :class="{ active: activeRightTab === 'info' }" @click="activeRightTab = 'info'" title="Information">
-        <IconInfo />
+      <div
+          class="tab-icon"
+          :class="{ active: activeRightTab === 'info' }"
+          @click="activeRightTab = 'info'"
+          title="Information"
+      >
+        <IconInfoCircle />
       </div>
     </div>
   </div>
