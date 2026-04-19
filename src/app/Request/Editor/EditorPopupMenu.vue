@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import {onMounted, ref, watch} from 'vue'
-import {useEnvStorage} from "@/storages";
+import {onMounted, ref, watch, nextTick} from 'vue'
+import {useEnvStorage, useInputStorage} from "@/storages";
 
 const props = defineProps<{
   editor: HTMLDivElement | null
@@ -13,9 +13,11 @@ const popupRef = ref<HTMLDivElement | null>(null)
 const popupBlocked = ref<boolean>(false)
 
 const envStorage = useEnvStorage();
-const selectedNewEnvVariable = ref<number>(-1)
+const inputStorage = useInputStorage();
 
-const currentText = ref<string>('');
+const currentVarName = ref<string>('');
+const currentVarValue = ref<string>('');
+const isDefined = ref<boolean>(false);
 
 watch(() => props.editor, (newValue: HTMLDivElement | null) => {
   if (newValue) {
@@ -36,8 +38,6 @@ const onKeyDown = (event: KeyboardEvent) => {
     return
   }
 
-  popupBlocked.value = true;
-
   const { clientX, clientY } = lastMousePosition.value;
   const el = document.elementFromPoint(clientX, clientY) as HTMLElement | null
 
@@ -48,22 +48,30 @@ const onKeyDown = (event: KeyboardEvent) => {
     return;
   }
 
+  popupBlocked.value = true;
   lastElement.value = el;
 
   // Lấy text hiện tại của element (ví dụ: '{{v1}}')
-  currentText.value = el.textContent?.trim() || "";
+  currentVarName.value = el.textContent?.trim() || "";
 
-  selectedNewEnvVariable.value = envStorage.definedEnvVariables.findIndex(
-      envVar => (envVar.name === currentText.value)
-  );
+  const foundVar = envStorage.definedEnvVariables.find(v => v.name === currentVarName.value);
+  if (foundVar) {
+    currentVarValue.value = foundVar.value;
+    isDefined.value = true;
+  } else {
+    currentVarValue.value = '';
+    isDefined.value = false;
+  }
 
   popupRef.value.style.display = 'flex';
-  popupRef.value.style.left = `${lastMousePosition.value.clientX + 10}px`
-  popupRef.value.style.top = `${lastMousePosition.value.clientY + 10}px`
+  popupRef.value.style.left = `${lastMousePosition.value.clientX + 5}px`
+  popupRef.value.style.top = `${lastMousePosition.value.clientY + 5}px`
 }
 
 const onKeyUp = (event: KeyboardEvent) => {
-  popupBlocked.value = false;
+  if (event.key === 'Control') {
+    popupBlocked.value = false;
+  }
 }
 
 const onMouseClick = (e : MouseEvent) => {
@@ -76,61 +84,66 @@ const onMouseClick = (e : MouseEvent) => {
 
 function hidePopup() {
   if (!popupRef.value) return;
-
   popupRef.value.style.display = "none";
+  popupBlocked.value = false;
 }
 
-watch(selectedNewEnvVariable, (newVal: any) => {
-  if (lastElement.value && newVal >= 0 && newVal < envStorage.definedEnvVariables.length) {
-    const envVariable = envStorage.definedEnvVariables[newVal];
-    if (envVariable && newVal !== -1) {
-      lastElement.value.textContent = envVariable.name;
-    }
+const onValueInput = (e: Event) => {
+  const newValue = (e.target as HTMLInputElement).value;
+  currentVarValue.value = newValue;
+
+  const index = envStorage.variableDefinitions.findIndex(v => v.name === currentVarName.value);
+  if (index !== -1) {
+    envStorage.updateVariableValue(index, newValue);
   }
-})
-
-const currentValue = ref('')
-const selectedVariable = ref<{ name: string; isDefined: boolean } | null>(null)
-
-const handleSelect = (variable: { name: string; isDefined: boolean }) => {
-  if (lastElement.value) {
-    selectedVariable.value = variable
-    const match = envStorage.definedEnvVariables.find(v => v.name === variable.name)
-    currentValue.value = match?.value || ''
-    lastElement.value.textContent = variable.name;
-  }
-
 }
 
-const updateValue = () => {
-  if (!selectedVariable.value) return
-  const index = envStorage.definedEnvVariables.findIndex(
-      v => v.name === selectedVariable.value!.name
-  )
+const onValueBlur = async () => {
+  if (!currentVarName.value) return;
+
+  let index = envStorage.variableDefinitions.findIndex(v => v.name === currentVarName.value);
+
   if (index === -1) {
-    envStorage.addDefinedEnvVariable({
-      name: selectedVariable.value.name,
-      value: currentValue.value,
-      isValidFormat: true
-    })
-    selectedVariable.value.isDefined = true
-  } else {
-    envStorage.definedEnvVariables[index].value = currentValue.value
+    // Tự động tạo định nghĩa biến nếu chưa có
+    envStorage.variableDefinitions.push({
+      id: Math.random().toString(36).substr(2, 9),
+      name: currentVarName.value
+    });
+    isDefined.value = true;
   }
+
+  // Đợi Vue cập nhật Store và Reactivity
+  await nextTick();
+
+  // Quét lại TOÀN BỘ input đang được track trên màn hình
+  inputStorage.rescanHighlightAllInputs(null, {
+    definedEnvVariables: envStorage.collectEnvVariableNames()
+  });
 }
 
 </script>
 
 <template>
-  <div ref="popupRef" class="popup">
-    <!--    <PopupDropdown  :initial-value="currentText" @select="handleSelect" />-->
-    <div>
-      <input
-          v-model="currentValue"
-          class="env-variable-value"
-          placeholder="Enter value"
-          @input="updateValue"
-      />
+  <div ref="popupRef" class="popup shadow-sm" @mouseleave="hidePopup">
+    <div class="popup-header">
+      <span class="var-name">{{ currentVarName }}</span>
+      <span v-if="!isDefined" class="badge bg-warning text-dark ms-2">Undefined</span>
+    </div>
+    <div class="popup-body">
+      <div class="input-group input-group-sm">
+        <span class="input-group-text">Value</span>
+        <input
+            :value="currentVarValue"
+            class="form-control"
+            placeholder="Enter value..."
+            @input="onValueInput"
+            @blur="onValueBlur"
+            @keydown.stop
+        />
+      </div>
+      <div class="mt-1 small text-muted">
+        Env: <span class="fw-bold">{{ envStorage.selectedEnvCode }}</span>
+      </div>
     </div>
   </div>
 </template>
@@ -139,65 +152,46 @@ const updateValue = () => {
 <style scoped lang="scss">
 .popup {
   position: fixed;
-  z-index: 999;
-
+  z-index: 10000;
   display: none;
   flex-direction: column;
+  background-color: #ffffff;
+  border: 1px solid #dee2e6;
+  border-radius: 4px;
+  width: 240px;
+  padding: 0;
+  font-family: sans-serif;
+}
 
-  justify-content: center;
-  border: 1px solid black;
-  background-color: #cccccc;
-  width: 300px;
-  height: 300px;
+.popup-header {
+  background-color: #f8f9fa;
+  padding: 6px 10px;
+  border-bottom: 1px solid #dee2e6;
+  display: flex;
+  align-items: center;
+  font-size: 0.85rem;
+}
+
+.var-name {
+  font-weight: 600;
+  color: var(--defined-env-variable-color);
+  font-family: monospace;
+}
+
+.popup-body {
   padding: 10px;
 }
 
-.method-select-cover {
-  position: relative;
+.form-control {
+  font-size: 0.8rem;
+  &:focus {
+    box-shadow: none;
+    border-color: #80bdff;
+  }
 }
 
-.method-select {
-  //width: 10%;
-  //background-color: #888888;
-  display: flex;
-  border: 1px solid #888888;
-  //border: none;
-  //padding: 5px;
-  padding-left: 5px;
-  justify-content: center;
-  height: 27px;
+.input-group-text {
+  font-size: 0.75rem;
+  background-color: #f8f9fa;
 }
-
-.method-select {
-  width: 100%;
-  height: 30px;
-  padding-left: 8px;
-  border: 1px solid #aaa;
-}
-
-.dropdown-list {
-  position: absolute;
-  top: 32px;
-  left: 0;
-  width: 100%;
-  border: 1px solid #ccc;
-  max-height: 150px;
-  overflow-y: auto;
-  background: white;
-  z-index: 10;
-}
-
-.dropdown-list li {
-  padding: 5px 10px;
-  cursor: pointer;
-}
-
-.env-variable-value {
-  margin-top: 10px;
-  width: 100%;
-  height: 30px;
-  padding-left: 8px;
-  border: 1px solid black;
-}
-
 </style>

@@ -37,9 +37,5 @@ class Logger {
 }
 
 // expose namespace
-export const Apii = {
-  newApp: () => new ApiiApp(),
-  newLogger: () => new Logger(),
-};
-
-export default Apii;
+export const newApp = () => new ApiiApp();
+export const newLogger = () => new Logger();

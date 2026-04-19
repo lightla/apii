@@ -29,7 +29,11 @@ class AppStyleManager {
         const style = document.createElement('style');
         style.textContent = css;
         style.setAttribute('data-app', appId.replace('#', ''));
-        document.head.appendChild(style);
+        if (document.head) {
+            document.head.appendChild(style);
+        } else {
+            document.documentElement.appendChild(style);
+        }
     }
 }
 
