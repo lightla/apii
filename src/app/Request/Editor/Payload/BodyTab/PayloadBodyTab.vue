@@ -49,7 +49,7 @@ const triggerFileInput = (id: string) => {
 
 <template>
   <div class="body-tab-container">
-    <!-- Body Type Selector -->
+    <!-- Body Type Selector with Full Border -->
     <div class="body-type-toolbar">
       <div 
         v-for="type in bodyTypes" 
@@ -58,7 +58,7 @@ const triggerFileInput = (id: string) => {
         :class="{ 'active': store.bodyType === type.value }"
         @click="store.setBodyType(type.value as any)"
       >
-        <component :is="type.icon" size="14" class="me-1" />
+        <component :is="type.icon" size="18" class="me-2" stroke-width="1.5" />
         {{ type.label }}
       </div>
     </div>
@@ -192,17 +192,19 @@ const triggerFileInput = (id: string) => {
   gap: 2px;
   padding: 5px;
   background-color: rgba(221, 221, 221, 0.4);
-  border-bottom: 1px solid #888888;
+  border: 1px solid #888888; /* Full border cho container */
+  margin-bottom: 5px;
 }
 
 .body-type-item {
-  padding: 4px 12px;
-  font-size: 12px;
+  padding: 6px 16px;
+  font-size: 13px;
   cursor: pointer;
   display: flex;
   align-items: center;
   border: 1px solid transparent;
-  color: #666;
+  color: #555;
+  transition: all 0.2s ease;
   
   &:hover {
     background-color: rgba(0, 0, 0, 0.05);
@@ -237,6 +239,8 @@ const triggerFileInput = (id: string) => {
 }
 
 .icon-plus {
+  width: 30px;
+  height: 30px;
   cursor: pointer;
   color: #888;
   &:hover { color: #000; }
