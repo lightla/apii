@@ -7,30 +7,30 @@ import { useRequestParamsStorage } from '@/storages/payload.ts'
 const props = defineProps<{ route: RouteInfo }>()
 const store = useRequestParamsStorage()
 
-// Extract path variable names from the live URL (store.baseUrl)
-const pathVarNames = computed<string[]>(() => {
+// Extract URI parameter names from the live URL (store.baseUrl)
+const uriParamNames = computed<string[]>(() => {
   const matches = [...(store.baseUrl || '').matchAll(/(?<!{)\{([^{}]+)\}(?!})/g)]
   return [...new Set(matches.map(m => m[1]))]
 })
 
-// Sync store.pathVariables when URL changes
-watch(pathVarNames, (names) => {
-  store.pathVariables = names.map(name => ({
+// Sync store.uriParameters when URL changes
+watch(uriParamNames, (names) => {
+  store.uriParameters = names.map(name => ({
     name,
-    value: store.pathVariables.find(v => v.name === name)?.value ?? ''
+    value: store.uriParameters.find(v => v.name === name)?.value ?? ''
   }))
 }, { immediate: true })
 
 function getVarValue(name: string) {
-  return store.pathVariables.find(v => v.name === name)?.value ?? ''
+  return store.uriParameters.find(v => v.name === name)?.value ?? ''
 }
 
 </script>
 
 <template>
-  <div class="path-variable">
-    <div class="path-variable-toolbar">
-      <span class="path-variable-toolbar-title">Path Variables</span>
+  <div class="uri-parameter">
+    <div class="uri-parameter-toolbar">
+      <span class="uri-parameter-toolbar-title">URI Parameters</span>
     </div>
 
     <div class="query-table-scroll-wrapper">
@@ -48,7 +48,7 @@ function getVarValue(name: string) {
           </tr>
         </thead>
         <tbody>
-          <tr v-for="(name, index) in pathVarNames" :key="name">
+          <tr v-for="(name, index) in uriParamNames" :key="name">
             <td class="cell-no">{{ index + 1 }}</td>
             <td>
               <div class="param-input-wrap">
@@ -61,13 +61,13 @@ function getVarValue(name: string) {
                   :route="props.route"
                   :value="getVarValue(name)"
                   :enabled-env-variable="true"
-                  @text-change="val => store.updatePathVariable(name, val)"
+                  @text-change="val => store.updateUriParameter(name, val)"
                 />
               </div>
             </td>
           </tr>
-          <tr v-if="pathVarNames.length === 0">
-            <td colspan="3" class="empty-row">No path variables in URL</td>
+          <tr v-if="uriParamNames.length === 0">
+            <td colspan="3" class="empty-row">No URI parameters in URL</td>
           </tr>
         </tbody>
       </table>
@@ -78,14 +78,14 @@ function getVarValue(name: string) {
 <style scoped lang="scss">
 @use "@/assets/styles/elements";
 
-.path-variable {
+.uri-parameter {
   display: flex;
   flex-direction: column;
   gap: 8px;
   height: auto;
 }
 
-.path-variable-toolbar {
+.uri-parameter-toolbar {
   display: flex;
   flex-direction: row;
   gap: 5px;
@@ -95,7 +95,7 @@ function getVarValue(name: string) {
   margin-bottom: 2px;
 }
 
-.path-variable-toolbar-title {
+.uri-parameter-toolbar-title {
   padding: 5px;
   background-color: rgba(221, 221, 221, 0.65);
   border: 1px solid #888888;

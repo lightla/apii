@@ -10,7 +10,7 @@ export interface QueryParam {
   description: string
 }
 
-export interface PathVariable {
+export interface UriParameter {
   name: string
   value: string
 }
@@ -18,7 +18,7 @@ export interface PathVariable {
 export const useRequestParamsStorage = defineStore('requestParams', {
   state: () => ({
     queryParams: [] as QueryParam[],
-    pathVariables: [] as PathVariable[],
+    uriParameters: [] as UriParameter[],
     baseUrl: '',
     method: 'GET',
     headers: [] as { id: string; key: string; value: string; enabled: boolean; description: string }[],
@@ -42,15 +42,15 @@ export const useRequestParamsStorage = defineStore('requestParams', {
         return result
       }
 
-      // Tạo URL preview từ baseUrl + pathVariables + queryParams
+      // Tạo URL preview từ baseUrl + uriParameters + queryParams
       // Bước 1: Resolve env variables trực tiếp trong baseUrl (ví dụ: {{domain}}/api/...)
       let url = resolveEnvVariables(this.baseUrl)
 
-      // Bước 2: Replace path variables (ví dụ: {workspaceId})
-      this.pathVariables.forEach(variable => {
+      // Bước 2: Replace URI parameters (ví dụ: {workspaceId})
+      this.uriParameters.forEach(variable => {
         const val = variable.value.trim()
         if (val) {
-          // Nếu giá trị của path variable lại chứa env variable (ví dụ: val = "{{my_id}}")
+          // Nếu giá trị của URI parameter lại chứa env variable (ví dụ: val = "{{my_id}}")
           // thì ta cũng resolve nó luôn
           const resolvedVal = resolveEnvVariables(val)
           url = url.replace(`{${variable.name}}`, resolvedVal)
@@ -108,14 +108,14 @@ export const useRequestParamsStorage = defineStore('requestParams', {
       this.queryParams.forEach(p => p.enabled = targetState)
     },
 
-    // Path Variables
-    updatePathVariable(name: string, value: string) {
+    // URI Parameters
+    updateUriParameter(name: string, value: string) {
       const trimmed = value.trim()
-      const index = this.pathVariables.findIndex(v => v.name === name)
+      const index = this.uriParameters.findIndex(v => v.name === name)
       if (index !== -1) {
-        this.pathVariables[index].value = trimmed
+        this.uriParameters[index].value = trimmed
       } else {
-        this.pathVariables.push({ name, value: trimmed })
+        this.uriParameters.push({ name, value: trimmed })
       }
     },
 
@@ -164,7 +164,7 @@ export const useRequestParamsStorage = defineStore('requestParams', {
     // Reset state
     resetAll() {
       this.queryParams = []
-      this.pathVariables = []
+      this.uriParameters = []
       this.headers = []
       this.baseUrl = ''
       this.method = 'GET'
@@ -177,7 +177,7 @@ export const useRequestParamsStorage = defineStore('requestParams', {
       if (!routeId) return
       const data = {
         queryParams: this.queryParams,
-        pathVariables: this.pathVariables,
+        uriParameters: this.uriParameters,
         baseUrl: this.baseUrl,
         method: this.method,
         headers: this.headers,
@@ -193,7 +193,7 @@ export const useRequestParamsStorage = defineStore('requestParams', {
         try {
           const data = JSON.parse(saved)
           this.queryParams = data.queryParams || []
-          this.pathVariables = data.pathVariables || []
+          this.uriParameters = data.uriParameters || []
           this.baseUrl = data.baseUrl || ''
           this.method = data.method || 'GET'
           this.headers = data.headers || []

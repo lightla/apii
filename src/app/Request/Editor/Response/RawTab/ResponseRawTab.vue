@@ -91,7 +91,7 @@ function copyRaw() {
   line-height: 1.5;
   color: #333;
   background-color: transparent;
-  border: var(--table-border); /* Đồng bộ viền với Path Variables */
+  border: var(--table-border); /* Đồng bộ viền với Uri Parameters */
 }
 
 .empty-state {

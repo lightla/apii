@@ -90,7 +90,7 @@ function copyHtml() {
 .preview-iframe {
   flex: 1;
   margin: 0;
-  border: var(--table-border); /* Đồng bộ viền với Path Variables */
+  border: var(--table-border); /* Đồng bộ viền với Uri Parameters */
   width: 100%;
   height: 100%;
   background-color: transparent;

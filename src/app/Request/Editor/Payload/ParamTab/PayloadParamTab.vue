@@ -2,7 +2,7 @@
 import { watch } from 'vue'
 import type { RouteInfo } from '@/types'
 import ParamUrlPreview from "@/app/Request/Editor/Payload/ParamTab/Param/ParamUrlPreview.vue";
-import ParamPathVariable from "@/app/Request/Editor/Payload/ParamTab/Param/ParamPathVariable.vue";
+import ParamUriParameter from "@/app/Request/Editor/Payload/ParamTab/Param/ParamUriParameter.vue";
 import ParamQueryParam from "@/app/Request/Editor/Payload/ParamTab/Param/ParamQueryParam.vue";
 import { useRequestParamsStorage } from '@/storages/payload.ts'
 
@@ -17,7 +17,7 @@ watch(() => props.route?.route, (url) => {
 <template>
   <div class="param-tab">
     <ParamUrlPreview :route="props.route"/>
-    <ParamPathVariable :route="props.route"/>
+    <ParamUriParameter :route="props.route"/>
     <ParamQueryParam :route="props.route"/>
   </div>
 </template>
