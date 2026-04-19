@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, nextTick } from 'vue'
 import type { RouteInfo } from "@/types";
 import TrackedVariableInput from "@/app/Generals/TrackedVariableInput.vue";
 import {
@@ -8,6 +8,7 @@ import {
   SquareX,
   ShieldAlert,
   Eraser,
+  Trash2,
 } from "lucide-vue-next";
 import { IconSquareRoundedPlus } from "@tabler/icons-vue";
 import { useRequestParamsStorage } from '@/storages/payload.ts'
@@ -23,9 +24,26 @@ const isAnyParamEnabled = computed(() => {
   return store.queryParams.length > 0 && store.queryParams.some(p => p.enabled)
 })
 
+// Logic cho Delete All (Dùng icon X)
+const isConfirmingDeleteAll = ref(false)
+let confirmAllTimer: ReturnType<typeof setTimeout> | undefined
+
+function onTrashClick() {
+  if (isConfirmingDeleteAll.value) {
+    store.queryParams = []
+    isConfirmingDeleteAll.value = false
+    clearTimeout(confirmAllTimer)
+  } else {
+    isConfirmingDeleteAll.value = true
+    clearTimeout(confirmAllTimer)
+    confirmAllTimer = setTimeout(() => {
+      isConfirmingDeleteAll.value = false
+    }, 3000)
+  }
+}
+
 // Logic cho Master Delete ở Header (Eraser) - CHỈ XÓA CÁC DÒNG RỖNG
 function onMasterDeleteClick() {
-  // Chỉ lọc giữ lại những dòng có key hoặc value rỗng
   store.queryParams = store.queryParams.filter(p => p.key.trim() !== '' || p.value.trim() !== '')
 }
 
@@ -51,8 +69,16 @@ function onDeleteClick(index: number) {
 <template>
   <div class="query-param">
     <div class="query-param-toolbar">
-      <span class="query-param-toolbar-title">Query Parameters</span>
-      <IconSquareRoundedPlus @click="store.addQueryParam()" stroke-width="1" class="icon-button-add-row"/>
+      <div class="d-flex align-items-center">
+        <span class="query-param-toolbar-title">Query Parameters</span>
+        <IconSquareRoundedPlus @click="store.addQueryParam()" stroke-width="1" class="icon-button-add-row ms-2"/>
+        
+        <!-- Icon X nằm sát nút dấu + -->
+        <div @click="onTrashClick" title="Delete all query parameters" class="d-flex align-items-center cursor-pointer ms-1">
+          <ShieldAlert v-if="isConfirmingDeleteAll" stroke-width="1" class="icon-button icon-button-trash-x confirming" />
+          <SquareX v-else stroke-width="1" class="icon-button icon-button-trash-x" />
+        </div>
+      </div>
     </div>
     
     <div class="query-table-scroll-wrapper">
@@ -74,8 +100,8 @@ function onDeleteClick(index: number) {
             <th>Variable</th>
             <th>Value</th>
             <th>
-              <div class="cell-icon-action" @click="onMasterDeleteClick">
-                <Eraser stroke-width="1" class="icon-button icon-button-eraser" />
+              <div class="cell-icon-action" @click="onMasterDeleteClick" title="Clear empty rows">
+                <Eraser stroke-width="1" class="icon-button-eraser" />
               </div>
             </th>
           </tr>
@@ -139,7 +165,6 @@ function onDeleteClick(index: number) {
 .query-param-toolbar {
   display: flex;
   flex-direction: row;
-  gap: 5px;
   align-items: center;
   width: 100%;
   flex-shrink: 0;
@@ -156,11 +181,11 @@ function onDeleteClick(index: number) {
 
 .query-table-scroll-wrapper {
   min-height: 0;
-  height: fit-content; /* Co lại sát bảng khi ít hàng */
-  max-height: 156px; 
+  height: fit-content;
+  max-height: 250px; 
   overflow-y: auto;
   @include elements.scrollbar-hidden;
-  border-bottom: var(--table-border); /* Viền dưới duy nhất nằm ở wrapper */
+  border-bottom: var(--table-border);
 }
 
 .query-param-table {
@@ -182,15 +207,15 @@ function onDeleteClick(index: number) {
     font-size: 15px;
     font-weight: 500;
     text-align: center;
-    vertical-align: middle; /* Căn giữa chiều dọc */
+    vertical-align: middle;
     padding: 0;
   }
 
   td {
-    height: 40px; /* Chiều cao row cố định để calc() chính xác */
+    height: 40px;
     border-left: var(--table-border);
     border-bottom: var(--table-border);
-    padding: 0 8px; /* Giảm padding dọc để khớp 40px */
+    padding: 0 8px;
     vertical-align: middle;
   }
 
@@ -201,7 +226,6 @@ function onDeleteClick(index: number) {
     text-align: center;
   }
 
-  /* Khử border-bottom hàng cuối để không bị double với border-bottom của wrapper */
   tr:last-child td {
     border-bottom: none !important;
   }
@@ -225,12 +249,17 @@ function onDeleteClick(index: number) {
 
 .icon-button {
   cursor: pointer;
-  fill: var(--icon-bg-color);
-  &:hover { fill: var(--icon-bg-color-active); }
+  stroke: #666;
+  &:hover { stroke: #000; }
   
   &.confirming {
-    /* Không đổi màu, không animation - giống ENV Variable */
+    /* Giữ nguyên màu mặc định */
   }
+}
+
+.icon-button-trash-x {
+  width: 30px;
+  height: 30px;
 }
 
 .icon-button-checkbox, .icon-button-eraser, .icon-button-row-action {
@@ -241,8 +270,6 @@ function onDeleteClick(index: number) {
   margin: 0 auto;
 }
 
-/* Xóa keyframes không dùng nữa */
-
 .param-input-wrap {
   padding: 2px 0;
 }
@@ -251,7 +278,7 @@ function onDeleteClick(index: number) {
   text-align: center;
   color: #aaa;
   font-size: 15px;
-  height: 40px; /* Chiều cao bằng hàng dữ liệu chuẩn */
+  height: 40px;
   padding: 0 !important;
   vertical-align: middle;
 }

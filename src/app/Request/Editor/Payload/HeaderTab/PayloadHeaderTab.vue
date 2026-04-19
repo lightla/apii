@@ -14,6 +14,24 @@ const isAnyHeaderEnabled = computed(() => {
   return store.headers.length > 0 && store.headers.some(h => h.enabled)
 })
 
+// Logic cho Delete All (X)
+const isConfirmingDeleteAll = ref(false)
+let confirmAllTimer: ReturnType<typeof setTimeout> | undefined
+
+function onTrashClick() {
+  if (isConfirmingDeleteAll.value) {
+    store.headers = []
+    isConfirmingDeleteAll.value = false
+    clearTimeout(confirmAllTimer)
+  } else {
+    isConfirmingDeleteAll.value = true
+    clearTimeout(confirmAllTimer)
+    confirmAllTimer = setTimeout(() => {
+      isConfirmingDeleteAll.value = false
+    }, 3000)
+  }
+}
+
 // Logic cho Master Delete ở Header (Eraser) - CHỈ XÓA CÁC DÒNG RỖNG
 function onMasterDeleteClick() {
   store.headers = store.headers.filter(h => h.key.trim() !== '' || h.value.trim() !== '')
@@ -41,8 +59,16 @@ function onDeleteClick(index: number) {
 <template>
   <div class="header-tab">
     <div class="header-toolbar">
-      <span class="header-toolbar-title">Headers</span>
-      <IconSquareRoundedPlus @click="store.addHeader()" stroke-width="1" class="icon-button-add-row"/>
+      <div class="d-flex align-items-center">
+        <span class="header-toolbar-title">Headers</span>
+        <IconSquareRoundedPlus @click="store.addHeader()" stroke-width="1" class="icon-button-add-row ms-2"/>
+        
+        <!-- Icon X (Delete All) nằm sát nút + -->
+        <div @click="onTrashClick" title="Delete all headers" class="d-flex align-items-center cursor-pointer ms-1">
+          <ShieldAlert v-if="isConfirmingDeleteAll" stroke-width="1" class="icon-button icon-button-trash-x" />
+          <SquareX v-else stroke-width="1" class="icon-button icon-button-trash-x" />
+        </div>
+      </div>
     </div>
 
     <div class="header-table-scroll-wrapper">
@@ -66,8 +92,8 @@ function onDeleteClick(index: number) {
             <th>Value</th>
             <th>Description</th>
             <th>
-              <div class="cell-icon-action" @click="onMasterDeleteClick">
-                <Eraser stroke-width="1" class="icon-button icon-button-eraser" />
+              <div class="cell-icon-action" @click="onMasterDeleteClick" title="Clear empty rows">
+                <Eraser stroke-width="1" class="icon-button-eraser" />
               </div>
             </th>
           </tr>
@@ -141,7 +167,6 @@ function onDeleteClick(index: number) {
 .header-toolbar {
   display: flex;
   flex-direction: row;
-  gap: 5px;
   align-items: center;
   width: 100%;
   flex-shrink: 0;
@@ -159,7 +184,7 @@ function onDeleteClick(index: number) {
 .header-table-scroll-wrapper {
   min-height: 0;
   height: fit-content;
-  max-height: 436px; /* Tăng lên để show được khoảng 10 hàng */
+  max-height: 436px; 
   overflow-y: auto;
   @include elements.scrollbar-hidden;
   border-bottom: var(--table-border);
@@ -226,8 +251,13 @@ function onDeleteClick(index: number) {
 
 .icon-button {
   cursor: pointer;
-  fill: var(--icon-bg-color);
-  &:hover { fill: var(--icon-bg-color-active); }
+  stroke: #666;
+  &:hover { stroke: #000; }
+}
+
+.icon-button-trash-x {
+  width: 30px;
+  height: 30px;
 }
 
 .icon-button-checkbox, .icon-button-eraser, .icon-button-row-action {
