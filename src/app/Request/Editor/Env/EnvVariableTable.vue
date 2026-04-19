@@ -1,14 +1,13 @@
 <script setup lang="ts">
-import {computed, onBeforeUnmount, onMounted, ref, watch} from 'vue'
+import {onBeforeUnmount, onMounted, ref, watch} from 'vue'
 import type {RouteInfo} from '@/types'
 import {useEnvStorage} from "@/storages/env-variables-tmp.ts";
 import VariableCellButton from "@/app/Request/Editor/Env/VariableTableCell/VariableCellButton.vue";
 import VariableCellNameInput from "@/app/Request/Editor/Env/VariableTableCell/VariableCellNameInput.vue";
 import VariableCellValueInput from "@/app/Request/Editor/Env/VariableTableCell/VariableCellValueInput.vue";
-import {Eraser, SquarePlus, SquareX} from "lucide-vue-next";
+import {Eraser, ShieldAlert, SquarePlus, SquareX} from "lucide-vue-next";
 import {IconSquareRoundedPlus} from "@tabler/icons-vue";
 import EnvCellNameInput from "@/app/Request/Editor/Env/EnvTableCell/EnvCellNameInput.vue";
-import ScrollTable from "@/app/Generals/ScrollTable/ScrollTable.vue";
 
 const props = defineProps<{
   route: RouteInfo
@@ -16,30 +15,29 @@ const props = defineProps<{
 
 // Load env variables as an object { [variableName]: value }
 const envStorage = useEnvStorage();
-const envTableScrollWrapperRef = ref<HTMLDivElement | null>(null)
-const showViewportBottomDivider = ref(false)
-let envTableResizeObserver: ResizeObserver | null = null
+const envScrollWrapperRef = ref<HTMLDivElement | null>(null)
+const envVariableScrollWrapperRef = ref<HTMLDivElement | null>(null)
+const showEnvBottomDivider = ref(false)
+const showEnvVariableBottomDivider = ref(false)
+let envResizeObserver: ResizeObserver | null = null
+let envVariableResizeObserver: ResizeObserver | null = null
+const envDeleteConfirmIndex = ref<number | null>(null)
+const envDeleteConfirmTimeoutRef = ref<ReturnType<typeof setTimeout> | null>(null)
 
 console.log("env-table.run:");
-
-// Chuyển object thành mảng để dễ lặp trong template
-const envVariables = computed(() => {
-  return Object.entries(envStorage.definedEnvVariables || {}).map(([key, value]) => ({
-    name: key,
-    value
-  }));
-});
-
-const onNameInputChange = (envVariableInputName: string, variableIndex: number): void => {
-  console.log("env-table.onInputChange:" + envVariableInputName + "|")
-  console.log("env-table.variableIndex:" + variableIndex + "|")
-}
 
 const onClickAddRowButton = (event: MouseEvent): void => {
   envStorage.addDefinedEnvVariable({
     name: "",
     value: "",
     isValidFormat: true,
+  })
+}
+
+const onClickAddEnvRowButton = (): void => {
+  envStorage.addDefinedEnv({
+    name: "",
+    code: "",
   })
 }
 
@@ -54,40 +52,100 @@ const onClickEraserEmptyLine = (): void => {
   })
 }
 
-const updateBottomDividerState = (): void => {
-  const el = envTableScrollWrapperRef.value
+const onClickEnvEraserEmptyLine = (): void => {
+  envStorage.definedEnvs = envStorage.definedEnvs.filter((env) => {
+    const normalizedName = normalizeInputText(env.name)
+    return normalizedName !== ''
+  })
+}
+
+const onClickDeleteEnvRow = (envIndex: number): void => {
+  if (envDeleteConfirmIndex.value !== envIndex) {
+    envDeleteConfirmIndex.value = envIndex
+    if (envDeleteConfirmTimeoutRef.value) {
+      clearTimeout(envDeleteConfirmTimeoutRef.value)
+    }
+    envDeleteConfirmTimeoutRef.value = setTimeout(() => {
+      envDeleteConfirmIndex.value = null
+      envDeleteConfirmTimeoutRef.value = null
+    }, 2000)
+    return
+  }
+
+  envStorage.definedEnvs.splice(envIndex, 1)
+  envDeleteConfirmIndex.value = null
+  if (envDeleteConfirmTimeoutRef.value) {
+    clearTimeout(envDeleteConfirmTimeoutRef.value)
+    envDeleteConfirmTimeoutRef.value = null
+  }
+}
+
+const updateBottomDividerState = (
+  wrapperRef: { value: HTMLDivElement | null },
+  dividerStateRef: { value: boolean }
+): void => {
+  const el = wrapperRef.value
   if (!el) return
 
   const hasOverflow = el.scrollHeight > el.clientHeight + 1
   const atBottom = el.scrollTop + el.clientHeight >= el.scrollHeight - 1
-  showViewportBottomDivider.value = hasOverflow && !atBottom
+  dividerStateRef.value = hasOverflow && !atBottom
+}
+
+const updateAllBottomDividerStates = (): void => {
+  updateBottomDividerState(envScrollWrapperRef, showEnvBottomDivider)
+  updateBottomDividerState(envVariableScrollWrapperRef, showEnvVariableBottomDivider)
 }
 
 onMounted(() => {
-  const el = envTableScrollWrapperRef.value
-  if (!el) return
+  const envEl = envScrollWrapperRef.value
+  const envVariableEl = envVariableScrollWrapperRef.value
 
-  el.addEventListener('scroll', updateBottomDividerState, { passive: true })
+  if (envEl) {
+    envEl.addEventListener('scroll', updateAllBottomDividerStates, { passive: true })
+    envResizeObserver = new ResizeObserver(updateAllBottomDividerStates)
+    envResizeObserver.observe(envEl)
+  }
 
-  envTableResizeObserver = new ResizeObserver(() => {
-    updateBottomDividerState()
-  })
-  envTableResizeObserver.observe(el)
-  updateBottomDividerState()
+  if (envVariableEl) {
+    envVariableEl.addEventListener('scroll', updateAllBottomDividerStates, { passive: true })
+    envVariableResizeObserver = new ResizeObserver(updateAllBottomDividerStates)
+    envVariableResizeObserver.observe(envVariableEl)
+  }
+
+  updateAllBottomDividerStates()
+})
+
+watch(() => envStorage.definedEnvs.length, () => {
+  requestAnimationFrame(() => updateAllBottomDividerStates())
 })
 
 watch(() => envStorage.definedEnvVariables.length, () => {
-  requestAnimationFrame(() => updateBottomDividerState())
+  requestAnimationFrame(() => updateAllBottomDividerStates())
 })
 
 onBeforeUnmount(() => {
-  const el = envTableScrollWrapperRef.value
-  if (el) {
-    el.removeEventListener('scroll', updateBottomDividerState)
+  const envEl = envScrollWrapperRef.value
+  const envVariableEl = envVariableScrollWrapperRef.value
+
+  if (envEl) {
+    envEl.removeEventListener('scroll', updateAllBottomDividerStates)
   }
-  if (envTableResizeObserver) {
-    envTableResizeObserver.disconnect()
-    envTableResizeObserver = null
+  if (envVariableEl) {
+    envVariableEl.removeEventListener('scroll', updateAllBottomDividerStates)
+  }
+
+  if (envResizeObserver) {
+    envResizeObserver.disconnect()
+    envResizeObserver = null
+  }
+  if (envVariableResizeObserver) {
+    envVariableResizeObserver.disconnect()
+    envVariableResizeObserver = null
+  }
+  if (envDeleteConfirmTimeoutRef.value) {
+    clearTimeout(envDeleteConfirmTimeoutRef.value)
+    envDeleteConfirmTimeoutRef.value = null
   }
 })
 
@@ -99,7 +157,7 @@ onBeforeUnmount(() => {
       <div class="env-table-pane">
         <div class="env-variable-table-toolbar">
           <span class="env-variable-table-toolbar-title">ENV</span>
-          <IconSquareRoundedPlus @click="" stroke-width="1" class="icon-button-add-row"/>
+          <IconSquareRoundedPlus @click="onClickAddEnvRowButton" stroke-width="1" class="icon-button-add-row"/>
 
           <div class="env-toolbar-select-wrap">
             <select class="env-select-in-toolbar">
@@ -110,31 +168,59 @@ onBeforeUnmount(() => {
           </div>
         </div>
 
-        <div class="env-pane-content">
-          <ScrollTable :items="envStorage.definedEnvs" height="100%" :striped="false">
-            <template #header>
-              <th style="width:7%">No</th>
-              <th>Name</th>
-              <th>Code</th>
-              <th style="width:5%">Tmp</th>
-            </template>
-
-            <template #row="{ item, index }">
-              <td>{{ index + 1 }}</td>
-              <td>
-                <EnvCellNameInput :placeholder="'Env Name'" :env-index="index" />
-              </td>
-              <td>{{ item.code }}</td>
-              <td>
-                Tmp
-                <div class="cell-icon-action"></div>
-              </td>
-            </template>
-
-            <template #empty>
-              Chưa có biến môi trường
-            </template>
-          </ScrollTable>
+        <div
+             ref="envScrollWrapperRef"
+             class="env-table-scroll-wrapper"
+             :class="{ 'show-bottom-divider': showEnvBottomDivider }"
+        >
+          <table class="env-variable-table">
+            <colgroup>
+              <col style="width: 7%;">
+              <col style="width: auto;">
+              <col style="width: auto;">
+              <col style="width: 40px;">
+            </colgroup>
+            <thead>
+              <tr>
+                <th>No</th>
+                <th>Name</th>
+                <th>Code</th>
+                <th>
+                  <Eraser @click="onClickEnvEraserEmptyLine" stroke-width="1" class="icon-button icon-button-eraser"/>
+                </th>
+              </tr>
+            </thead>
+            <tbody v-if="envStorage.definedEnvs.length">
+              <tr v-for="(item, index) in envStorage.definedEnvs" :key="item.id">
+                <td>{{ index + 1 }}</td>
+                <td>
+                  <EnvCellNameInput :placeholder="'Env Name'" :env-index="index" />
+                </td>
+                <td>{{ item.code }}</td>
+                <td>
+                  <div class="cell-icon-action">
+                    <SquareX
+                      v-if="envDeleteConfirmIndex !== index"
+                      @click="onClickDeleteEnvRow(index)"
+                      stroke-width="1"
+                      class="icon-button icon-button-row-action"
+                    />
+                    <ShieldAlert
+                      v-else
+                      @click="onClickDeleteEnvRow(index)"
+                      stroke-width="1"
+                      class="icon-button icon-button-row-action"
+                    />
+                  </div>
+                </td>
+              </tr>
+            </tbody>
+            <tbody v-else>
+              <tr>
+                <td class="table-empty" colspan="4">Chưa có biến môi trường</td>
+              </tr>
+            </tbody>
+          </table>
         </div>
       </div>
 
@@ -145,10 +231,10 @@ onBeforeUnmount(() => {
         </div>
 
         <div
-             ref="envTableScrollWrapperRef"
+             ref="envVariableScrollWrapperRef"
              class="env-table-scroll-wrapper"
              :class="{
-               'show-bottom-divider': showViewportBottomDivider,
+               'show-bottom-divider': showEnvVariableBottomDivider,
                'no-data': envStorage.definedEnvVariables.length === 0
              }"
         >
@@ -239,13 +325,6 @@ onBeforeUnmount(() => {
   min-height: 0;
 }
 
-.env-pane-content {
-  display: flex;
-  flex-direction: column;
-  flex: 1;
-  min-height: 0;
-}
-
 .env-variable-table-toolbar {
   display: flex;
   flex-direction: row;
@@ -290,55 +369,6 @@ onBeforeUnmount(() => {
   }
 }
 
-.table-scroll-wrap {
-  box-sizing: border-box;
-  display: flex;
-  flex-direction: row;
-  align-items: flex-start;
-  overflow: auto;
-  @include elements.scrollbar-hidden;
-  width: 100%;
-  max-height: calc(3*(40px) + 3*(30px - 6px));
-  position: relative;
-  border-bottom: var(--table-border);
-}
-
-.table-scroll {
-  border-spacing: 0;
-  border-collapse: separate;
-  table-layout: fixed;
-  width: 100%;
-  text-align: left;
-  th, td { height: 40px; vertical-align: middle; overflow: hidden; }
-  th {
-    border-bottom: 1px solid #666666;
-    border-left: 1px solid #666666;
-    padding: 10px;
-    border-top: 1px solid #666666;
-    background-color: var(--table-header-bg-color);
-    position: sticky;
-    top: 0;
-  }
-  td {
-    border-bottom: var(--table-border);
-    border-left: var(--table-border);
-    padding: 8px;
-    background-color: transparent;
-  }
-  tr th:last-child { border-right: 1px solid #666666; }
-  tr td:last-child { border-right: var(--table-border); }
-  tr:last-child td { border-bottom: none !important; }
-}
-
-.env-pane-content :deep(.table-scroll-wrap),
-.env-pane-content :deep(.table-scroll) {
-  background: transparent !important;
-}
-
-.env-pane-content :deep(.table-scroll tbody td) {
-  background: transparent !important;
-}
-
 .env-variable-table {
   table-layout: fixed;
   width: 100%;
@@ -349,6 +379,10 @@ onBeforeUnmount(() => {
     border-bottom: var(--table-border);
     padding: 8px;
     vertical-align: middle;
+  }
+  th:first-child,
+  td:first-child {
+    text-align: center;
   }
   th {
     position: sticky;
@@ -368,12 +402,15 @@ onBeforeUnmount(() => {
   tr:last-child td { border-bottom: var(--table-border); }
 }
 
-.table-scroll tbody td,
 .env-variable-table tbody td {
   border-left: var(--table-border);
   border-bottom: var(--table-border);
   padding: 8px;
   background-color: transparent;
+}
+
+.table-empty {
+  text-align: center;
 }
 
 .cell-icon-action { display: flex; justify-content: center; width: 100%; }
@@ -392,6 +429,15 @@ onBeforeUnmount(() => {
 }
 
 .icon-button-eraser {
+  width: 26px;
+  height: 26px;
+  min-width: 26px;
+  min-height: 26px;
+  display: block;
+  margin: 0 auto;
+}
+
+.icon-button-row-action {
   width: 26px;
   height: 26px;
   min-width: 26px;
