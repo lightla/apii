@@ -23,22 +23,10 @@ const isAnyParamEnabled = computed(() => {
   return store.queryParams.length > 0 && store.queryParams.some(p => p.enabled)
 })
 
-// Logic cho Master Delete ở Header
-const isConfirmingDeleteAll = ref(false)
-let deleteAllTimer: ReturnType<typeof setTimeout> | undefined
-
+// Logic cho Master Delete ở Header (Eraser) - CHỈ XÓA CÁC DÒNG RỖNG
 function onMasterDeleteClick() {
-  if (isConfirmingDeleteAll.value) {
-    store.removeAllQueryParams()
-    isConfirmingDeleteAll.value = false
-    clearTimeout(deleteAllTimer)
-  } else {
-    isConfirmingDeleteAll.value = true
-    clearTimeout(deleteAllTimer)
-    deleteAllTimer = setTimeout(() => {
-      isConfirmingDeleteAll.value = false
-    }, 3000)
-  }
+  // Chỉ lọc giữ lại những dòng có key hoặc value rỗng
+  store.queryParams = store.queryParams.filter(p => p.key.trim() !== '' || p.value.trim() !== '')
 }
 
 // Per-row delete confirm state
@@ -87,8 +75,7 @@ function onDeleteClick(index: number) {
             <th>Value</th>
             <th>
               <div class="cell-icon-action" @click="onMasterDeleteClick">
-                <ShieldAlert v-if="isConfirmingDeleteAll" stroke-width="1" class="icon-button icon-button-eraser confirming" />
-                <Eraser v-else stroke-width="1" class="icon-button icon-button-eraser" />
+                <Eraser stroke-width="1" class="icon-button icon-button-eraser" />
               </div>
             </th>
           </tr>
@@ -242,9 +229,7 @@ function onDeleteClick(index: number) {
   &:hover { fill: var(--icon-bg-color-active); }
   
   &.confirming {
-    fill: #fff3e0;
-    stroke: #e65100;
-    animation: pulse-shield 0.5s ease-in-out infinite alternate;
+    /* Không đổi màu, không animation - giống ENV Variable */
   }
 }
 
@@ -256,10 +241,7 @@ function onDeleteClick(index: number) {
   margin: 0 auto;
 }
 
-@keyframes pulse-shield {
-  from { opacity: 0.7; }
-  to   { opacity: 1; }
-}
+/* Xóa keyframes không dùng nữa */
 
 .param-input-wrap {
   padding: 2px 0;

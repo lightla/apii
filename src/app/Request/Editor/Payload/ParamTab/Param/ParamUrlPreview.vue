@@ -82,16 +82,16 @@ function copyUrl() {
   outline: none;
   padding: 0 10px;
   background: transparent;
-  font-size: 13px;
-  font-weight: 400; /* Đưa về bình thường, không đậm */
-  color: #333 !important; /* Màu xám đậm dễ nhìn, không quá gắt như đen tuyệt đối */
+  font-size: 15px; /* Tăng lên 15px để đồng bộ */
+  font-weight: 400;
+  color: #333 !important;
   opacity: 1 !important;
   cursor: text !important;
 
   &.placeholder {
-    color: #999 !important; /* Placeholder màu nhạt hơn chút nhưng vẫn rõ */
+    color: #999 !important;
     font-weight: 400;
-    font-style: normal; /* Bỏ chữ nghiêng */
+    font-style: normal;
   }
 
   /* Chống bôi đen (selection) nếu người dùng không muốn cảm giác bị chọn */
