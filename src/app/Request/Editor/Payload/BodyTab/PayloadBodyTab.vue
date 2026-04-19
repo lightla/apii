@@ -289,8 +289,9 @@ const triggerFileInput = (id: string) => {
   transition: background-color 0.2s;
   
   &:hover {
-    background-color: rgba(0, 0, 0, 0.05);
+    background-color: rgba(0, 0, 0, 0.03); /* Nhạt hơn so với 0.05 */
   }
+
   
   &.active {
     background-color: var(--tab-bg-color-active);
