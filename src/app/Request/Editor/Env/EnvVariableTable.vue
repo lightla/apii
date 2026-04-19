@@ -41,6 +41,10 @@ const onClickAddEnvRowButton = (): void => {
   })
 }
 
+const isProtectedEnv = (env: { code: string }, envIndex: number): boolean => {
+  return envIndex === 0 || env.code === 'no-environment'
+}
+
 const normalizeInputText = (text: string | undefined | null): string => {
   return (text ?? '').replace(/[\u200B-\u200D\uFEFF]/g, '').trim();
 }
@@ -53,13 +57,21 @@ const onClickEraserEmptyLine = (): void => {
 }
 
 const onClickEnvEraserEmptyLine = (): void => {
-  envStorage.definedEnvs = envStorage.definedEnvs.filter((env) => {
+  envStorage.definedEnvs = envStorage.definedEnvs.filter((env, envIndex) => {
+    if (isProtectedEnv(env, envIndex)) {
+      return true
+    }
     const normalizedName = normalizeInputText(env.name)
     return normalizedName !== ''
   })
 }
 
 const onClickDeleteEnvRow = (envIndex: number): void => {
+  const env = envStorage.definedEnvs[envIndex]
+  if (!env || isProtectedEnv(env, envIndex)) {
+    return
+  }
+
   if (envDeleteConfirmIndex.value !== envIndex) {
     envDeleteConfirmIndex.value = envIndex
     if (envDeleteConfirmTimeoutRef.value) {
@@ -199,18 +211,20 @@ onBeforeUnmount(() => {
                 <td>{{ item.code }}</td>
                 <td>
                   <div class="cell-icon-action">
-                    <SquareX
-                      v-if="envDeleteConfirmIndex !== index"
-                      @click="onClickDeleteEnvRow(index)"
-                      stroke-width="1"
-                      class="icon-button icon-button-row-action"
-                    />
-                    <ShieldAlert
-                      v-else
-                      @click="onClickDeleteEnvRow(index)"
-                      stroke-width="1"
-                      class="icon-button icon-button-row-action"
-                    />
+                    <template v-if="!isProtectedEnv(item, index)">
+                      <SquareX
+                        v-if="envDeleteConfirmIndex !== index"
+                        @click="onClickDeleteEnvRow(index)"
+                        stroke-width="1"
+                        class="icon-button icon-button-row-action"
+                      />
+                      <ShieldAlert
+                        v-else
+                        @click="onClickDeleteEnvRow(index)"
+                        stroke-width="1"
+                        class="icon-button icon-button-row-action"
+                      />
+                    </template>
                   </div>
                 </td>
               </tr>

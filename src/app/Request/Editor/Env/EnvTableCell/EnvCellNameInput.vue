@@ -1,9 +1,7 @@
 <script setup lang="ts">
-import {ref, onMounted, watch, type Ref, computed} from 'vue'
-import type { RouteInfo } from '@/types'
+import {ref, onMounted} from 'vue'
 import {highlightEnvVariable} from "@/utils/variable-input.ts";
-import {type HighlightVariableOptionParam, HighlightVariableTypeEnum} from "@/types/variable-input.ts";
-import {useEnvStorage, useInputStorage} from "@/storages/env-variables-tmp.ts";
+import {useEnvStorage} from "@/storages/env-variables-tmp.ts";
 
 const props = withDefaults(defineProps<{
   width?: string
@@ -16,6 +14,26 @@ const props = withDefaults(defineProps<{
 
 const envStorage = useEnvStorage();
 const envValueInputRef = ref<HTMLDivElement | null>(null)
+const previousValidNameRef = ref('')
+const previousValidCodeRef = ref('')
+
+const toEnvCode = (name: string): string => {
+  return name.trim().toLowerCase().replace(/\s+/g, '-')
+}
+
+const isDuplicateCode = (code: string): boolean => {
+  return envStorage.definedEnvs.some((env, index) => {
+    return index !== props.envIndex && env.code === code
+  })
+}
+
+const onFocusEnvNameInput = () => {
+  const env = envStorage.definedEnvs[props.envIndex]
+  if (!env) return
+
+  previousValidNameRef.value = env.name
+  previousValidCodeRef.value = env.code
+}
 
 onMounted(() => {
   if (envValueInputRef.value) {
@@ -43,7 +61,38 @@ const onEnvNameInputChange = (event: Event): void => {
   const env = envStorage.definedEnvs[props.envIndex];
 
   env.name = target.textContent ?? '';
-  env.code = env.name.toLowerCase().replace(/\s+/g, '-');
+  env.code = toEnvCode(env.name);
+}
+
+const onBlurEnvNameInput = (event: Event): void => {
+  const target = event.target as HTMLDivElement
+  const env = envStorage.definedEnvs[props.envIndex]
+  if (!env) return
+
+  const nextName = target.textContent?.trim() ?? ''
+  const nextCode = toEnvCode(nextName)
+
+  if (!nextCode) {
+    previousValidNameRef.value = env.name
+    previousValidCodeRef.value = env.code
+    return
+  }
+
+  const hasDuplicate = isDuplicateCode(nextCode)
+  const duplicatedReservedCode = props.envIndex !== 0 && nextCode === 'no-environment'
+
+  if (hasDuplicate || duplicatedReservedCode) {
+    alert(`Env code "${nextCode}" đã tồn tại. Không được phép trùng.`)
+    env.name = previousValidNameRef.value
+    env.code = previousValidCodeRef.value
+    target.textContent = previousValidNameRef.value
+    return
+  }
+
+  env.name = nextName
+  env.code = nextCode
+  previousValidNameRef.value = env.name
+  previousValidCodeRef.value = env.code
 }
 
 </script>
@@ -56,6 +105,8 @@ const onEnvNameInputChange = (event: Event): void => {
         contenteditable="true"
         :data-placeholder="props.placeholder"
         @input="onEnvNameInputChange"
+        @focus="onFocusEnvNameInput"
+        @blur="onBlurEnvNameInput"
     ></div>
   </div>
 </template>

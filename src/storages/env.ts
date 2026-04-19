@@ -22,12 +22,6 @@ const useEnvStorage = defineStore('variables', () => {
 
     const definedEnvs = ref<Env[]>([
         { id: nanoid(), name: 'No Environment', code: 'no-environment'},
-        { id: nanoid(), name: 'Development', code: 'development'},
-        { id: nanoid(), name: 'Production', code: 'production'},
-        { id: nanoid(), name: 'Production1', code: 'production1'},
-        { id: nanoid(), name: 'Production2', code: 'production2'},
-        { id: nanoid(), name: 'Production3', code: 'production3'},
-        { id: nanoid(), name: 'Production4', code: 'production4'},
     ])
 
     const addDefinedEnv = (env: Env): void => {
