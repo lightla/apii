@@ -53,80 +53,99 @@ const prettyBody = computed(() => {
     </div>
 
     <!-- Content -->
-    <div v-else class="network-content">
+    <div v-else class="network-container">
+      <div class="network-scroll-content">
+        <!-- Request section -->
+        <div class="section">
+          <div class="section-header">Request</div>
+          <div class="section-body">
+            <div class="row">
+              <span class="label">URL</span>
+              <span class="value url-value">{{ response.requestUrl }}</span>
+            </div>
+            <div class="row">
+              <span class="label">Method</span>
+              <span class="value method-value">{{ response.requestMethod }}</span>
+            </div>
 
-      <!-- Request section -->
-      <div class="section">
-        <div class="section-title">Request</div>
+            <div v-if="Object.keys(requestHeadersDisplay).length" class="sub-section">
+              <div class="sub-title">Request Headers</div>
+              <div class="row" v-for="(val, key) in requestHeadersDisplay" :key="String(key)">
+                <span class="label">{{ key }}</span>
+                <span class="value">{{ val }}</span>
+              </div>
+            </div>
 
-        <div class="row">
-          <span class="label">URL</span>
-          <span class="value url-value">{{ response.requestUrl }}</span>
-        </div>
-        <div class="row">
-          <span class="label">Method</span>
-          <span class="value method-value">{{ response.requestMethod }}</span>
-        </div>
-
-        <div v-if="Object.keys(requestHeadersDisplay).length" class="sub-section">
-          <div class="sub-title">Request Headers</div>
-          <div class="row" v-for="(val, key) in requestHeadersDisplay" :key="String(key)">
-            <span class="label">{{ key }}</span>
-            <span class="value">{{ val }}</span>
-          </div>
-        </div>
-
-        <div v-if="hasBody && prettyBody" class="sub-section">
-          <div class="sub-title">Request Body</div>
-          <pre class="code-block">{{ prettyBody }}</pre>
-        </div>
-      </div>
-
-      <!-- Response section -->
-      <div class="section">
-        <div class="section-title">Response</div>
-
-        <div v-if="response.error" class="row">
-          <span class="label">Error</span>
-          <span class="value error-value">{{ response.error }}</span>
-        </div>
-
-        <template v-else>
-          <div class="row">
-            <span class="label">Status</span>
-            <span class="value" :style="{ color: statusColor, fontWeight: 700 }">
-              {{ response.status }} {{ response.statusText }}
-            </span>
-          </div>
-          <div class="row" v-if="response.responseTime !== null">
-            <span class="label">Time</span>
-            <span class="value">{{ response.responseTime }} ms</span>
-          </div>
-
-          <div v-if="Object.keys(response.responseHeaders).length" class="sub-section">
-            <div class="sub-title">Response Headers</div>
-            <div class="row" v-for="(val, key) in response.responseHeaders" :key="String(key)">
-              <span class="label">{{ key }}</span>
-              <span class="value">{{ val }}</span>
+            <div v-if="hasBody && prettyBody" class="sub-section">
+              <div class="sub-title">Request Body</div>
+              <pre class="code-block">{{ prettyBody }}</pre>
             </div>
           </div>
-        </template>
-      </div>
+        </div>
 
+        <!-- Response section -->
+        <div class="section">
+          <div class="section-header">Response</div>
+          <div class="section-body">
+            <div v-if="response.error" class="row">
+              <span class="label">Error</span>
+              <span class="value error-value">{{ response.error }}</span>
+            </div>
+
+            <template v-else>
+              <div class="row">
+                <span class="label">Status</span>
+                <span class="value" :style="{ color: statusColor, fontWeight: 700 }">
+                  {{ response.status }} {{ response.statusText }}
+                </span>
+              </div>
+              <div class="row" v-if="response.responseTime !== null">
+                <span class="label">Time</span>
+                <span class="value">{{ response.responseTime }} ms</span>
+              </div>
+
+              <div v-if="Object.keys(response.responseHeaders).length" class="sub-section">
+                <div class="sub-title">Response Headers</div>
+                <div class="row" v-for="(val, key) in response.responseHeaders" :key="String(key)">
+                  <span class="label">{{ key }}</span>
+                  <span class="value">{{ val }}</span>
+                </div>
+              </div>
+            </template>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 </template>
 
 <style scoped lang="scss">
+@use "@/assets/styles/elements";
+
 .network-tab {
   height: 100%;
-  overflow-y: auto;
-  scrollbar-width: thin;
-  scrollbar-color: #555 transparent;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  background-color: #f5f5f5;
+  overflow: hidden;
+}
 
-  &::-webkit-scrollbar { width: 5px; }
-  &::-webkit-scrollbar-track { background: transparent; }
-  &::-webkit-scrollbar-thumb { background: #555; border-radius: 3px; }
+.network-container {
+  flex: 1;
+  margin: 0;
+  border: var(--table-border);
+  background-color: transparent;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.network-scroll-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 15px;
+  @include elements.scrollbar-hidden;
 }
 
 .state-msg {
@@ -152,53 +171,52 @@ const prettyBody = computed(() => {
   50%       { opacity: 0.2; }
 }
 
-.network-content {
-  padding: 10px 0;
+.section {
+  margin-bottom: 20px;
+  &:last-child { margin-bottom: 0; }
+}
+
+.section-header {
   font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: #555;
+  margin-bottom: 8px;
+  padding-bottom: 4px;
+  border-bottom: 1px solid #ddd;
+}
+
+.section-body {
+  font-size: 13px;
   font-family: Menlo, Monaco, Consolas, 'Courier New', monospace;
 }
 
-.section {
-  margin-bottom: 16px;
-  padding: 0 12px;
-}
-
-.section-title {
-  font-size: 11px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  color: #999;
-  margin-bottom: 6px;
-  padding-bottom: 4px;
-  border-bottom: 1px solid #eee;
-}
-
 .sub-section {
-  margin-top: 8px;
+  margin-top: 12px;
+  padding-left: 10px;
+  border-left: 2px solid #bbb; /* Giảm nhẹ độ đậm */
 }
 
 .sub-title {
   font-size: 11px;
-  font-weight: 600;
-  color: #bbb;
-  margin-bottom: 4px;
-  margin-top: 8px;
+  font-weight: 700;
+  color: #999;
+  text-transform: uppercase;
+  margin-bottom: 6px;
 }
 
 .row {
   display: flex;
-  gap: 8px;
-  padding: 2px 0;
+  gap: 10px;
+  padding: 3px 0;
   align-items: baseline;
-  line-height: 1.6;
 }
 
 .label {
   flex-shrink: 0;
-  min-width: 80px;
-  color: #999;
-  font-size: 11px;
+  min-width: 100px;
+  color: #888;
+  font-size: 12px;
 }
 
 .value {
@@ -212,7 +230,6 @@ const prettyBody = computed(() => {
 
 .method-value {
   font-weight: 700;
-  color: #333;
 }
 
 .error-value {
@@ -220,18 +237,14 @@ const prettyBody = computed(() => {
 }
 
 .code-block {
-  margin: 4px 0 0;
-  padding: 8px 10px;
-  background: #f5f5f5;
-  border-radius: 4px;
-  font-size: 11px;
-  line-height: 1.5;
+  margin: 6px 0 0;
+  padding: 10px;
+  background: #eeeeee;
+  border: 1px solid #ddd;
+  font-size: 12px;
+  line-height: 1.4;
   white-space: pre-wrap;
   word-break: break-all;
   color: #333;
-  max-height: 200px;
-  overflow-y: auto;
-  scrollbar-width: thin;
-  scrollbar-color: #ccc transparent;
 }
 </style>
