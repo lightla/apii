@@ -21,7 +21,9 @@ export function parseCurl(curlCommand: string): ParsedCurl {
   // 2. Trích xuất URL (Tìm chuỗi bắt đầu bằng http và nằm trong hoặc ngoài ngoặc)
   const urlMatch = cleanCommand.match(/(?:['"])(https?:\/\/[^'"]+)(?:['"])|(https?:\/\/[^\s]+)/);
   if (urlMatch) {
-    const fullUrl = (urlMatch[1] || urlMatch[2]).replace(/['"]$/, ''); // Xóa dấu nháy thừa ở cuối nếu có
+    let fullUrl = (urlMatch[1] || urlMatch[2]);
+    // Xóa tất cả dấu nháy đơn/kép ở đầu và cuối chuỗi URL
+    fullUrl = fullUrl.replace(/^['"]|['"]$/g, ''); 
     const [baseUrl, queryString] = fullUrl.split('?');
     result.url = baseUrl;
 

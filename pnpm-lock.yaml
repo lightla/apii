@@ -230,6 +230,9 @@ importers:
       codemirror:
         specifier: ^6.0.2
         version: 6.0.2
+      cors-anywhere:
+        specifier: ^0.4.4
+        version: 0.4.4
       editorjs-button:
         specifier: ^3.0.3
         version: 3.0.3(esbuild@0.25.12)
@@ -2423,6 +2426,10 @@ packages:
   core-js@3.49.0:
     resolution: {integrity: sha512-es1U2+YTtzpwkxVLwAFdSpaIMyQaq0PBgm3YD1W3Qpsn1NAmO3KSgZfu+oGSWVu6NvLHoHCV/aYcsE5wiB7ALg==}
 
+  cors-anywhere@0.4.4:
+    resolution: {integrity: sha512-8OBFwnzMgR4mNrAeAyOLB2EruS2z7u02of2bOu7i9kKYlZG+niS7CTHLPgEXKWW2NAOJWRry9RRCaL9lJRjNqg==}
+    engines: {node: '>=0.10.0'}
+
   crelt@1.0.6:
     resolution: {integrity: sha512-VQ2MBenTq1fWZUH9DJNGti7kKv6EeAuYr3cLwxUWhIu1baTaXh4Ib5W2CqHVqib4/MqbYGJqiL3Zb8GJZr3l4g==}
 
@@ -2614,6 +2621,9 @@ packages:
     resolution: {integrity: sha512-kVscqXk4OCp68SZ0dkgEKVi6/8ij300KBWTJq32P/dYeWTSwK41WyTxalN1eRmA5Z9UU/LX9D7FWSmV9SAYx6g==}
     engines: {node: '>=0.10.0'}
 
+  eventemitter3@1.2.0:
+    resolution: {integrity: sha512-DOFqA1MF46fmZl2xtzXR3MPCRsXqgoFqdXcrCVYM3JNnfUeHTm/fh/v/iU7gBFpwkuBmoJPAm5GuhdDfSEJMJA==}
+
   eventemitter3@2.0.3:
     resolution: {integrity: sha512-jLN68Dx5kyFHaePoXWPsCGW5qdyZQtLYHkxkg02/Mz6g0kYpDx4FyP6XfArhQdlOC4b8Mv+EMxPo/8La7Tzghg==}
 
@@ -2739,6 +2749,10 @@ packages:
 
   hookable@5.5.3:
     resolution: {integrity: sha512-Yc+BQe8SvoXH1643Qez1zqLRmbA5rCL+sSmk6TVos0LWVfNIB7PGncdlId77WzLGSIB5KaWgTaNTs2lNVEI6VQ==}
+
+  http-proxy@1.11.1:
+    resolution: {integrity: sha512-qz7jZarkVG3G6GMq+4VRJPSN4NkIjL4VMTNhKGd8jc25BumeJjWWvnY3A7OkCGa8W1TTxbaK3dcE0ijFalITVA==}
+    engines: {node: '>=0.10.0'}
 
   icss-utils@5.1.0:
     resolution: {integrity: sha512-soFhflCVWLfRNOPU3iv5Z9VUdT44xFRbzjLsEzSr5AQmgqPMTHdU3PMT1Cf1ssx8fLNJDA1juftYl+PUcv3MqA==}
@@ -3405,6 +3419,9 @@ packages:
       prosemirror-view:
         optional: true
 
+  proxy-from-env@0.0.1:
+    resolution: {integrity: sha512-B9Hnta3CATuMS0q6kt5hEezOPM+V3dgaRewkFtFoaRQYTVNsHqUvFXmndH06z3QO1ZdDnRELv5vfY6zAj/gG7A==}
+
   punycode.js@2.3.1:
     resolution: {integrity: sha512-uxFIHU0YlHYhDQtV4R9J6a52SLx28BCjT+4ieh7IGbgwVJWO+km431c4yRlREUAsAmt/uMjQUyQHNEPf0M39CA==}
     engines: {node: '>=6'}
@@ -3473,6 +3490,9 @@ packages:
   require-from-string@2.0.2:
     resolution: {integrity: sha512-Xf0nWe6RseziFMu+Ap9biiUbmplq6S9/p+7w7YXP/JBHhrUDDUhwa+vANyubuqfZWTveU//DYVGsDG7RKL/vEw==}
     engines: {node: '>=0.10.0'}
+
+  requires-port@0.0.1:
+    resolution: {integrity: sha512-AzPDCliPoWDSvEVYRQmpzuPhGGEnPrQz9YiOEvn+UdB9ixBpw+4IOZWtwctmpzySLZTy7ynpn47V14H4yaowtA==}
 
   resolve-cwd@3.0.0:
     resolution: {integrity: sha512-OrZaX2Mb+rJCpH/6CpSqt9xFVpN++x01XnN2ie9g6P5/3xelLAkXWVADpdz1IHD/KFfEXyE6V0U01OQ3UO2rEg==}
@@ -6477,6 +6497,11 @@ snapshots:
 
   core-js@3.49.0: {}
 
+  cors-anywhere@0.4.4:
+    dependencies:
+      http-proxy: 1.11.1
+      proxy-from-env: 0.0.1
+
   crelt@1.0.6: {}
 
   cross-spawn@7.0.6:
@@ -6700,6 +6725,8 @@ snapshots:
 
   esutils@2.0.3: {}
 
+  eventemitter3@1.2.0: {}
+
   eventemitter3@2.0.3: {}
 
   events@3.3.0: {}
@@ -6815,6 +6842,11 @@ snapshots:
   he@1.2.0: {}
 
   hookable@5.5.3: {}
+
+  http-proxy@1.11.1:
+    dependencies:
+      eventemitter3: 1.2.0
+      requires-port: 0.0.1
 
   icss-utils@5.1.0(postcss@8.5.9):
     dependencies:
@@ -7637,6 +7669,8 @@ snapshots:
       prosemirror-state: 1.4.4
       prosemirror-view: 1.41.8
 
+  proxy-from-env@0.0.1: {}
+
   punycode.js@2.3.1: {}
 
   quill-delta@3.6.3:
@@ -7754,6 +7788,8 @@ snapshots:
       - supports-color
 
   require-from-string@2.0.2: {}
+
+  requires-port@0.0.1: {}
 
   resolve-cwd@3.0.0:
     dependencies:

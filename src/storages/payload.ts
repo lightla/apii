@@ -15,24 +15,39 @@ export interface UriParameter {
   value: string
 }
 
+const GLOBAL_SETTINGS_KEY = 'api_global_settings'
+
 export const useRequestParamsStorage = defineStore('requestParams', {
-  state: () => ({
-    queryParams: [] as QueryParam[],
-    uriParameters: [] as UriParameter[],
-    baseUrl: '',
-    method: 'GET',
-    headers: [] as { id: string; key: string; value: string; enabled: boolean; description: string }[],
-    body: '',
-    requestName: '',
-    // Cấu hình CORS Proxy
-    useProxy: false,
-    proxyUrl: 'http://localhost:8080/', // Trỏ về local proxy vừa tạo
-  }),
+  state: () => {
+    // 1. Nạp Global Settings (Proxy)
+    const savedGlobal = localStorage.getItem(GLOBAL_SETTINGS_KEY)
+    let globalSettings = { useProxy: false, proxyUrl: 'http://localhost:8080/' }
+    if (savedGlobal) {
+      try {
+        const parsed = JSON.parse(savedGlobal)
+        globalSettings = { ...globalSettings, ...parsed }
+      } catch (e) {
+        console.error('Failed to parse global settings', e)
+      }
+    }
+
+    return {
+      queryParams: [] as QueryParam[],
+      uriParameters: [] as UriParameter[],
+      baseUrl: '',
+      method: 'GET',
+      headers: [] as { id: string; key: string; value: string; enabled: boolean; description: string }[],
+      body: '',
+      requestName: '',
+      // CORS Proxy (Khởi tạo từ localStorage)
+      useProxy: globalSettings.useProxy,
+      proxyUrl: globalSettings.proxyUrl,
+    }
+  },
 
   getters: {
     urlPreview(): string {
       const envStorage = useEnvStorage()
-      
       const resolveEnvVariables = (text: string): string => {
         let result = text
         envStorage.definedEnvVariables.forEach(variable => {
@@ -43,9 +58,7 @@ export const useRequestParamsStorage = defineStore('requestParams', {
         });
         return result
       }
-
       let url = resolveEnvVariables(this.baseUrl)
-
       this.uriParameters.forEach(variable => {
         const val = variable.value.trim()
         if (val) {
@@ -53,7 +66,6 @@ export const useRequestParamsStorage = defineStore('requestParams', {
           url = url.replace(`{${variable.name}}`, resolvedVal)
         }
       })
-
       const enabledQueries = this.queryParams
         .filter(param => param.enabled && param.key.trim() !== '')
         .map(param => {
@@ -61,42 +73,43 @@ export const useRequestParamsStorage = defineStore('requestParams', {
           const value = resolveEnvVariables(param.value)
           return `${encodeURIComponent(key)}=${encodeURIComponent(value)}`
         })
-
       if (enabledQueries.length > 0) {
         url += (url.includes('?') ? '&' : '?') + enabledQueries.join('&')
       }
-
       return url
     },
-    
     activeQueryParams(): QueryParam[] {
       return this.queryParams.filter(param => param.enabled)
     }
   },
 
   actions: {
+    // Luôn gọi hàm này khi thay đổi useProxy hoặc proxyUrl
+    persistGlobalSettings() {
+      const data = {
+        useProxy: this.useProxy,
+        proxyUrl: this.proxyUrl
+      }
+      localStorage.setItem(GLOBAL_SETTINGS_KEY, JSON.stringify(data))
+    },
+
     addQueryParam() {
       this.queryParams.push({ id: nanoid(), key: '', value: '', enabled: true, description: '' })
     },
-
     removeQueryParam(index: number) {
       this.queryParams.splice(index, 1)
     },
-
     removeAllQueryParams() {
       this.queryParams = []
     },
-
     toggleQueryParam(index: number) {
       this.queryParams[index].enabled = !this.queryParams[index].enabled
     },
-
     toggleAllQueryParams() {
       const isAnyEnabled = this.queryParams.some(p => p.enabled)
       const targetState = !isAnyEnabled
       this.queryParams.forEach(p => p.enabled = targetState)
     },
-
     updateUriParameter(name: string, value: string) {
       const trimmed = value.trim()
       const index = this.uriParameters.findIndex(v => v.name === name)
@@ -106,37 +119,29 @@ export const useRequestParamsStorage = defineStore('requestParams', {
         this.uriParameters.push({ name, value: trimmed })
       }
     },
-
     addHeader() {
       this.headers.push({ id: nanoid(), key: '', value: '', enabled: true, description: '' })
     },
-
     removeHeader(index: number) {
       this.headers.splice(index, 1)
     },
-
     toggleHeader(index: number) {
       this.headers[index].enabled = !this.headers[index].enabled
     },
-
     toggleAllHeaders() {
       const isAnyEnabled = this.headers.some(h => h.enabled)
       const targetState = !isAnyEnabled
       this.headers.forEach(h => h.enabled = targetState)
     },
-
     removeAllHeaders() {
       this.headers = []
     },
-
     setBaseUrl(url: string) {
       this.baseUrl = url
     },
-
     setMethod(method: string) {
       this.method = method
     },
-
     resetAll() {
       this.queryParams = []
       this.uriParameters = []
@@ -146,7 +151,6 @@ export const useRequestParamsStorage = defineStore('requestParams', {
       this.body = ''
       this.requestName = ''
     },
-
     saveToStorage(routeId: string) {
       if (!routeId) return
       const data = {
@@ -159,7 +163,6 @@ export const useRequestParamsStorage = defineStore('requestParams', {
       }
       localStorage.setItem(`api_request_data_${routeId}`, JSON.stringify(data))
     },
-
     loadFromStorage(routeId: string) {
       if (!routeId) return
       const saved = localStorage.getItem(`api_request_data_${routeId}`)
@@ -179,11 +182,9 @@ export const useRequestParamsStorage = defineStore('requestParams', {
         this.resetAll()
       }
     },
-
     applyParsedCurl(parsed: { method: string, url: string, headers: Record<string, string>, body: string, params: Record<string, string> }) {
       this.method = parsed.method
       this.body = parsed.body
-      
       Object.entries(parsed.headers).forEach(([key, value]) => {
         const existing = this.headers.find(h => h.key.toLowerCase() === key.toLowerCase())
         if (existing) {
@@ -193,7 +194,6 @@ export const useRequestParamsStorage = defineStore('requestParams', {
           this.headers.push({ id: nanoid(), key, value, enabled: true, description: '' })
         }
       })
-
       Object.entries(parsed.params).forEach(([key, value]) => {
         const existing = this.queryParams.find(p => p.key === key)
         if (existing) {

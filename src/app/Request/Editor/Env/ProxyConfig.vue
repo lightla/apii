@@ -1,8 +1,14 @@
 <script setup lang="ts">
 import { SquareCheck, Square } from "lucide-vue-next";
 import { useRequestParamsStorage } from '@/storages/payload.ts'
+import { watch } from 'vue'
 
 const requestParams = useRequestParamsStorage();
+
+// Tự động lưu cấu hình global khi có thay đổi
+watch([() => requestParams.useProxy, () => requestParams.proxyUrl], () => {
+  requestParams.persistGlobalSettings()
+})
 </script>
 
 <template>
