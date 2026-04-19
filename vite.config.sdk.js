@@ -13,7 +13,7 @@ export default defineConfig(({ mode }) => ({
     },
     rollupOptions: {
       output: { 
-        exports: 'default', 
+        exports: 'named', 
         name: 'Apii', 
         inlineDynamicImports: true, 
         interop: 'auto',

@@ -4,7 +4,6 @@ import { nanoid } from 'nanoid'
 import {envStorageManager, type StoredEnv} from '@/storages/env-storage-manager'
 import {replaceHighlightVariables} from "@/utils/variable-input.ts";
 import {
-    type HighlightVariableOptionParam,
     type HighlightInputParam,
     type HighlightVariableTypeParam,
     HighlightVariableTypeEnum,
@@ -24,14 +23,10 @@ type Env = {
 }
 
 const useEnvStorage = defineStore('variables', () => {
-    /*******************
-     * Env
-     *******************/
-
     const definedEnvs = ref<Env[]>([
-        { id: nanoid(), name: 'No Environment', code: 'no-environment'},
+        { id: nanoid(), name: 'Default', code: 'default'},
     ])
-    const isHydratingEnvs = ref(false)
+    const isHydratingEnvs = ref(false) 
 
     const toStoredEnvs = (envs: Env[]): StoredEnv[] => {
         return envs.map((env) => ({
@@ -49,38 +44,46 @@ const useEnvStorage = defineStore('variables', () => {
         }
     }
 
+    const persistDefinedEnvs = async (): Promise<void> => {
+        if (isHydratingEnvs.value) return
+        try {
+            const dataToSave = toStoredEnvs(definedEnvs.value)
+            await envStorageManager.saveEnvs(dataToSave)
+        } catch (e) {
+            console.error('[EnvStorage] Persist error:', e)
+        }
+    }
+
+    const hydrateEnvsFromStorage = async () => {
+        isHydratingEnvs.value = true
+        try {
+            const storedEnvs = await envStorageManager.loadEnvs()
+            if (storedEnvs && storedEnvs.length > 0) {
+                definedEnvs.value = storedEnvs.map(fromStoredEnv)
+            }
+        } catch (e) {
+            console.error('[EnvStorage] Hydration error:', e)
+        } finally {
+            // Đảm bảo set false sau khi gán value để không bị watch chặn hoặc gây loop
+            isHydratingEnvs.value = false
+        }
+    }
+
     const addDefinedEnv = (env: Env): void => {
         env.id = nanoid();
-
         definedEnvs.value.push(env)
         void persistDefinedEnvs()
     }
 
-    /*******************
-     * Env Variable
-     *******************/
-
+    // Biến môi trường mẫu
     const definedEnvVariables = ref<EnvVariable[]>([
         { id: nanoid(), name: '{{v1}}', value: 'Value 1', isValidFormat: true},
         { id: nanoid(), name: '{{v11}}', value: 'Value 11', isValidFormat: true},
         { id: nanoid(), name: '{{v2}}', value: 'Value 2', isValidFormat: true},
-        { id: nanoid(), name: '{{v311}}', value: 'Value 3', isValidFormat: true},
-        { id: nanoid(), name: '{{v32222}}', value: 'Value 4', isValidFormat: true},
-        { id: nanoid(), name: '{{v333333}}', value: 'Value 3', isValidFormat: true},
-        { id: nanoid(), name: '{{v322233}}', value: 'Value 3', isValidFormat: true},
-        { id: nanoid(), name: '{{v3223333}}', value: 'Value 3', isValidFormat: true},
-        { id: nanoid(), name: '{{v3222111}}', value: 'Value 3', isValidFormat: true},
-        { id: nanoid(), name: '{{v32231131}}', value: 'Value 3', isValidFormat: true},
-        { id: nanoid(), name: '{{v3225111}}', value: 'Value 3', isValidFormat: true},
-        { id: nanoid(), name: '{{v322879}}', value: 'Value 3', isValidFormat: true},
-        { id: nanoid(), name: '{{v32297979}}', value: 'Value 3', isValidFormat: true},
-        { id: nanoid(), name: '{{v3228799}}', value: 'Value 3', isValidFormat: true},
-        { id: nanoid(), name: '{{v3229899}}', value: 'Value 3', isValidFormat: true},
     ])
 
     const addDefinedEnvVariable = (envVariable: EnvVariable): void => {
         envVariable.id = nanoid();
-
         definedEnvVariables.value.push(envVariable)
     }
 
@@ -92,36 +95,12 @@ const useEnvStorage = defineStore('variables', () => {
         ).value;
     };
 
-    const hydrateEnvsFromStorage = async () => {
-        isHydratingEnvs.value = true
-        try {
-            const storedEnvs = await envStorageManager.loadEnvs()
-            if (storedEnvs.length) {
-                definedEnvs.value = storedEnvs.map(fromStoredEnv)
-            } else {
-                definedEnvs.value = [{ id: nanoid(), name: 'No Environment', code: 'no-environment'}]
-                await envStorageManager.saveEnvs(toStoredEnvs(definedEnvs.value))
-            }
-        } finally {
-            isHydratingEnvs.value = false
-        }
-    }
-
-    const persistDefinedEnvs = async (): Promise<void> => {
-        try {
-            await envStorageManager.saveEnvs(toStoredEnvs(definedEnvs.value))
-        } catch {
-            // Ignore storage errors to avoid breaking UI; envs just won't persist.
-        }
-    }
-
-    watch(definedEnvs, (nextEnvs) => {
-        if (isHydratingEnvs.value) {
-            return
-        }
-        void envStorageManager.saveEnvs(toStoredEnvs(nextEnvs))
+    // Watch sâu để tự động lưu khi bất kỳ env nào thay đổi (tên, code...)
+    watch(definedEnvs, () => {
+        void persistDefinedEnvs()
     }, { deep: true })
 
+    // Khởi tạo load dữ liệu ngay khi store được sử dụng
     void hydrateEnvsFromStorage()
 
     return {
@@ -132,39 +111,14 @@ const useEnvStorage = defineStore('variables', () => {
 });
 
 const useInputStorage = defineStore('inputs', () => {
-    // Mặc định là mảng rỗng, không phải undefined
     const trackedHighlightInputs = ref<HTMLDivElement[]>([]);
 
-    console.log("beofre-trackedHighlightInputs.value:", trackedHighlightInputs.value)
-    console.log("beofre-trackedHighlightInputs..value.length:", trackedHighlightInputs.value.length)
-
-    const newDiv = document.createElement('div'); // Tạo element
-    newDiv.className = 'div0';
-
-    trackedHighlightInputs.value.push(newDiv);
-
-    console.log("trackedHighlightInputs.value:", trackedHighlightInputs.value)
-    console.log("trackedHighlightInputs.value.length", trackedHighlightInputs.value.length)
-
     const highlightInput = ({inputIndex, options, withCursor = true}: HighlightInputParam) => {
-        if (! inputIndex) {
-            return;
-        }
-
+        if (inputIndex === undefined || inputIndex === null) return;
         const trackedInput = trackedHighlightInputs.value[inputIndex];
-
-        console.log("trackedInput-inputIndex:", inputIndex);
-        console.log("trackedInput-value:", trackedInput);
-        console.log("trackedInput:", trackedHighlightInputs);
-        console.log("trackedInput.value:", trackedHighlightInputs.value);
-        console.log("trackedInput.length:", trackedHighlightInputs.value.length);
-
-        if (! trackedInput) {
-            return;
-        }
+        if (!trackedInput) return;
 
         const highlightVariableTypes: HighlightVariableTypeParam[] = [];
-
         if (trackedInput.dataset.enabledEnvVariable) {
             highlightVariableTypes.push({
                 type: HighlightVariableTypeEnum.EnvVariable,
@@ -172,7 +126,6 @@ const useInputStorage = defineStore('inputs', () => {
                 undefinedEnvVariableCssClass: "undefined-env-variable",
             });
         }
-
         if (trackedInput.dataset.enabledUriParam) {
             highlightVariableTypes.push({
                 type: HighlightVariableTypeEnum.UriParam,
@@ -188,12 +141,9 @@ const useInputStorage = defineStore('inputs', () => {
         });
     }
 
-    const rescanHighlightAllInputs = (exceptInputIndex?: number|null, options ?: HighlightVariableOptionParam) => {
+    const rescanHighlightAllInputs = (exceptInputIndex?: number|null, options ?: any) => {
         trackedHighlightInputs.value.forEach((trackedInput: HTMLDivElement, index : number) => {
-            if (index === exceptInputIndex) {
-                return;
-            }
-
+            if (index === exceptInputIndex) return;
             highlightInput({
                 inputIndex: index,
                 options: options,
@@ -204,81 +154,5 @@ const useInputStorage = defineStore('inputs', () => {
 
     return { trackedHighlightInputs, rescanHighlightAllInputs, highlightInput };
 });
-
-
-const loadAStorage = defineStore('inputs', () => {
-    // Mặc định là mảng rỗng, không phải undefined
-    const trackedHighlightInputs = ref<HTMLDivElement[]>([]);
-
-    console.log("beofre-trackedHighlightInputs.value:", trackedHighlightInputs.value)
-    console.log("beofre-trackedHighlightInputs..value.length:", trackedHighlightInputs.value.length)
-
-    const newDiv = document.createElement('div'); // Tạo element
-    newDiv.className = 'div0';
-
-    trackedHighlightInputs.value.push(newDiv);
-
-    console.log("trackedHighlightInputs.value:", trackedHighlightInputs.value)
-    console.log("trackedHighlightInputs.value.length", trackedHighlightInputs.value.length)
-
-    const highlightInput = ({inputIndex, options, withCursor = true}: HighlightInputParam) => {
-        if (! inputIndex) {
-            return;
-        }
-
-        const trackedInput = trackedHighlightInputs.value[inputIndex];
-
-        console.log("trackedInput-inputIndex:", inputIndex);
-        console.log("trackedInput-value:", trackedInput);
-        console.log("trackedInput:", trackedHighlightInputs);
-        console.log("trackedInput.value:", trackedHighlightInputs.value);
-        console.log("trackedInput.length:", trackedHighlightInputs.value.length);
-
-        if (! trackedInput) {
-            return;
-        }
-
-        const highlightVariableTypes: HighlightVariableTypeParam[] = [];
-
-        if (trackedInput.dataset.enabledEnvVariable) {
-            highlightVariableTypes.push({
-                type: HighlightVariableTypeEnum.EnvVariable,
-                definedVariableCssClass: "defined-env-variable",
-                undefinedEnvVariableCssClass: "undefined-env-variable",
-            });
-        }
-
-        if (trackedInput.dataset.enabledUriParam) {
-            highlightVariableTypes.push({
-                type: HighlightVariableTypeEnum.UriParam,
-                definedVariableCssClass: "defined-uri-param",
-            });
-        }
-
-        replaceHighlightVariables({
-            target: trackedInput,
-            variables: highlightVariableTypes,
-            options: options,
-            withCursor: withCursor,
-        });
-    }
-
-    const rescanHighlightAllInputs = (exceptInputIndex?: number|null, options ?: HighlightVariableOptionParam) => {
-        trackedHighlightInputs.value.forEach((trackedInput: HTMLDivElement, index) => {
-            if (index === exceptInputIndex) {
-                return;
-            }
-
-            highlightInput({
-                inputIndex: index,
-                options: options,
-                withCursor: false
-            });
-        });
-    }
-
-    return { trackedHighlightInputs, rescanHighlightAllInputs, highlightInput };
-});
-
 
 export { useEnvStorage, useInputStorage };

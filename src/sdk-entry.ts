@@ -1,5 +1,6 @@
 // src/sdk-entry.ts
 import {createVueApp} from "@/bootstrap.ts";
+import {envStorageManager, type EnvStorageProvider} from "@/storages/env-storage-manager";
 
 class ApiiApp {
   private app: any
@@ -12,6 +13,12 @@ class ApiiApp {
 
   setAPISaveRequests(url: string) {
     this.saveUrl = url
+    // Also update env storage manager URL
+    envStorageManager.setApiUrl(url)
+  }
+
+  setEnvStorageProvider(provider: EnvStorageProvider) {
+    envStorageManager.setProvider(provider)
   }
 
   run(appId: string = '#apii-app1') {
@@ -30,7 +37,7 @@ class Logger {
 }
 
 // expose namespace
-const Apii = {
+export const Apii = {
   newApp: () => new ApiiApp(),
   newLogger: () => new Logger(),
 };

@@ -15,7 +15,7 @@ export const useRequestStorage = defineStore('current-request', () => {
 
     const currentRequest = ref<Request>( {
         id: nanoid(),
-        uri: 'No Environment',
+        uri: 'Default',
         httpMethod: 'post'
     })
 

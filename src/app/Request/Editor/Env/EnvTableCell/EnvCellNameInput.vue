@@ -16,6 +16,7 @@ const envStorage = useEnvStorage();
 const envValueInputRef = ref<HTMLDivElement | null>(null)
 const previousValidNameRef = ref('')
 const previousValidCodeRef = ref('')
+const hasError = ref(false)
 
 const toEnvCode = (name: string): string => {
   return name.trim().toLowerCase().replace(/\s+/g, '-')
@@ -33,6 +34,7 @@ const onFocusEnvNameInput = () => {
 
   previousValidNameRef.value = env.name
   previousValidCodeRef.value = env.code
+  hasError.value = false
 }
 
 onMounted(() => {
@@ -40,11 +42,14 @@ onMounted(() => {
     envValueInputRef.value.addEventListener('keydown', (e: KeyboardEvent) => {
       if (e.key === 'Enter' && envValueInputRef.value) {
         e.preventDefault()
+        envValueInputRef.value.blur()
       }
     })
 
     const envVariable = envStorage.definedEnvs[props.envIndex];
-    envValueInputRef.value.textContent = envVariable.name;
+    if (envVariable) {
+      envValueInputRef.value.textContent = envVariable.name;
+    }
 
     highlightEnvVariable(envValueInputRef.value, false)
   }
@@ -52,16 +57,11 @@ onMounted(() => {
 
 const onEnvNameInputChange = (event: Event): void => {
   const target = event.target as HTMLDivElement
-  const isEmpty = !target.textContent?.trim();
-
-  if (isEmpty) {
-    target.textContent = '';
-  }
-
-  const env = envStorage.definedEnvs[props.envIndex];
-
-  env.name = target.textContent ?? '';
-  env.code = toEnvCode(env.name);
+  const nextName = target.textContent ?? ''
+  const nextCode = toEnvCode(nextName)
+  
+  // Kiểm tra lỗi "nhẹ" để hiển thị UI (viền đỏ), không hiện alert
+  hasError.value = nextCode === 'default' || isDuplicateCode(nextCode)
 }
 
 const onBlurEnvNameInput = (event: Event): void => {
@@ -72,34 +72,32 @@ const onBlurEnvNameInput = (event: Event): void => {
   const nextName = target.textContent?.trim() ?? ''
   const nextCode = toEnvCode(nextName)
 
-  if (!nextCode) {
-    previousValidNameRef.value = env.name
-    previousValidCodeRef.value = env.code
-    return
-  }
-
-  const hasDuplicate = isDuplicateCode(nextCode)
-  const duplicatedReservedCode = props.envIndex !== 0 && nextCode === 'no-environment'
-
-  if (hasDuplicate || duplicatedReservedCode) {
-    alert(`Env code "${nextCode}" đã tồn tại. Không được phép trùng.`)
+  // Nếu rỗng hoặc trùng lặp thì revert về giá trị cũ
+  if (!nextCode || nextCode === 'default' || isDuplicateCode(nextCode)) {
     env.name = previousValidNameRef.value
     env.code = previousValidCodeRef.value
     target.textContent = previousValidNameRef.value
+    hasError.value = false
     return
   }
 
+  // Nếu hợp lệ thì mới cập nhật store
   env.name = nextName
   env.code = nextCode
   previousValidNameRef.value = env.name
   previousValidCodeRef.value = env.code
+  hasError.value = false
   void envStorage.persistDefinedEnvs()
 }
 
 </script>
 
 <template>
-  <div class="var-value-input" :style="{ '--var-input-width': props.width }">
+  <div 
+    class="var-value-input" 
+    :class="{ 'has-error': hasError }"
+    :style="{ '--var-input-width': props.width }"
+  >
     <div
         ref="envValueInputRef"
         class="var-input-content"
@@ -122,11 +120,16 @@ const onBlurEnvNameInput = (event: Event): void => {
   height: 30px;
   justify-content: center;
   align-items: center;
+  transition: border-color 0.2s, box-shadow 0.2s;
 
-  // Khi bên trong có phần tử được focus (như div contenteditable)
-  &:focus-within {
+  &.has-error {
+    border-color: #dc3545 !important;
+    box-shadow: 0 0 0 1.3px rgba(220, 53, 69, 0.5) !important;
+  }
+
+  &:focus-within:not(.has-error) {
     border-color: transparent;
-    box-shadow: 0 0 0 1.3px #007bff; // "viền sáng" nhưng không đẩy layout
+    box-shadow: 0 0 0 1.3px #007bff;
   }
 }
 
@@ -134,30 +137,20 @@ const onBlurEnvNameInput = (event: Event): void => {
   height: 100%;
   display: flex;
   align-items: center;
-
   box-sizing: border-box;
   outline: none;
   width: 100%;
   max-width: 100%;
-
   overflow-x: scroll;
-
-  /* Ngăn nội dung xuống dòng để cuộn ngang */
   white-space: nowrap;
-
-  /* Ẩn thanh cuộn trên WebKit (Chrome, Safari) */
-  ::-webkit-scrollbar {
-    display: none; /* Ẩn thanh cuộn */
+  scrollbar-width: none;
+  
+  &::-webkit-scrollbar {
+    display: none;
   }
 
-  /* Ẩn thanh cuộn trên Firefox */
-  scrollbar-width: none; /* Không hiển thị thanh cuộn */
-
-  /* Tùy chọn: Nếu bạn muốn giữ hiệu ứng cuộn mượt mà */
-  scroll-behavior: smooth;
-
   &:empty[data-placeholder=""]:before {
-    content: 'transparent'; // trick for display cursor position
+    content: 'transparent';
     color: transparent;
   }
 
@@ -168,12 +161,4 @@ const onBlurEnvNameInput = (event: Event): void => {
     pointer-events: none;
   }
 }
-
-// Placeholder styling when empty
-// .var-input-content:empty::before {
-//  content: attr(data-placeholder);
-//  color: #aaa;
-//  pointer-events: none;
-//  opacity: 0.6;
-//}
 </style>

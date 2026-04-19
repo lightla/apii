@@ -43,7 +43,7 @@ const onClickAddEnvRowButton = (): void => {
 }
 
 const isProtectedEnv = (env: { code: string }, envIndex: number): boolean => {
-  return envIndex === 0 || env.code === 'no-environment'
+  return envIndex === 0 || env.code === 'default'
 }
 
 const normalizeInputText = (text: string | undefined | null): string => {
@@ -209,7 +209,10 @@ onBeforeUnmount(() => {
               <tr v-for="(item, index) in envStorage.definedEnvs" :key="item.id">
                 <td>{{ index + 1 }}</td>
                 <td>
-                  <EnvCellNameInput :placeholder="'Env Name'" :env-index="index" />
+                  <div v-if="isProtectedEnv(item, index)" class="protected-env-name-text">
+                    {{ item.name }}
+                  </div>
+                  <EnvCellNameInput v-else :placeholder="'Env Name'" :env-index="index" />
                 </td>
                 <td>{{ item.code }}</td>
                 <td>
@@ -424,6 +427,15 @@ onBeforeUnmount(() => {
   border-bottom: var(--table-border);
   padding: 8px;
   background-color: transparent;
+}
+
+.protected-env-name-text {
+  display: flex;
+  align-items: center;
+  height: 30px;
+  padding: 0 10px;
+  font-weight: 500;
+  color: #666;
 }
 
 .table-empty {
