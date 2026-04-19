@@ -239,7 +239,8 @@ function onDeleteClick(index: number) {
     font-size: 15px;
     font-weight: 500;
     padding: 0;
-    &.text-center { text-align: center !important; }
+    text-align: center !important;
+    vertical-align: middle !important;
   }
 
   td {
