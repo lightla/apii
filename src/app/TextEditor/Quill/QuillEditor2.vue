@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, onMounted, watch } from 'vue'
+import { computed, ref, onMounted, onBeforeUnmount, watch } from 'vue'
 import { Quill, QuillEditor as BaseQuillEditor } from '@vueup/vue-quill'
 import '@vueup/vue-quill/dist/vue-quill.snow.css'
 
@@ -17,10 +17,35 @@ type QuillSelectionRange = {
   length: number
 }
 
+type FormatPreviewState = {
+  range: QuillSelectionRange
+  contents: any
+  format: 'color' | 'background'
+  value: string | boolean
+}
+
 const quillRef = ref<any>(null)
+const toolbarRef = ref<HTMLElement | null>(null)
 const editorContent = ref('')
 const currentFontSize = ref(14)
 const lastSelectionRange = ref<QuillSelectionRange | null>(null)
+let formatPreviewState: FormatPreviewState | null = null
+
+const textColors = [
+  '#000000', '#444444', '#666666', '#999999', '#cccccc', '#ffffff',
+  '#e03131', '#f08c00', '#f59f00', '#2f9e44', '#0ca678', '#1971c2',
+  '#364fc7', '#6741d9', '#9c36b5', '#c2255c',
+  '#ff6b6b', '#ffa94d', '#ffd43b', '#69db7c', '#38d9a9', '#4dabf7',
+  '#748ffc', '#9775fa', '#da77f2', '#f783ac'
+]
+
+const backgroundColors = [
+  '#ffffff', '#f1f3f5', '#e9ecef', '#dee2e6', '#ced4da', '#adb5bd',
+  '#ffe3e3', '#fff4e6', '#fff9db', '#ebfbee', '#e6fcf5', '#e7f5ff',
+  '#edf2ff', '#f3f0ff', '#f8f0fc', '#fff0f6',
+  '#ffc9c9', '#ffd8a8', '#ffec99', '#b2f2bb', '#96f2d7', '#a5d8ff',
+  '#bac8ff', '#d0bfff', '#eebefa', '#fcc2d7'
+]
 
 const loadContent = () => {
   editorContent.value = localStorage.getItem(props.storageKey) || ''
@@ -41,6 +66,67 @@ const getCurrentLineRange = (quill: any, range: QuillSelectionRange): QuillSelec
     index: range.index - offset,
     length: lineLength
   }
+}
+
+const getActiveFormatRange = (quill: any): QuillSelectionRange | null => {
+  const range = quill.getSelection() || lastSelectionRange.value
+  if (!range) return null
+
+  return range.length > 0 ? range : getCurrentLineRange(quill, range)
+}
+
+const isSameRange = (first: QuillSelectionRange, second: QuillSelectionRange) => {
+  return first.index === second.index && first.length === second.length
+}
+
+const restoreFormatPreview = () => {
+  const quill = quillRef.value?.getQuill()
+  if (!quill || !formatPreviewState) return
+
+  const { range, contents } = formatPreviewState
+  quill.updateContents(
+    new Delta().retain(range.index).delete(range.length).concat(contents),
+    Quill.sources.SILENT
+  )
+  formatPreviewState = null
+}
+
+const beginFormatPreview = (
+  quill: any,
+  range: QuillSelectionRange,
+  format: 'color' | 'background',
+  value: string | boolean
+) => {
+  if (range.length === 0) return
+
+  if (formatPreviewState) {
+    const { range: previewRange, contents } = formatPreviewState
+    quill.updateContents(
+      new Delta().retain(previewRange.index).delete(previewRange.length).concat(contents),
+      Quill.sources.SILENT
+    )
+  }
+
+  formatPreviewState = {
+    range: { ...range },
+    contents: quill.getContents(range.index, range.length),
+    format,
+    value
+  }
+
+  quill.formatText(range.index, range.length, format, value, Quill.sources.SILENT)
+}
+
+const commitFormatPreview = (quill: any, range: QuillSelectionRange) => {
+  formatPreviewState = null
+  saveEditorContent(quill)
+  quill.setSelection(range.index, range.length, Quill.sources.SILENT)
+}
+
+const closeToolbarPickers = () => {
+  toolbarRef.value
+    ?.querySelectorAll('.ql-picker.ql-expanded')
+    .forEach(picker => picker.classList.remove('ql-expanded'))
 }
 
 const toggleInlineFormat = (quill: any, format: 'bold' | 'italic' | 'underline') => {
@@ -68,6 +154,42 @@ const toggleInlineFormat = (quill: any, format: 'bold' | 'italic' | 'underline')
   quill.format(format, nextValue, Quill.sources.USER)
 }
 
+const applyInlineFormat = (quill: any, format: 'color' | 'background', value: string | boolean) => {
+  const range = quill.getSelection() || lastSelectionRange.value
+  if (!range) return
+
+  const targetRange = range.length > 0 ? range : getCurrentLineRange(quill, range)
+
+  if (
+    formatPreviewState &&
+    formatPreviewState.format === format &&
+    formatPreviewState.value === value &&
+    isSameRange(formatPreviewState.range, targetRange)
+  ) {
+    commitFormatPreview(quill, range)
+    return
+  }
+
+  restoreFormatPreview()
+
+  if (range.length > 0) {
+    quill.format(format, value, Quill.sources.USER)
+    quill.setSelection(range.index, range.length, Quill.sources.SILENT)
+    saveEditorContent(quill)
+    return
+  }
+
+  const lineRange = getCurrentLineRange(quill, range)
+  if (lineRange.length > 0) {
+    quill.formatText(lineRange.index, lineRange.length, format, value, Quill.sources.USER)
+    quill.setSelection(range.index, range.length, Quill.sources.SILENT)
+    saveEditorContent(quill)
+    return
+  }
+
+  quill.format(format, value, Quill.sources.USER)
+}
+
 const keepCurrentFontSizeForEmptyEditor = (quill: any) => {
   if (quill.getLength() > 1) return
 
@@ -80,6 +202,12 @@ const keepCurrentFontSizeForEmptyEditor = (quill: any) => {
 const toolbarOptions = computed(() => ({
   container: `#toolbar-${props.storageKey}`,
   handlers: {
+    color(this: { quill: any }, value: string) {
+      applyInlineFormat(this.quill, 'color', value || false)
+    },
+    background(this: { quill: any }, value: string) {
+      applyInlineFormat(this.quill, 'background', value || false)
+    },
     bold(this: { quill: any }) {
       toggleInlineFormat(this.quill, 'bold')
     },
@@ -162,6 +290,57 @@ const handleFontSizeKeyDown = (event: KeyboardEvent) => {
   event.stopPropagation()
 }
 
+const getToolbarColorItem = (target: EventTarget | null) => {
+  if (!(target instanceof HTMLElement)) return null
+
+  return target.closest('.ql-color .ql-picker-item, .ql-background .ql-picker-item') as HTMLElement | null
+}
+
+const handleToolbarMouseOver = (event: MouseEvent) => {
+  const item = getToolbarColorItem(event.target)
+  if (!item) return
+
+  const quill = quillRef.value?.getQuill()
+  if (!quill) return
+
+  const range = getActiveFormatRange(quill)
+  if (!range) return
+
+  const format = item.closest('.ql-color') ? 'color' : 'background'
+  const value = item.getAttribute('data-value') || false
+  beginFormatPreview(quill, range, format, value)
+}
+
+const handleToolbarMouseLeave = () => {
+  restoreFormatPreview()
+}
+
+const handleToolbarClick = (event: MouseEvent) => {
+  const item = getToolbarColorItem(event.target)
+  if (!item) return
+
+  const quill = quillRef.value?.getQuill()
+  if (!quill) return
+
+  const range = formatPreviewState?.range || getActiveFormatRange(quill)
+  if (!range) return
+
+  if (formatPreviewState) {
+    commitFormatPreview(quill, range)
+  } else {
+    const format = item.closest('.ql-color') ? 'color' : 'background'
+    const value = item.getAttribute('data-value') || false
+    applyInlineFormat(quill, format, value)
+  }
+
+  closeToolbarPickers()
+}
+
+const handleDocumentPointerDown = (event: PointerEvent) => {
+  if (toolbarRef.value?.contains(event.target as Node)) return
+  restoreFormatPreview()
+}
+
 const handleSelectionChange = (event: { range: QuillSelectionRange | null }) => {
   if (!event.range) return
 
@@ -192,16 +371,29 @@ const onUpdate = () => {
 
 onMounted(() => {
   loadContent()
+  document.addEventListener('pointerdown', handleDocumentPointerDown, true)
+})
+
+onBeforeUnmount(() => {
+  document.removeEventListener('pointerdown', handleDocumentPointerDown, true)
 })
 
 watch(() => props.storageKey, () => {
+  restoreFormatPreview()
   loadContent()
 })
 </script>
 
 <template>
   <div class="note-quill-final-wrapper">
-    <div :id="'toolbar-' + props.storageKey" class="custom-note-toolbar">
+    <div
+      :id="'toolbar-' + props.storageKey"
+      ref="toolbarRef"
+      class="custom-note-toolbar"
+      @mouseover="handleToolbarMouseOver"
+      @click="handleToolbarClick"
+      @mouseleave="handleToolbarMouseLeave"
+    >
       <span class="ql-formats">
         <select class="ql-header">
           <option value="1">H1</option>
@@ -232,8 +424,22 @@ watch(() => props.storageKey, () => {
       </span>
 
       <span class="ql-formats">
-        <select class="ql-color"></select>
-        <select class="ql-background"></select>
+        <select class="ql-color">
+          <option selected></option>
+          <option
+            v-for="color in textColors"
+            :key="color"
+            :value="color"
+          ></option>
+        </select>
+        <select class="ql-background">
+          <option selected></option>
+          <option
+            v-for="color in backgroundColors"
+            :key="color"
+            :value="color"
+          ></option>
+        </select>
       </span>
 
       <span class="ql-formats">
