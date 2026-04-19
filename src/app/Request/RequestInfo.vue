@@ -83,10 +83,15 @@ function deleteAllFields() { if (confirm('Bạn có chắc muốn xóa tất c�
           @click:outside="handleTagsOutsideClick"
       />
 
-      <!-- Note Section: Nằm ngoài details, full width -->
-      <div class="note-section">
-        <h2 class="section-title">Note</h2>
-        <div class="note-editor-wrapper">
+      <!-- NOTE SECTION - ĐÃ PHÁ BẪY CHUỘT -->
+      <div class="note-container">
+        <div class="note-header">
+          <!-- Sử dụng tabindex để nhãn có thể nhận focus và cướp quyền từ Editor -->
+          <div class="note-label-focus-target" tabindex="0">
+            Note
+          </div>
+        </div>
+        <div class="note-body">
           <QuillEditor
               v-if="editorStorageKey"
               :key="editorStorageKey"
@@ -95,7 +100,6 @@ function deleteAllFields() { if (confirm('Bạn có chắc muốn xóa tất c�
         </div>
       </div>
 
-      <!-- Requests Section -->
       <AccordionContainer>
         <AccordionItem :start-open="true">
           <template #summary>Requests</template>
@@ -107,7 +111,6 @@ function deleteAllFields() { if (confirm('Bạn có chắc muốn xóa tất c�
 
       <hr class="separator">
 
-      <!-- Bảng cấu hình trường tìm kiếm -->
       <div class="search-config-section">
         <div class="table-header">
           <h2>Cấu hình trường tìm kiếm</h2>
@@ -138,34 +141,50 @@ function deleteAllFields() { if (confirm('Bạn có chắc muốn xóa tất c�
 </template>
 
 <style scoped lang="scss">
-.info-panel { padding: 15px; display: flex; flex-direction: column; gap: 20px; }
-.info-section h2, .search-config-section h2, .section-title { margin-top: 0; margin-bottom: 15px; font-size: 1.2em; color: #333; }
-.separator { border: none; border-top: 1px solid #dee2e6; }
-.table-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
-.action-btn { padding: 6px 12px; border: 1px solid transparent; border-radius: 4px; cursor: pointer; font-size: 0.9em; margin-left: 8px; }
-.add-btn { background-color: #007bff; color: white; border-color: #007bff; &:hover { background-color: #0069d9; } }
-.delete-all-btn { background-color: #dc3545; color: white; border-color: #dc3545; &:hover { background-color: #c82333; } }
+.info-panel { 
+  padding: 15px; 
+  display: flex; 
+  flex-direction: column; 
+  gap: 20px; 
+  user-select: text !important;
+}
+
+.note-container {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+}
+
+.note-header {
+  display: flex;
+  margin-bottom: 5px;
+}
+
+.note-label-focus-target {
+  padding: 5px 12px;
+  background-color: rgba(221, 221, 221, 0.65);
+  border: 1px solid #888888;
+  font-size: 13px;
+  font-weight: 600;
+  color: #333;
+  user-select: text !important;
+  cursor: text;
+  outline: none; /* Ẩn viền focus mặc định của trình duyệt */
+
+  &:focus {
+    /* Khi click vào nhãn, nó nhận focus và giữ quyền copy */
+    border-color: #007bff;
+  }
+}
+
+.note-body {
+  width: 100%;
+}
+
+.separator { border: none; border-top: 1px solid #dee2e6; margin: 10px 0; }
 .config-table { width: 100%; border-collapse: collapse; }
 .config-table th, .config-table td { border: 1px solid #dee2e6; padding: 8px; }
 .config-table th { background-color: #f8f9fa; text-align: left; }
-.config-table input[type="text"] { width: 100%; border: 1px solid #ced4da; padding: 6px; border-radius: 4px; box-sizing: border-box; &:focus { border-color: #80bdff; outline: 0; } }
-.text-center { text-align: center; }
-.delete-row-btn { background: none; border: none; color: #dc3545; font-weight: bold; cursor: pointer; font-size: 1.1em; }
-.empty-row { color: #6c757d; padding: 20px; }
-
-.note-section {
-  width: 100%;
-  display: flex;
-  flex-direction: column;
-}
-
-.note-editor-wrapper {
-  width: 100%;
-  min-height: 200px;
-  border: 1px solid #dee2e6;
-  background-color: transparent !important;
-  overflow: hidden;
-}
 
 .empty-state {
   text-align: center;
@@ -173,4 +192,8 @@ function deleteAllFields() { if (confirm('Bạn có chắc muốn xóa tất c�
   color: #6c757d;
   background-color: #f8f9fa;
 }
+
+.action-btn { padding: 6px 12px; border: 1px solid transparent; border-radius: 4px; cursor: pointer; font-size: 0.9em; margin-left: 8px; }
+.add-btn { background-color: #007bff; color: white; &:hover { background-color: #0069d9; } }
+.delete-all-btn { background-color: #dc3545; color: white; border-color: #dc3545; &:hover { background-color: #c82333; } }
 </style>

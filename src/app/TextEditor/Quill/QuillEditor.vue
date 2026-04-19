@@ -7,14 +7,19 @@ const props = defineProps<{
   storageKey: string
 }>()
 
-// Đăng ký Style Attributor để hỗ trợ font-size tự do (inline style)
-const fontSizeStyle = Quill.import('attributors/style/size');
-fontSizeStyle.whitelist = null; 
-Quill.register(fontSizeStyle, true);
+// Đăng ký Style để dùng px thay vì class
+const Size = Quill.import('attributors/style/size');
+Size.whitelist = null; 
+Quill.register(Size, true);
 
 const quillRef = ref<any>(null)
 const editorContent = ref('')
 const currentFontSize = ref(14)
+
+type QuillSelectionRange = {
+  index: number
+  length: number
+}
 
 const loadContent = () => {
   editorContent.value = localStorage.getItem(props.storageKey) || ''
@@ -31,14 +36,18 @@ const applyFontSize = () => {
   }
 }
 
-const handleSelectionChange = () => {
+const handleSelectionChange = (event: { range: QuillSelectionRange | null }) => {
+  if (!event.range) {
+    return
+  }
+
   const quill = quillRef.value?.getQuill()
   if (quill) {
-    const format = quill.getFormat()
+    const format = quill.getFormat(event.range.index, event.range.length)
     if (format.size) {
-      const sizeValue = String(format.size).replace('px', '')
-      const size = parseInt(sizeValue)
-      if (!isNaN(size)) currentFontSize.value = size
+      const sizeStr = String(format.size).replace('px', '')
+      const sizeNum = parseInt(sizeStr)
+      if (!isNaN(sizeNum)) currentFontSize.value = sizeNum
     }
   }
 }
@@ -53,29 +62,27 @@ watch(() => props.storageKey, () => {
 </script>
 
 <template>
-  <div class="note-quill-wrapper">
-    <!-- Toolbar thiết kế giống Header của Table (36px) -->
-    <div id="custom-toolbar">
+  <div class="note-quill-final-wrapper">
+    <!-- Toolbar -->
+    <div :id="'toolbar-' + props.storageKey" class="custom-note-toolbar">
       <span class="ql-formats">
         <select class="ql-header">
           <option value="1">H1</option>
           <option value="2">H2</option>
-          <option value="3">H3</option>
           <option selected>P</option>
         </select>
       </span>
       
-      <span class="ql-formats custom-size-input-wrap">
+      <span class="ql-formats">
         <input 
           type="number" 
           v-model="currentFontSize" 
           @input="applyFontSize"
           @mousedown.stop 
           @keydown.stop
-          class="font-size-input"
-          min="8" max="100"
+          class="fs-input"
         />
-        <span class="unit">px</span>
+        <span class="fs-unit">px</span>
       </span>
 
       <span class="ql-formats">
@@ -93,103 +100,80 @@ watch(() => props.storageKey, () => {
         <button class="ql-list" value="ordered"></button>
         <button class="ql-list" value="bullet"></button>
       </span>
-
-      <span class="ql-formats">
-        <button class="ql-clean"></button>
-      </span>
     </div>
 
+    <!-- Editor -->
     <BaseQuillEditor
       ref="quillRef"
       theme="snow"
-      toolbar="#custom-toolbar"
+      :toolbar="'#toolbar-' + props.storageKey"
       v-model:content="editorContent"
       contentType="html"
       @update:content="onUpdate"
       @selectionChange="handleSelectionChange"
-      placeholder="Bắt đầu ghi chú tại đây..."
+      placeholder="Ghi chú tại đây..."
     />
   </div>
 </template>
 
 <style lang="scss">
-.note-quill-wrapper {
+.note-quill-final-wrapper {
   display: flex;
   flex-direction: column;
-  min-height: 200px;
-  background-color: transparent;
+  width: 100%;
+  border: var(--table-border);
+  background-color: #f5f5f5;
 
-  #custom-toolbar {
-    height: 36px; /* Khớp với Header Table */
-    border: var(--table-border);
+  .custom-note-toolbar {
+    height: 36px;
     background-color: var(--table-header-bg-color);
-    padding: 0 10px;
+    border: none;
+    border-bottom: var(--table-border);
     display: flex;
-    flex-wrap: nowrap;
     align-items: center;
-    box-sizing: border-box;
+    padding: 0 10px;
 
     .ql-formats {
       margin-right: 12px;
       display: flex;
       align-items: center;
-      padding: 0;
-      border: none;
-      
-      &:last-child { margin-right: 0; }
     }
 
-    .custom-size-input-wrap {
-      display: flex;
-      align-items: center;
-      gap: 4px;
-      .unit { font-size: 11px; color: #666; font-weight: 600; }
-    }
-
-    .font-size-input {
+    .fs-input {
       width: 42px;
       height: 22px;
       border: 1px solid #999;
       border-radius: 2px;
-      padding: 0 4px;
       font-size: 11px;
-      background: white;
-      outline: none;
+      padding: 0 4px;
     }
-
-    /* Đưa các icon về màu xám giống table header */
+    .fs-unit { font-size: 11px; color: #666; margin-left: 2px; font-weight: bold; }
+    
     .ql-stroke { stroke: #444; }
     .ql-fill { fill: #444; }
-    .ql-picker { color: #444; font-size: 12px; font-weight: 500; }
-    
+    .ql-picker { color: #444; font-size: 12px; }
     .ql-header.ql-picker { width: 50px; }
-    .ql-color.ql-picker, .ql-background.ql-picker { width: 28px; }
   }
 
   .ql-container.ql-snow {
-    border: var(--table-border) !important;
-    border-top: none !important;
-    background-color: #f5f5f5 !important; /* Giống màu nền các tab */
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    border: none !important;
+    background-color: transparent !important;
+    font-family: inherit;
   }
 
   .ql-editor {
-    min-height: 180px;
-    padding: 10px 15px;
-    font-size: 14px;
+    min-height: 150px;
+    padding: 12px 15px;
     line-height: 1.6;
     color: #333;
     
     &.ql-blank::before {
       color: #999;
       font-style: normal;
-      left: 15px;
+      pointer-events: none;
     }
-
-    em, i { font-style: italic !important; }
-    ol { padding-left: 1.5em !important; list-style-type: decimal !important; }
-    ul { padding-left: 1.5em !important; list-style-type: disc !important; }
-    li { padding-left: 0.3em !important; }
   }
+  
+  .ql-tooltip { display: none !important; }
 }
 </style>
