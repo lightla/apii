@@ -184,14 +184,17 @@ div[data-enabled-uri-param="true"] :deep(.defined-uri-param) {
 }
 
 .var-input-content {
+  display: block;
+  line-height: 28px; /* Căn giữa theo chiều cao ô */
   height: 100%;
-  display: flex;
-  align-items: center;
   outline: none;
   width: 100%;
   max-width: 100%;
-  overflow-x: scroll;
+  overflow-x: hidden;
   white-space: nowrap;
+  caret-color: auto; /* Đảm bảo con trỏ hiển thị */
+  padding: 0;
+  margin: 0;
 
   &::-webkit-scrollbar {
     display: none;

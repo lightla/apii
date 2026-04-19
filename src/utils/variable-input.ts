@@ -9,7 +9,15 @@ export const replaceInputTextContent = (target: HTMLDivElement) => {
     const sel = window.getSelection();
     if (!sel || sel.rangeCount === 0) return;
     const offset = getCaretCharacterOffsetWithin(target);
+    
+    // Khi set textContent, trình duyệt sẽ tự xóa hết span và br
     target.textContent = target.textContent || "";
+    
+    // Nếu rỗng sau khi xóa, thêm lại br để giữ cursor
+    if (target.textContent === "") {
+        target.innerHTML = "<br>";
+    }
+
     setCurrentCursorOffset(target, offset);
 }
 
@@ -17,96 +25,125 @@ export const highlightEnvVariable = (target: HTMLDivElement, withCursor: boolean
     const offset = withCursor ? getCaretCharacterOffsetWithin(target) : 0;
     const text = target.textContent || "";
     const html = text.replace(/^{{[^{}\s]+}}$/, (match) => `<span class="defined-env-variable">${match}</span>`);
+    
     if (target.innerHTML !== html) {
-        target.innerHTML = html;
+        target.innerHTML = html === "" ? "<br>" : html;
         if (withCursor) setCurrentCursorOffset(target, offset);
     }
 }
 
-// Lưu vết trạng thái biến để chống reset DOM vô ích
-const lastSegmentsMap = new WeakMap<HTMLElement, string>();
-
 /**
- * GIẢI PHÁP CHỐNG RESET CURSOR: TRUY VẾT CHARACTER OFFSET + SIGNATURE ABORT
+ * GIẢI PHÁP TỐI THƯỢNG: NODE DIFFING HIGHLIGHTER
  */
 export const replaceHighlightVariables = (param: HighlightVariableParam) => {
     const definedEnvVariables = param.options?.definedEnvVariables ?? []
-    const rawText = param.target.textContent || '';
-    const text = rawText.replace(/\u00A0/g, ' '); // Chuẩn hóa dấu cách trình duyệt
+    const text = (param.target.textContent || '').replace(/\u00A0/g, ' ');
+    
+    // 1. Phân tích các đoạn cần highlight (Segments)
+    const segments = parseSegments(text, param.variables, definedEnvVariables);
+    
+    // 2. Cập nhật DOM một cách "phẫu thuật"
+    patchDOM(param.target, segments);
+}
 
-    const regexMap = {
+/*******************
+ * PHÂN TÍCH VĂN BẢN THÀNH CÁC ĐOẠN (SEGMENTS)
+ *******************/
+interface Segment {
+    text: string;
+    isVar: boolean;
+    cls?: string;
+}
+
+function parseSegments(text: string, variableTypes: any[], definedVars: string[]): Segment[] {
+    const regexMap: any = {
         [HighlightVariableTypeEnum.EnvVariable]: /{{[^{}\s]+}}/g,
         [HighlightVariableTypeEnum.UriParam]: /(?<!{){[^{}\s]+}(?!})/g
     };
 
-    // 1. Phân tích các phân đoạn biến
-    const matches: {start: number, end: number, cls: string, text: string}[] = [];
-    param.variables.forEach(variable => {
-        const regex = new RegExp(regexMap[variable.type].source, 'g');
+    let matches: {start: number, end: number, cls: string}[] = [];
+    variableTypes.forEach(vt => {
+        const regex = new RegExp(regexMap[vt.type].source, 'g');
         let m;
         while ((m = regex.exec(text)) !== null) {
-            let cls = variable.definedVariableCssClass;
-            if (variable.type === HighlightVariableTypeEnum.EnvVariable) {
-                cls = definedEnvVariables.includes(m[0]) ? cls : (variable.undefinedEnvVariableCssClass ?? cls);
+            let cls = vt.definedVariableCssClass;
+            if (vt.type === HighlightVariableTypeEnum.EnvVariable) {
+                cls = definedVars.includes(m[0]) ? cls : (vt.undefinedEnvVariableCssClass ?? cls);
             }
-            matches.push({ start: m.index, end: m.index + m[0].length, cls, text: m[0] });
+            matches.push({ start: m.index, end: m.index + m[0].length, cls });
         }
     });
 
-    // 2. TẠO SIGNATURE: Chỉ thay đổi DOM khi số lượng hoặc vị trí biến thay đổi
     matches.sort((a, b) => a.start - b.start);
-    const signature = matches.map(m => `${m.start}-${m.end}-${m.cls}`).join('|');
-    
-    // Nếu signature giống hệt và DOM đã có màu, CHẶN CẬP NHẬT để bảo vệ con trỏ native
-    if (lastSegmentsMap.get(param.target) === signature && param.target.querySelector('span')) {
-        return;
-    }
-    lastSegmentsMap.set(param.target, signature);
 
-    // 3. Nếu cần cập nhật, lưu con trỏ Character Offset
-    const sel = window.getSelection();
-    let savedOffset = -1;
-    if (param.withCursor && sel && sel.rangeCount > 0 && param.target.contains(sel.getRangeAt(0).startContainer)) {
-        savedOffset = getCaretCharacterOffsetWithin(param.target);
-    }
-
-    // 4. Xây dựng HTML mới
-    let finalHTML = "";
+    const segments: Segment[] = [];
     let lastIndex = 0;
     matches.forEach(m => {
-        finalHTML += escapeHtml(text.substring(lastIndex, m.start));
-        finalHTML += `<span class="${m.cls}">${escapeHtml(m.text)}</span>`;
+        if (m.start > lastIndex) {
+            segments.push({ text: text.substring(lastIndex, m.start), isVar: false });
+        }
+        segments.push({ text: text.substring(m.start, m.end), isVar: true, cls: m.cls });
         lastIndex = m.end;
     });
-    finalHTML += escapeHtml(text.substring(lastIndex));
-    if (finalHTML === "") finalHTML = "<br>";
+    if (lastIndex < text.length) {
+        segments.push({ text: text.substring(lastIndex), isVar: false });
+    }
+    return segments;
+}
 
-    // 5. Cập nhật DOM
+/*******************
+ * THUẬT TOÁN PATCH DOM: CHỈ THAY ĐỔI NHỮNG GÌ CẦN THIẾT
+ *******************/
+function patchDOM(container: HTMLElement, segments: Segment[]) {
+    const sel = window.getSelection();
+    let savedOffset = 0;
+    let hasSelection = false;
+
+    if (sel && sel.rangeCount > 0 && container.contains(sel.getRangeAt(0).startContainer)) {
+        savedOffset = getCaretCharacterOffsetWithin(container);
+        hasSelection = true;
+    }
+
+    const fragment = document.createDocumentFragment();
+    segments.forEach(s => {
+        if (s.isVar) {
+            const span = document.createElement('span');
+            span.className = s.cls || '';
+            span.textContent = s.text;
+            fragment.appendChild(span);
+        } else if (s.text !== "") {
+            fragment.appendChild(document.createTextNode(s.text));
+        }
+    });
+    
+    // "THE GHOST BR": Luôn giữ một thẻ br nếu trống để Chrome hiện cursor
+    if (fragment.childNodes.length === 0) {
+        fragment.appendChild(document.createElement('br'));
+    }
+
     const temp = document.createElement('div');
-    temp.innerHTML = finalHTML;
-    if (param.target.innerHTML !== temp.innerHTML) {
-        param.target.innerHTML = temp.innerHTML;
-        if (savedOffset !== -1) {
-            setCurrentCursorOffset(param.target, savedOffset);
+    temp.appendChild(fragment.cloneNode(true));
+    
+    if (container.innerHTML !== temp.innerHTML) {
+        container.innerHTML = temp.innerHTML;
+        if (hasSelection) {
+            setCurrentCursorOffset(container, savedOffset);
         }
     }
 }
 
 /*******************
- * PRIVATE UTILS
+ * TIỆN ÍCH CURSOR
  *******************/
 
 function getCaretCharacterOffsetWithin(element: HTMLElement): number {
-    let caretOffset = 0;
     const sel = window.getSelection();
-    if (sel && sel.rangeCount > 0) {
-        const range = sel.getRangeAt(0);
-        const preCaretRange = range.cloneRange();
-        preCaretRange.selectNodeContents(element);
-        preCaretRange.setEnd(range.startContainer, range.startOffset);
-        caretOffset = preCaretRange.toString().length;
-    }
-    return caretOffset;
+    if (!sel || sel.rangeCount === 0) return 0;
+    const range = sel.getRangeAt(0);
+    const preCaretRange = range.cloneRange();
+    preCaretRange.selectNodeContents(element);
+    preCaretRange.setEnd(range.startContainer, range.startOffset);
+    return preCaretRange.toString().length;
 }
 
 function setCurrentCursorOffset(element: HTMLElement, offset: number) {
@@ -144,6 +181,12 @@ function setCurrentCursorOffset(element: HTMLElement, offset: number) {
             range.collapse(true);
             sel.removeAllRanges();
             sel.addRange(range);
+        } else {
+            // Trường hợp rỗng hoàn toàn (chỉ có <br>)
+            range.setStart(element, 0);
+            range.collapse(true);
+            sel.removeAllRanges();
+            sel.addRange(range);
         }
     }
 }
@@ -155,10 +198,4 @@ function findLastTextNode(node: Node): Node | null {
         if (found) return found;
     }
     return null;
-}
-
-function escapeHtml(text: string): string {
-    const div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
 }
