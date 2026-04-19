@@ -244,7 +244,7 @@ onBeforeUnmount(() => {
       <div class="env-table-pane">
         <div class="env-variable-table-toolbar">
           <span class="env-variable-table-toolbar-title">ENV Variable</span>
-          <SquarePlus @click="onClickAddRowButton" stroke-width="1" class="icon-button-add-row"/>
+          <IconSquareRoundedPlus @click="onClickAddRowButton" stroke-width="1" class="icon-button-add-row"/>
         </div>
 
         <div
