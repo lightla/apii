@@ -236,7 +236,7 @@ const triggerFileInput = (id: string) => {
       <!-- Binary File Upload -->
       <div v-else-if="store.bodyType === 'binary'" class="binary-wrap">
         <div class="binary-uploader" @click="triggerFileInput('binary-file-input')">
-          <FileUp size="48" stroke-width="1" class="mb-3 text-muted" />
+          <FileUp size="40" stroke-width="1" class="mb-3 text-muted" />
           <div v-if="store.binaryFile" class="file-info">
             <div class="file-name">{{ store.binaryFile.name }}</div>
             <div class="file-size text-muted small">{{ (store.binaryFile.size / 1024).toFixed(2) }} KB</div>
@@ -467,9 +467,9 @@ const triggerFileInput = (id: string) => {
   vertical-align: middle;
 }
 
-.binary-wrap { padding: 30px; height: 100%; display: flex; justify-content: center; align-items: center; }
+.binary-wrap { padding: 20px; height: 100%; display: flex; justify-content: center; align-items: center; }
 .binary-uploader {
-  width: 100%; max-width: 400px; height: 200px; border: 2px dashed #ccc;
+  width: 100%; max-width: 400px; height: 160px; border: 2px dashed #ccc;
   display: flex; flex-direction: column; justify-content: center; align-items: center;
   cursor: pointer; border-radius: 8px; &:hover { border-color: #888; background-color: rgba(0,0,0,0.02); }
 }
