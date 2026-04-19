@@ -36,7 +36,7 @@ const htmlContent = computed(() => {
   width: 100%;
   display: flex;
   flex-direction: column;
-  background: #fff;
+  background-color: #f5f5f5; /* Màu dịu đồng bộ */
 }
 
 .preview-iframe {
@@ -44,6 +44,7 @@ const htmlContent = computed(() => {
   border: none;
   width: 100%;
   height: 100%;
+  background-color: #f5f5f5; /* Đồng bộ nền cho iframe */
 }
 
 .empty-state {

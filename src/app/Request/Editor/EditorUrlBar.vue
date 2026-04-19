@@ -83,6 +83,7 @@ const sendRequest = async (_event: Event) => {
     res.headers.forEach((value, key) => { headers[key] = value })
     responseStorage.responseHeaders = headers
     const responseText = await res.text()
+    responseStorage.rawBody = responseText
     try {
       responseStorage.data = JSON.parse(responseText)
     } catch {

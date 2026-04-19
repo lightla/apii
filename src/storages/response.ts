@@ -6,6 +6,7 @@ export const useResponseStorage = defineStore('api-response', () => {
   const status = ref<number | null>(null)
   const statusText = ref<string>('')
   const data = ref<any>(null)
+  const rawBody = ref<string>('')
   const error = ref<string | null>(null)
   const responseTime = ref<number | null>(null)
   const responseHeaders = ref<Record<string, string>>({})
@@ -17,6 +18,7 @@ export const useResponseStorage = defineStore('api-response', () => {
     status.value = null
     statusText.value = ''
     data.value = null
+    rawBody.value = ''
     error.value = null
     responseTime.value = null
     responseHeaders.value = {}
@@ -24,5 +26,5 @@ export const useResponseStorage = defineStore('api-response', () => {
     requestMethod.value = ''
   }
 
-  return { loading, status, statusText, data, error, responseTime, responseHeaders, requestUrl, requestMethod, reset }
+  return { loading, status, statusText, data, rawBody, error, responseTime, responseHeaders, requestUrl, requestMethod, reset }
 })
