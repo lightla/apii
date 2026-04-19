@@ -116,7 +116,19 @@ watch(activeRightTab, (newTab) => localStorage.setItem(STORAGE_KEY_ACTIVE_TAB, n
 .container { display: flex; height: 96vh; width: 100%; border: 1px solid #aaaaaa; background-color: var(--app-bg-color); position: relative; }
 .resizer { padding: 0; }
 .container-left { padding: 10px; overflow: auto; max-width: 90%; min-width: 200px; }
-.container-right { flex: 1; padding: 10px; min-width: 150px; overflow: auto; }
+.container-right {
+  flex: 1;
+  padding: 10px;
+  min-width: 150px;
+  min-height: 0;
+  overflow: auto;
+  display: flex;
+}
+.container-right > * {
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+}
 .right-tabs { position: absolute; top: 15px; right: 0; transform: translateX(100%); padding-left: 8px; display: flex; flex-direction: column; gap: 8px; z-index: 100; }
 .tab-icon { width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; cursor: pointer; background-color: #f8f9fa; border: 1px solid #aaaaaa; border-radius: 0; box-shadow: 0 1px 2px rgba(0,0,0,0.05); }
 .tab-icon :deep(svg) { width: 18px; height: 18px; color: #495057; }

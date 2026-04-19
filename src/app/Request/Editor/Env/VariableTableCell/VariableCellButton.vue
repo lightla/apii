@@ -54,9 +54,9 @@ const onClickButton = (event: MouseEvent) => {
 
 <template>
   <div class="env-button">
-    <div v-if="props.action === 'delete'">
-      <SquareX v-if="! clickToConfirmed" @click="onClickButton" stroke-width="1" class="icon-button" width="100%" height="100%"/>
-      <ShieldAlert v-else @click="onClickButton" stroke-width="1" class="icon-button" width="100%" height="100%"/>
+    <div v-if="props.action === 'delete'" class="env-button-action-wrap">
+      <SquareX v-if="! clickToConfirmed" @click="onClickButton" stroke-width="1" class="icon-button icon-button-row-action"/>
+      <ShieldAlert v-else @click="onClickButton" stroke-width="1" class="icon-button icon-button-row-action"/>
 <!--      <Warning3 v-else @click="onClickButton" stroke-width="1" class="icon-button-warning" />-->
     </div>
   </div>
@@ -66,6 +66,15 @@ const onClickButton = (event: MouseEvent) => {
 .env-button {
   display: flex;
   align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+}
+
+.env-button-action-wrap {
+  display: flex;
+  align-items: center;
+  justify-content: center;
   width: 100%;
   height: 100%;
 }
@@ -78,5 +87,14 @@ const onClickButton = (event: MouseEvent) => {
   &:hover {
     fill: var(--icon-bg-color-active);
   }
+}
+
+.icon-button-row-action {
+  width: 26px;
+  height: 26px;
+  min-width: 26px;
+  min-height: 26px;
+  display: block;
+  margin: 0 auto;
 }
 </style>
