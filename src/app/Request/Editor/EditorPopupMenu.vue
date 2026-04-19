@@ -154,10 +154,10 @@ const selectVariable = (newName: string) => {
 </script>
 
 <template>
-  <div ref="popupRef" class="popup shadow-lg">
+  <div ref="popupRef" class="popup">
     <div class="popup-header">
       <div class="d-flex align-items-center w-100">
-        <span class="var-label text-muted me-2">Variable:</span>
+        <span class="var-label me-2">Variable:</span>
         <span class="var-name">{{ currentVarName }}</span>
         <span v-if="!isDefined" class="badge bg-warning text-dark ms-auto" style="font-size: 0.65rem">Undefined</span>
       </div>
@@ -205,7 +205,7 @@ const selectVariable = (newName: string) => {
         </div>
       </div>
 
-      <div class="mt-2 pt-2 border-top extra-info">
+      <div class="mt-2 pt-2 extra-info">
         Env: <span class="fw-bold">{{ envStorage.selectedEnvCode }}</span>
       </div>
     </div>
@@ -219,31 +219,31 @@ const selectVariable = (newName: string) => {
   z-index: 100000;
   display: none;
   flex-direction: column;
-  background-color: #f0f0f0; /* Màu xám dịu */
-  border: 1px solid #bcbcbc;
-  border-radius: 6px;
+  background-color: #dddddd; 
+  border: 1px solid #888888;
+  border-radius: 0;
   width: 260px;
   padding: 0;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-  box-shadow: 0 8px 24px rgba(0,0,0,0.18);
+  font-family: "Calibri", Arial, sans-serif;
   overflow: hidden;
 }
 
 .popup-header {
-  background-color: #e0e0e0; /* Màu xám đậm hơn một chút cho header */
+  background-color: rgba(221, 221, 221, 1);
   padding: 8px 12px;
-  border-bottom: 1px solid #bcbcbc;
-  font-size: 0.85rem;
+  border-bottom: 1px solid #888888;
+  font-size: 13px;
 }
 
 .var-label {
-  font-size: 0.75rem;
+  font-size: 12px;
+  color: #444;
 }
 
 .var-name {
   font-weight: 700;
-  color: #0056b3;
-  font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+  color: var(--defined-env-variable-color);
+  font-family: 'Consolas', monospace;
 }
 
 .popup-body {
@@ -251,86 +251,86 @@ const selectVariable = (newName: string) => {
 }
 
 .section-label {
-  font-size: 0.7rem;
+  font-size: 11px;
   font-weight: 700;
   text-transform: uppercase;
-  color: #666;
+  color: #555;
   margin-bottom: 6px;
-  letter-spacing: 0.5px;
 }
 
 .value-input {
-  background-color: #ffffff;
-  border: 1px solid #bbb;
-  font-size: 0.85rem;
+  background-color: transparent !important;
+  border: 1px solid #888888 !important;
+  font-size: 13px;
   font-family: 'Consolas', monospace;
+  color: #000;
+  border-radius: 0;
+  padding: 5px 8px;
+  height: 28px;
   
   &:focus {
-    background-color: #fff;
-    border-color: #007bff;
-    box-shadow: 0 0 0 2px rgba(0,123,255,0.1);
+    background-color: rgba(255, 255, 255, 0.05) !important;
+    border-color: #007bff !important;
+    box-shadow: none !important;
+  }
+
+  &::placeholder {
+    color: #888;
+    font-style: italic;
   }
 }
 
 .search-input {
-  background-color: #e8e8e8;
-  border: 1px solid #ccc;
-  font-size: 0.75rem;
-  border-radius: 4px;
+  background-color: transparent !important;
+  border: 1px solid #888888 !important;
+  font-size: 12px;
+  border-radius: 0;
+  color: #000;
+  height: 26px;
   
   &:focus {
-    background-color: #fff;
+    background-color: rgba(255, 255, 255, 0.05) !important;
+    box-shadow: none !important;
+    border-color: #007bff !important;
   }
 }
 
 .variable-list {
   max-height: 120px;
   overflow-y: auto;
-  background: #e8e8e8;
-  border-radius: 4px;
-  border: 1px solid #ccc;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 0;
+  border: 1px solid #888888;
 }
 
 .variable-item {
   padding: 4px 10px;
-  font-size: 0.8rem;
+  font-size: 12px;
   cursor: pointer;
   font-family: monospace;
   color: #333;
   transition: all 0.1s;
 
   &:hover {
-    background-color: #007bff;
-    color: white;
+    background-color: #cccccc;
+    color: #000;
   }
 
   &:not(:last-child) {
-    border-bottom: 1px solid #ddd;
+    border-bottom: 1px solid #888888;
   }
 }
 
 .extra-info {
-  font-size: 0.7rem;
-  color: #777;
+  font-size: 11px;
+  color: #555;
 }
 
 .custom-scrollbar {
   &::-webkit-scrollbar {
-    width: 6px;
+    display: none;
   }
-  &::-webkit-scrollbar-track {
-    background: transparent;
-  }
-  &::-webkit-scrollbar-thumb {
-    background: #bbb;
-    border-radius: 10px;
-  }
-  &::-webkit-scrollbar-thumb:hover {
-    background: #999;
-  }
-}
-
-.shadow-lg {
-  box-shadow: 0 1rem 3rem rgba(0,0,0,.175)!important;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
 }
 </style>
