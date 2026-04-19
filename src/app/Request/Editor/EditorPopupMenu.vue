@@ -6,7 +6,8 @@ const lastMousePosition = ref({ clientX: 0, clientY: 0 })
 const lastElement = ref<HTMLElement | null>(null)
 
 const popupRef = ref<HTMLDivElement | null>(null)
-const popupBlocked = ref<boolean>(false)
+const otherKeyPressed = ref<boolean>(false) 
+const isCtrlDown = ref<boolean>(false)
 
 const envStorage = useEnvStorage();
 const inputStorage = useInputStorage();
@@ -41,24 +42,50 @@ const onMouseMove = (e: MouseEvent) => {
 }
 
 const onKeyDown = (event: KeyboardEvent) => {
-  if (! event.ctrlKey || !popupRef.value || popupBlocked.value) {
-    return
+  if (event.key === 'Control') {
+    if (!isCtrlDown.value) {
+      isCtrlDown.value = true;
+      otherKeyPressed.value = false;
+    }
+  } else if (isCtrlDown.value) {
+    // Nếu đang giữ Ctrl mà nhấn thêm phím bất kỳ (C, V, v.v.)
+    otherKeyPressed.value = true;
   }
+}
 
-  const { clientX, clientY } = lastMousePosition.value;
-  const el = document.elementFromPoint(clientX, clientY) as HTMLElement | null
+const onKeyUp = (event: KeyboardEvent) => {
+  if (event.key === 'Control') {
+    isCtrlDown.value = false;
 
-  if (!(
-      el?.classList.contains('undefined-env-variable')
-      || el?.classList.contains('defined-env-variable')
-  )) {
-    return;
+    // Chỉ trigger popup nếu: Không có phím khác nhấn kèm + Popup đang không hiện
+    if (!otherKeyPressed.value && (!popupRef.value || popupRef.value.style.display !== 'flex')) {
+      const { clientX, clientY } = lastMousePosition.value;
+      const el = document.elementFromPoint(clientX, clientY) as HTMLElement | null
+
+      if (el?.classList.contains('undefined-env-variable') || el?.classList.contains('defined-env-variable')) {
+        showPopupAt(el, clientX, clientY);
+      }
+    }
+    otherKeyPressed.value = false;
   }
+}
 
-  popupBlocked.value = true;
+const onGlobalClick = (e : MouseEvent) => {
+  if (!popupRef.value) return;
+
+  // Click ra ngoài đóng popup
+  if (popupRef.value.style.display === "flex") {
+    if (!popupRef.value.contains(e.target as Node)) {
+      hidePopup();
+    }
+  }
+}
+
+function showPopupAt(el: HTMLElement, x: number, y: number) {
+  if (!popupRef.value) return;
+
   lastElement.value = el;
   searchQuery.value = '';
-
   currentVarName.value = el.textContent?.trim() || "";
 
   const foundVar = envStorage.definedEnvVariables.find(v => v.name === currentVarName.value);
@@ -71,28 +98,13 @@ const onKeyDown = (event: KeyboardEvent) => {
   }
 
   popupRef.value.style.display = 'flex';
-  popupRef.value.style.left = `${lastMousePosition.value.clientX + 5}px`
-  popupRef.value.style.top = `${lastMousePosition.value.clientY + 5}px`
-}
-
-const onKeyUp = (event: KeyboardEvent) => {
-  if (event.key === 'Control') {
-    popupBlocked.value = false;
-  }
-}
-
-const onGlobalClick = (e : MouseEvent) => {
-  if (!popupRef.value || popupRef.value.style.display === "none") return;
-
-  if (!popupRef.value.contains(e.target as Node)) {
-    hidePopup();
-  }
+  popupRef.value.style.left = `${x + 5}px`
+  popupRef.value.style.top = `${y + 5}px`
 }
 
 function hidePopup() {
   if (!popupRef.value) return;
   popupRef.value.style.display = "none";
-  popupBlocked.value = false;
 }
 
 const onValueInput = (e: Event) => {
@@ -134,8 +146,6 @@ const onValueBlur = async () => {
 const selectVariable = (newName: string) => {
   if (lastElement.value) {
     lastElement.value.textContent = newName;
-    
-    // Tìm thẻ cha contenteditable để trigger highlight lại cho riêng ô input này
     const parentInput = lastElement.value.closest('.var-input-content') as HTMLDivElement;
     if (parentInput) {
       const inputIndex = inputStorage.trackedHighlightInputs.indexOf(parentInput);
@@ -154,7 +164,7 @@ const selectVariable = (newName: string) => {
 </script>
 
 <template>
-  <div ref="popupRef" class="popup shadow-lg">
+  <div ref="popupRef" class="popup">
     <div class="popup-header">
       <div class="d-flex align-items-center w-100">
         <span class="var-label me-2">Variable:</span>
@@ -164,7 +174,6 @@ const selectVariable = (newName: string) => {
     </div>
     
     <div class="popup-body">
-      <!-- Edit Value Section -->
       <div class="section-label">Current Value</div>
       <div class="mb-3">
         <input
@@ -177,7 +186,6 @@ const selectVariable = (newName: string) => {
         />
       </div>
 
-      <!-- Switch Variable Section -->
       <div class="section-label d-flex justify-content-between">
         <span>Switch To...</span>
         <span class="text-muted" style="font-size: 0.65rem">{{ filteredVariables.length }} found</span>
@@ -225,6 +233,7 @@ const selectVariable = (newName: string) => {
   width: 260px;
   padding: 0;
   font-family: "Calibri", Arial, sans-serif;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.3);
   overflow: hidden;
 }
 
