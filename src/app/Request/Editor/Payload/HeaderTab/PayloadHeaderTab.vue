@@ -159,7 +159,7 @@ function onDeleteClick(index: number) {
 .header-table-scroll-wrapper {
   min-height: 0;
   height: fit-content;
-  max-height: 156px; 
+  max-height: 436px; /* Tăng lên để show được khoảng 10 hàng */
   overflow-y: auto;
   @include elements.scrollbar-hidden;
   border-bottom: var(--table-border);
