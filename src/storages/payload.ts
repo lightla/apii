@@ -170,6 +170,40 @@ export const useRequestParamsStorage = defineStore('requestParams', {
       this.method = 'GET'
       this.body = ''
       this.requestName = ''
+    },
+
+    // --- Persist theo Route ID ---
+    saveToStorage(routeId: string) {
+      if (!routeId) return
+      const data = {
+        queryParams: this.queryParams,
+        pathVariables: this.pathVariables,
+        baseUrl: this.baseUrl,
+        method: this.method,
+        headers: this.headers,
+        body: this.body,
+      }
+      localStorage.setItem(`api_request_data_${routeId}`, JSON.stringify(data))
+    },
+
+    loadFromStorage(routeId: string) {
+      if (!routeId) return
+      const saved = localStorage.getItem(`api_request_data_${routeId}`)
+      if (saved) {
+        try {
+          const data = JSON.parse(saved)
+          this.queryParams = data.queryParams || []
+          this.pathVariables = data.pathVariables || []
+          this.baseUrl = data.baseUrl || ''
+          this.method = data.method || 'GET'
+          this.headers = data.headers || []
+          this.body = data.body || ''
+        } catch (e) {
+          console.error('Failed to parse saved request data', e)
+        }
+      } else {
+        this.resetAll()
+      }
     }
   }
 })

@@ -8,20 +8,44 @@ import EditorPayload from "@/app/Request/Editor/EditorPayload.vue";
 import EditorResponse from "@/app/Request/Editor/EditorResponse.vue";
 import ToggleMenu from "@/app/Generals/ToggleMenu/ToggleMenu.vue";
 import {useEnvStorage} from "@/storages"
+import {useRequestParamsStorage} from "@/storages/payload.ts"
 
 const props = defineProps<{
   route: RouteInfo
 }>()
 
 const envStorage = useEnvStorage();
+const payloadStore = useRequestParamsStorage();
 
 const editorRef = ref<HTMLDivElement | null>(null);
 
-watch(props.route, (newValue) => {
-  if (newValue) {
-
+// Nạp dữ liệu khi component được mount hoặc route thay đổi
+watch(() => props.route?.route, (newUrl, oldUrl) => {
+  if (oldUrl) {
+    // Lưu lại trạng thái của URL cũ trước khi chuyển
+    payloadStore.saveToStorage(oldUrl)
   }
-})
+  if (newUrl) {
+    // Nạp trạng thái của URL mới
+    payloadStore.loadFromStorage(newUrl)
+    // Đảm bảo baseUrl luôn khớp với route hiện tại nếu nó trống
+    if (!payloadStore.baseUrl) {
+      payloadStore.baseUrl = newUrl
+    }
+  }
+}, { immediate: true })
+
+// Tự động lưu mỗi khi có bất kỳ thay đổi nào bên trong payloadStore
+// (Debounce nhẹ để tránh ghi đĩa liên tục)
+let saveTimeout: ReturnType<typeof setTimeout>
+watch(() => payloadStore.$state, () => {
+  clearTimeout(saveTimeout)
+  saveTimeout = setTimeout(() => {
+    if (props.route?.route) {
+      payloadStore.saveToStorage(props.route.route)
+    }
+  }, 500)
+}, { deep: true })
 
 </script>
 
