@@ -19,6 +19,7 @@ type QuillSelectionRange = {
 
 type FormatPreviewState = {
   range: QuillSelectionRange
+  selectionRange: QuillSelectionRange
   contents: any
   format: 'color' | 'background'
   value: string | boolean
@@ -30,6 +31,7 @@ const editorContent = ref('')
 const currentFontSize = ref(14)
 const lastSelectionRange = ref<QuillSelectionRange | null>(null)
 let formatPreviewState: FormatPreviewState | null = null
+let isPreviewMutating = false
 
 const textColors = [
   '#000000', '#444444', '#666666', '#999999', '#cccccc', '#ffffff',
@@ -83,17 +85,24 @@ const restoreFormatPreview = () => {
   const quill = quillRef.value?.getQuill()
   if (!quill || !formatPreviewState) return
 
-  const { range, contents } = formatPreviewState
-  quill.updateContents(
-    new Delta().retain(range.index).delete(range.length).concat(contents),
-    Quill.sources.SILENT
-  )
+  const { range, selectionRange, contents } = formatPreviewState
+  isPreviewMutating = true
+  try {
+    quill.updateContents(
+      new Delta().retain(range.index).delete(range.length).concat(contents),
+      Quill.sources.SILENT
+    )
+    quill.setSelection(selectionRange.index, selectionRange.length, Quill.sources.SILENT)
+  } finally {
+    isPreviewMutating = false
+  }
   formatPreviewState = null
 }
 
 const beginFormatPreview = (
   quill: any,
   range: QuillSelectionRange,
+  selectionRange: QuillSelectionRange,
   format: 'color' | 'background',
   value: string | boolean
 ) => {
@@ -101,26 +110,43 @@ const beginFormatPreview = (
 
   if (formatPreviewState) {
     const { range: previewRange, contents } = formatPreviewState
-    quill.updateContents(
-      new Delta().retain(previewRange.index).delete(previewRange.length).concat(contents),
-      Quill.sources.SILENT
-    )
+    isPreviewMutating = true
+    try {
+      quill.updateContents(
+        new Delta().retain(previewRange.index).delete(previewRange.length).concat(contents),
+        Quill.sources.SILENT
+      )
+      quill.setSelection(
+        formatPreviewState.selectionRange.index,
+        formatPreviewState.selectionRange.length,
+        Quill.sources.SILENT
+      )
+    } finally {
+      isPreviewMutating = false
+    }
   }
 
   formatPreviewState = {
     range: { ...range },
+    selectionRange: { ...selectionRange },
     contents: quill.getContents(range.index, range.length),
     format,
     value
   }
 
-  quill.formatText(range.index, range.length, format, value, Quill.sources.SILENT)
+  isPreviewMutating = true
+  try {
+    quill.formatText(range.index, range.length, format, value, Quill.sources.SILENT)
+    quill.setSelection(selectionRange.index, selectionRange.length, Quill.sources.SILENT)
+  } finally {
+    isPreviewMutating = false
+  }
 }
 
-const commitFormatPreview = (quill: any, range: QuillSelectionRange) => {
+const commitFormatPreview = (quill: any, selectionRange: QuillSelectionRange) => {
   formatPreviewState = null
   saveEditorContent(quill)
-  quill.setSelection(range.index, range.length, Quill.sources.SILENT)
+  quill.setSelection(selectionRange.index, selectionRange.length, Quill.sources.SILENT)
 }
 
 const closeToolbarPickers = () => {
@@ -303,12 +329,17 @@ const handleToolbarMouseOver = (event: MouseEvent) => {
   const quill = quillRef.value?.getQuill()
   if (!quill) return
 
-  const range = getActiveFormatRange(quill)
-  if (!range) return
+  const selectionRange = formatPreviewState?.selectionRange || lastSelectionRange.value
+  if (!selectionRange) return
+
+  const range = formatPreviewState?.range || (selectionRange.length > 0
+    ? selectionRange
+    : getCurrentLineRange(quill, selectionRange))
+  if (range.length === 0) return
 
   const format = item.closest('.ql-color') ? 'color' : 'background'
   const value = item.getAttribute('data-value') || false
-  beginFormatPreview(quill, range, format, value)
+  beginFormatPreview(quill, range, selectionRange, format, value)
 }
 
 const handleToolbarMouseLeave = () => {
@@ -322,11 +353,8 @@ const handleToolbarClick = (event: MouseEvent) => {
   const quill = quillRef.value?.getQuill()
   if (!quill) return
 
-  const range = formatPreviewState?.range || getActiveFormatRange(quill)
-  if (!range) return
-
   if (formatPreviewState) {
-    commitFormatPreview(quill, range)
+    commitFormatPreview(quill, formatPreviewState.selectionRange)
   } else {
     const format = item.closest('.ql-color') ? 'color' : 'background'
     const value = item.getAttribute('data-value') || false
@@ -342,6 +370,7 @@ const handleDocumentPointerDown = (event: PointerEvent) => {
 }
 
 const handleSelectionChange = (event: { range: QuillSelectionRange | null }) => {
+  if (isPreviewMutating) return
   if (!event.range) return
 
   lastSelectionRange.value = event.range
