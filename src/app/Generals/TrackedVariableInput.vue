@@ -1,14 +1,14 @@
 <script setup lang="ts">
 import {onMounted, ref, watch, nextTick} from 'vue'
 import type {RouteInfo} from '@/types'
-import {type HighlightInputParam, type HighlightVariableOptionParam} from "@/types/variable-input.ts";
+import {type HighlightVariableOptionParam} from "@/types/variable-input.ts";
 import {useEnvStorage, useInputStorage} from "@/storages/env-variables-tmp.ts";
 
 import {useInputState} from "@/composables/input"
 
 const { highlightInput, rescanHighlightAllInputs } = useInputState()
 
-const emit = defineEmits<{ 'text-change': [value: string] }>()
+const emit = defineEmits<{ 'text-change': [value: string], 'enter': [value: HTMLDivElement] }>()
 
 const props = withDefaults(defineProps<{
   route: RouteInfo
@@ -29,15 +29,22 @@ const envStorage = useEnvStorage();
 const inputStorage = useInputStorage();
 
 const variableInputRef = ref<HTMLDivElement | null>(null)
-const envVariableHighlightRef = ref<HTMLSpanElement | null>(null)
-const envVariableUndefinedRef = ref<HTMLSpanElement | null>(null)
-const uriParamHighlightRef = ref<HTMLSpanElement | null>(null)
-const lastMousePosition = ref({ clientX: 0, clientY: 0 })
-
+const variableIndex = ref<number>(0)
 const showPopup = ref<boolean>(false)
 const popupText = ref<string>("")
 
-console.log("var-input:run:");
+const triggerHighlight = (withCursor: boolean) => {
+  if (variableIndex.value === undefined || variableIndex.value === null) return;
+  
+  const highlightOptions = <HighlightVariableOptionParam>{
+    definedEnvVariables: envStorage.collectEnvVariableNames(),
+  };
+  highlightInput({
+    inputIndex: variableIndex.value,
+    options: highlightOptions,
+    withCursor: withCursor
+  });
+}
 
 onMounted(() => {
   if (variableInputRef.value) {
@@ -45,6 +52,11 @@ onMounted(() => {
 
     inputStorage.trackedHighlightInputs.push(variableInputRef.value);
     variableIndex.value = inputStorage.trackedHighlightInputs.length - 1;
+
+    // trigger highlight on mount
+    nextTick(() => {
+      triggerHighlight(false);
+    });
   }
 })
 
@@ -54,50 +66,22 @@ watch(() => props.value, (newVal) => {
     
     // trigger highlight on update
     nextTick(() => {
-      const highlightOptions = <HighlightVariableOptionParam>{
-        definedEnvVariables: envStorage.collectEnvVariableNames(),
-      };
-      highlightInput({
-        inputIndex: variableIndex.value,
-        options: highlightOptions,
-        withCursor: false
-      });
+      triggerHighlight(false);
     });
   }
-})
+}, { immediate: true })
 
 const onKeyDown = (event: KeyboardEvent) => {
   showPopup.value = false
-
-  // if (event.ctrlKey) {
-  //   const { clientX, clientY } = lastMousePosition.value
-  //   const el = document.elementFromPoint(clientX, clientY) as HTMLElement | null
-  //
-  //   if (el && (el.classList.contains('undefined-env-variable') || el.classList.contains('defined-env-variable'))) {
-  //     showPopup.value = true
-  //     popupText.value = el.outerHTML
-  //     return
-  //   }
-  // }
-  //
-  // showPopup.value = false
+  if (event.key === 'Enter') {
+    if (variableInputRef.value) {
+      emit('enter', variableInputRef.value)
+    }
+  }
 }
 
 const onKeyUp = (event: KeyboardEvent) => {
-  // if (showPopup.value === true) {
-  //   showPopup.value = false
-  // }
 }
-
-// function onMouseOut(event: MouseEvent) {
-//   // Ẩn popup khi rời span hoặc container
-//   const target = event.target as HTMLElement
-//   if (target.classList.contains('undefined-env-variable')) {
-//     showPopup.value = false
-//   }
-// }
-
-const variableIndex = ref<number>(0)
 
 defineExpose({
   getText: () => variableInputRef.value?.innerText?.trim() ?? ''
@@ -106,31 +90,17 @@ defineExpose({
 const onVariableInputChange = (event: Event): void => {
   const target = event.target as HTMLDivElement
   emit('text-change', target.textContent ?? '')
-  console.log("var-input.onInputChange:" + target.innerText + "|")
 
   const isEmpty = !target.textContent?.trim();
-
   if (isEmpty) {
     target.textContent = '';
   }
 
-  console.log("var-input.trackedHighlightInputs.onVariableInputChange:", inputStorage.trackedHighlightInputs.length);
-
-  console.log("var-input.definedEnvVariables:" + JSON.stringify(envStorage.definedEnvVariables));
-
-
-  console.log("var-input.trackedHighlightInputs.variableIndex:", variableIndex.value)
-  console.log("var-input.trackedHighlightInputs.variable:", inputStorage.trackedHighlightInputs[variableIndex.value])
+  triggerHighlight(true);
 
   const highlightOptions = <HighlightVariableOptionParam>{
     definedEnvVariables: envStorage.collectEnvVariableNames(),
   };
-
-  highlightInput({
-    inputIndex: variableIndex.value,
-    options: highlightOptions,
-    withCursor: true
-  });
 
   rescanHighlightAllInputs({
     exceptInputIndex: variableIndex.value,
@@ -161,19 +131,20 @@ const onVariableInputChange = (event: Event): void => {
 </template>
 
 <style scoped lang="scss">
-.env-variable-highlight {
-  color: #007bff;
-  font-weight: 600;
+/* Chỉ highlight khi được cho phép thông qua thuộc tính data-enabled */
+div[data-enabled-env-variable="true"] :deep(.defined-env-variable) {
+  color: var(--defined-env-variable-color) !important;
+  font-weight: 400 !important;
 }
 
-.env-variable-undefined {
-  color: #8B4513;
-  font-weight: 600;
+div[data-enabled-env-variable="true"] :deep(.undefined-env-variable) {
+  color: var(--undefined-env-variable-color) !important;
+  font-weight: 400 !important;
 }
 
-.uri-param-highlight {
-  color: #369a6e;
-  font-weight: 600;
+div[data-enabled-uri-param="true"] :deep(.defined-uri-param) {
+  color: var(--defined-uri-param) !important;
+  font-weight: 400 !important;
 }
 
 .var-value-input {
@@ -186,10 +157,9 @@ const onVariableInputChange = (event: Event): void => {
   justify-content: center;
   align-items: center;
 
-  // Khi bên trong có phần tử được focus (như div contenteditable)
   &:focus-within {
     border-color: transparent;
-    box-shadow: 0 0 0 1.3px #007bff; // "viền sáng" nhưng không đẩy layout
+    box-shadow: 0 0 0 1.3px #007bff;
   }
 }
 
@@ -197,34 +167,21 @@ const onVariableInputChange = (event: Event): void => {
   height: 100%;
   display: flex;
   align-items: center;
-
   outline: none;
   width: 100%;
   max-width: 100%;
-
   overflow-x: scroll;
-
-  /* Ngăn nội dung xuống dòng để cuộn ngang */
   white-space: nowrap;
 
-  /* Ẩn thanh cuộn trên WebKit (Chrome, Safari) */
-  ::-webkit-scrollbar {
-    display: none; /* Ẩn thanh cuộn */
+  &::-webkit-scrollbar {
+    display: none;
   }
 
-  /* Ẩn thanh cuộn trên Firefox */
-  scrollbar-width: none; /* Không hiển thị thanh cuộn */
-
-  /* Tùy chọn: Nếu bạn muốn giữ hiệu ứng cuộn mượt mà */
+  scrollbar-width: none;
   scroll-behavior: smooth;
 
-  /* Ẩn thanh cuộn trên WebKit (Chrome, Safari) */
-  ::-webkit-scrollbar {
-    display: none; /* Ẩn thanh cuộn */
-  }
-
   &:empty[data-placeholder=""]:before {
-    content: 'transparent'; // trick for display cursor position
+    content: 'transparent';
     color: transparent;
   }
 

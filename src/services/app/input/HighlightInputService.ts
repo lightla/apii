@@ -16,7 +16,7 @@ export class HighlightInputService {
     highlightInput(param: HighlightInputParam){
         console.log("service-inputIndex:", param.inputIndex);
 
-        if (! param.inputIndex) {
+        if (param.inputIndex === undefined || param.inputIndex === null) {
             return;
         }
 
@@ -34,15 +34,16 @@ export class HighlightInputService {
 
         const highlightVariableTypes: HighlightVariableTypeParam[] = [];
 
-        if (trackedInput.dataset.enabledEnvVariable) {
+        // Kiểm tra chính xác chuỗi "true" từ dataset
+        if (trackedInput.dataset.enabledEnvVariable === 'true') {
             highlightVariableTypes.push({
                 type: HighlightVariableTypeEnum.EnvVariable,
                 definedVariableCssClass: "defined-env-variable",
-                    undefinedEnvVariableCssClass: "undefined-env-variable",
+                undefinedEnvVariableCssClass: "undefined-env-variable",
             });
         }
 
-        if (trackedInput.dataset.enabledUriParam) {
+        if (trackedInput.dataset.enabledUriParam === 'true') {
             highlightVariableTypes.push({
                 type: HighlightVariableTypeEnum.UriParam,
                 definedVariableCssClass: "defined-uri-param",

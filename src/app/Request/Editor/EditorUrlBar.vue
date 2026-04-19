@@ -115,7 +115,7 @@ const sendRequest = async (_event: Event) => {
           ref="myComponentRef"
           :route="props.route"
           :placeholder="'Enter URL'"
-          :value="props.route?.route || ''"
+          :value="requestParams.baseUrl"
           :enabled-env-variable="true"
           :enabled-uri-param="true"
           @enter="enterUrlInput"

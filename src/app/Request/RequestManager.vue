@@ -106,7 +106,7 @@ function handleClick(item: RouteInfo) {
 }
 
 function formatRoute(route: string) {
-  return route.replace(/{([^}]+)}/g, `<span style="color: green;">{$1}</span>`)
+  return route.replace(/{([^}]+)}/g, `<span class="defined-uri-param">{$1}</span>`)
 }
 </script>
 
@@ -162,6 +162,11 @@ function formatRoute(route: string) {
 .route-line { cursor: pointer; color: black; padding: 3px 6px; margin-bottom: 4px; line-height: 1.3; user-select: none; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: flex; flex-direction: row; gap: 3px; }
 .route-line:hover { background: #e2e2e2; }
 .no-results { padding: 20px; text-align: center; color: #6c757d; }
+
+:deep(.defined-uri-param) {
+  color: var(--defined-uri-param);
+  font-weight: 500;
+}
 
 /* CSS cho layout hàng ngang và nút kiểu cột (ĐÃ SỬA LẠI CHO ĐÚNG) */
 .tag-filter-container-horizontal {
