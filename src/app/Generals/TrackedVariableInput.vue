@@ -8,7 +8,11 @@ import {useInputState} from "@/composables/input"
 
 const { highlightInput, rescanHighlightAllInputs } = useInputState()
 
-const emit = defineEmits<{ 'text-change': [value: string], 'enter': [value: HTMLDivElement] }>()
+const emit = defineEmits<{ 
+  'text-change': [value: string], 
+  'enter': [value: HTMLDivElement],
+  'blur': [value: string]
+}>()
 
 const props = withDefaults(defineProps<{
   route: RouteInfo
@@ -83,8 +87,18 @@ const onKeyDown = (event: KeyboardEvent) => {
 const onKeyUp = (event: KeyboardEvent) => {
 }
 
+const setText = (text: string) => {
+  if (variableInputRef.value) {
+    variableInputRef.value.innerText = text;
+    nextTick(() => {
+      triggerHighlight(false);
+    });
+  }
+}
+
 defineExpose({
-  getText: () => variableInputRef.value?.innerText?.trim() ?? ''
+  getText: () => variableInputRef.value?.innerText?.trim() ?? '',
+  setText
 })
 
 const onVariableInputChange = (event: Event): void => {
@@ -122,6 +136,7 @@ const onVariableInputChange = (event: Event): void => {
         @input="onVariableInputChange"
         @keydown="onKeyDown"
         @keyup="onKeyUp"
+        @blur="emit('blur', $event.target.textContent || '')"
     ></div>
   </div>
 
@@ -131,7 +146,7 @@ const onVariableInputChange = (event: Event): void => {
 </template>
 
 <style scoped lang="scss">
-/* Chỉ highlight khi được cho phép thông qua thuộc tính data-enabled */
+/* Sử dụng :deep() để target các thẻ span được inject bởi JS */
 div[data-enabled-env-variable="true"] :deep(.defined-env-variable) {
   color: var(--defined-env-variable-color) !important;
   font-weight: 400 !important;

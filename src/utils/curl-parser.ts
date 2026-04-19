@@ -15,19 +15,17 @@ export function parseCurl(curlCommand: string): ParsedCurl {
     params: {}
   };
 
-  // 1. Làm sạch command: xóa dấu xuyệt xuống dòng và các khoảng trắng dư thừa
-  const cleanCommand = curlCommand.replace(/\\\n/g, ' ').replace(/\s+/g, ' ').trim();
+  // 1. Làm sạch sơ bộ (chỉ xóa xuống dòng)
+  const cleanCommand = curlCommand.replace(/\\\s*\n/g, ' ').trim();
 
-  // 2. Trích xuất URL (Tìm chuỗi bắt đầu bằng http và nằm trong hoặc ngoài ngoặc)
+  // 2. Trích xuất URL
   const urlMatch = cleanCommand.match(/(?:['"])(https?:\/\/[^'"]+)(?:['"])|(https?:\/\/[^\s]+)/);
   if (urlMatch) {
     let fullUrl = (urlMatch[1] || urlMatch[2]);
-    // Xóa tất cả dấu nháy đơn/kép ở đầu và cuối chuỗi URL
     fullUrl = fullUrl.replace(/^['"]|['"]$/g, ''); 
     const [baseUrl, queryString] = fullUrl.split('?');
     result.url = baseUrl;
 
-    // Parse Query Params
     if (queryString) {
       const searchParams = new URLSearchParams(queryString);
       searchParams.forEach((value, key) => {
@@ -53,10 +51,26 @@ export function parseCurl(curlCommand: string): ParsedCurl {
     }
   }
 
-  // 5. Trích xuất Body
-  const bodyMatch = cleanCommand.match(/(?:--data|--data-raw|-d)\s+['"]?({[\s\S]+?}|[^'"]+)['"]?/);
-  if (bodyMatch) {
-    result.body = bodyMatch[1].replace(/^'|'$/g, ''); // Xóa dấu nháy bao quanh body
+  // 5. Trích xuất Body (Logic mới: Lấy toàn bộ nội dung trong dấu nháy)
+  const bodyFlags = ['--data-raw', '--data-binary', '--data', '-d'];
+  for (const flag of bodyFlags) {
+    const flagIndex = cleanCommand.indexOf(flag);
+    if (flagIndex !== -1) {
+      const remaining = cleanCommand.substring(flagIndex + flag.length).trim();
+      const quoteChar = remaining[0];
+      if (quoteChar === "'" || quoteChar === '"') {
+        // Tìm dấu nháy đóng tương ứng
+        const closingQuoteIndex = remaining.indexOf(quoteChar, 1);
+        if (closingQuoteIndex !== -1) {
+          result.body = remaining.substring(1, closingQuoteIndex);
+          break;
+        }
+      } else {
+        // Nếu không có dấu nháy, lấy đến khoảng trắng tiếp theo
+        result.body = remaining.split(' ')[0];
+        break;
+      }
+    }
   }
 
   return result;
@@ -64,12 +78,8 @@ export function parseCurl(curlCommand: string): ParsedCurl {
 
 export function matchUrlPattern(currentPattern: string, pastedUrl: string): Record<string, string> | null {
   if (!currentPattern || !pastedUrl) return null;
-
-  // Tạo regex từ pattern (ví dụ: {id} -> ([^/]+))
   const regexString = currentPattern.replace(/{([^}]+)}/g, '(?<$1>[^/\\?#]+)');
   const regex = new RegExp(regexString);
-
-  // Thử khớp phần path của URL
   try {
     const path = pastedUrl.includes('://') ? new URL(pastedUrl).pathname : pastedUrl;
     const match = path.match(regex);

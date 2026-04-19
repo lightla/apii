@@ -20,10 +20,12 @@ const requestParams = useRequestParamsStorage()
 const myComponentRef = ref<InstanceType<typeof TrackedVariableInput> | null>(null)
 const methodSelectRef = ref<HTMLSelectElement | null>(null)
 
-const onUrlChange = (newText: string) => {
-  const trimmed = newText.trim()
+// Hàm xử lý phân giải cURL tập trung
+const processCurlIfPresent = (text: string) => {
+  const trimmed = text.trim()
   if (trimmed.startsWith('curl ')) {
     const parsed = parseCurl(trimmed)
+    let finalBaseUrl = parsed.url;
     
     if (props.route?.route) {
       const uriMatches = matchUrlPattern(props.route.route, parsed.url)
@@ -31,28 +33,36 @@ const onUrlChange = (newText: string) => {
         Object.entries(uriMatches).forEach(([key, value]) => {
           requestParams.updateUriParameter(key, value)
         })
-        requestParams.baseUrl = props.route.route
-      } else {
-        requestParams.baseUrl = parsed.url
+        finalBaseUrl = props.route.route
       }
-    } else {
-      requestParams.baseUrl = parsed.url
     }
 
+    requestParams.baseUrl = finalBaseUrl
     requestParams.applyParsedCurl(parsed)
-  } else {
-    requestParams.baseUrl = newText
+    myComponentRef.value?.setText(finalBaseUrl)
   }
+}
+
+// Khi đang gõ: Chỉ cập nhật baseUrl thô (cho URL Preview)
+const onUrlChange = (newText: string) => {
+  requestParams.baseUrl = newText
+}
+
+// Khi nhấn Enter hoặc Click ra ngoài: Mới bắt đầu phân giải cURL
+const onUrlCommit = (text: string) => {
+  processCurlIfPresent(text)
 }
 
 const sendRequest = async (_event: Event) => {
   const method = (methodSelectRef.value?.value ?? 'GET').toUpperCase()
   const envVariables = envStorage.definedEnvVariables;
   
-  // Bắt đầu với URL từ preview
+  // Trước khi gửi, đảm bảo đã xử lý cURL nếu còn sót
+  const currentUrl = myComponentRef.value?.getText() || ''
+  processCurlIfPresent(currentUrl)
+
   let url = requestParams.urlPreview;
   
-  // Replace environment variables {{name}} -> value
   envVariables.forEach(variable => {
     if (variable.name && variable.value) {
       const escapedName = variable.name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -62,7 +72,6 @@ const sendRequest = async (_event: Event) => {
 
   if (!url) return
 
-  // --- Áp dụng CORS Proxy nếu được bật ---
   const finalUrl = requestParams.useProxy 
     ? `${requestParams.proxyUrl}${url}`
     : url;
@@ -113,7 +122,6 @@ const sendRequest = async (_event: Event) => {
     responseStorage.loading = false
   }
 }
-
 </script>
 
 <template>
@@ -136,6 +144,8 @@ const sendRequest = async (_event: Event) => {
           :enabled-env-variable="true"
           :enabled-uri-param="true"
           @text-change="onUrlChange"
+          @blur="onUrlCommit"
+          @enter="el => onUrlCommit(el.textContent || '')"
       />
     </div>
     <div class="send-request-cover">
