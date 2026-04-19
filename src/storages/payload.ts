@@ -30,7 +30,6 @@ export const useRequestParamsStorage = defineStore('requestParams', {
     urlPreview(): string {
       const envStorage = useEnvStorage()
       
-      // Hàm helper để replace env variables {{name}} -> value
       const resolveEnvVariables = (text: string): string => {
         let result = text
         envStorage.definedEnvVariables.forEach(variable => {
@@ -42,22 +41,16 @@ export const useRequestParamsStorage = defineStore('requestParams', {
         return result
       }
 
-      // Tạo URL preview từ baseUrl + uriParameters + queryParams
-      // Bước 1: Resolve env variables trực tiếp trong baseUrl (ví dụ: {{domain}}/api/...)
       let url = resolveEnvVariables(this.baseUrl)
 
-      // Bước 2: Replace URI parameters (ví dụ: {workspaceId})
       this.uriParameters.forEach(variable => {
         const val = variable.value.trim()
         if (val) {
-          // Nếu giá trị của URI parameter lại chứa env variable (ví dụ: val = "{{my_id}}")
-          // thì ta cũng resolve nó luôn
           const resolvedVal = resolveEnvVariables(val)
           url = url.replace(`{${variable.name}}`, resolvedVal)
         }
       })
 
-      // Bước 3: Add query parameters
       const enabledQueries = this.queryParams
         .filter(param => param.enabled && param.key.trim() !== '')
         .map(param => {
@@ -79,15 +72,8 @@ export const useRequestParamsStorage = defineStore('requestParams', {
   },
 
   actions: {
-    // Query Params
     addQueryParam() {
-      this.queryParams.push({
-        id: nanoid(),
-        key: '',
-        value: '',
-        enabled: true,
-        description: ''
-      })
+      this.queryParams.push({ id: nanoid(), key: '', value: '', enabled: true, description: '' })
     },
 
     removeQueryParam(index: number) {
@@ -108,7 +94,6 @@ export const useRequestParamsStorage = defineStore('requestParams', {
       this.queryParams.forEach(p => p.enabled = targetState)
     },
 
-    // URI Parameters
     updateUriParameter(name: string, value: string) {
       const trimmed = value.trim()
       const index = this.uriParameters.findIndex(v => v.name === name)
@@ -119,15 +104,8 @@ export const useRequestParamsStorage = defineStore('requestParams', {
       }
     },
 
-    // Headers
     addHeader() {
-      this.headers.push({
-        id: nanoid(),
-        key: '',
-        value: '',
-        enabled: true,
-        description: ''
-      })
+      this.headers.push({ id: nanoid(), key: '', value: '', enabled: true, description: '' })
     },
 
     removeHeader(index: number) {
@@ -148,7 +126,6 @@ export const useRequestParamsStorage = defineStore('requestParams', {
       this.headers = []
     },
 
-    // Request actions
     setBaseUrl(url: string) {
       this.baseUrl = url
     },
@@ -157,11 +134,6 @@ export const useRequestParamsStorage = defineStore('requestParams', {
       this.method = method
     },
 
-    setRequestName(name: string) {
-      this.requestName = name
-    },
-
-    // Reset state
     resetAll() {
       this.queryParams = []
       this.uriParameters = []
@@ -172,7 +144,6 @@ export const useRequestParamsStorage = defineStore('requestParams', {
       this.requestName = ''
     },
 
-    // --- Persist theo Route ID ---
     saveToStorage(routeId: string) {
       if (!routeId) return
       const data = {
@@ -204,6 +175,31 @@ export const useRequestParamsStorage = defineStore('requestParams', {
       } else {
         this.resetAll()
       }
+    },
+
+    applyParsedCurl(parsed: { method: string, url: string, headers: Record<string, string>, body: string, params: Record<string, string> }) {
+      this.method = parsed.method
+      this.body = parsed.body
+      
+      Object.entries(parsed.headers).forEach(([key, value]) => {
+        const existing = this.headers.find(h => h.key.toLowerCase() === key.toLowerCase())
+        if (existing) {
+          existing.value = value
+          existing.enabled = true
+        } else {
+          this.headers.push({ id: nanoid(), key, value, enabled: true, description: '' })
+        }
+      })
+
+      Object.entries(parsed.params).forEach(([key, value]) => {
+        const existing = this.queryParams.find(p => p.key === key)
+        if (existing) {
+          existing.value = value
+          existing.enabled = true
+        } else {
+          this.queryParams.push({ id: nanoid(), key, value, enabled: true, description: '' })
+        }
+      })
     }
   }
 })

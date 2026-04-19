@@ -6,6 +6,7 @@ import {useInputStorage, useEnvStorage} from "@/storages/env-variables-tmp.ts";
 import { IconBrandTelegram } from '@tabler/icons-vue';
 import { useResponseStorage } from '@/storages/response.ts'
 import { useRequestParamsStorage } from '@/storages/payload.ts'
+import { parseCurl, matchUrlPattern } from '@/utils/curl-parser.ts'
 
 const props = defineProps<{
   route: RouteInfo
@@ -19,27 +20,40 @@ const requestParams = useRequestParamsStorage()
 const myComponentRef = ref<InstanceType<typeof TrackedVariableInput> | null>(null)
 const methodSelectRef = ref<HTMLSelectElement | null>(null)
 
-onMounted(() => {
-  // inputStorage.trackedHighlightInputs.push();
-})
+const onUrlChange = (newText: string) => {
+  const trimmed = newText.trim()
+  if (trimmed.startsWith('curl ')) {
+    const parsed = parseCurl(trimmed)
+    
+    // 1. Logic khớp URI pattern thông minh
+    if (props.route?.route) {
+      const uriMatches = matchUrlPattern(props.route.route, parsed.url)
+      if (uriMatches) {
+        Object.entries(uriMatches).forEach(([key, value]) => {
+          requestParams.updateUriParameter(key, value)
+        })
+        requestParams.baseUrl = props.route.route
+      } else {
+        requestParams.baseUrl = parsed.url
+      }
+    } else {
+      requestParams.baseUrl = parsed.url
+    }
 
-const enterUrlInput = (urlInput: HTMLDivElement) => {
-  console.log(urlInput)
+    // 2. Điền các tham số còn lại
+    requestParams.applyParsedCurl(parsed)
+  } else {
+    requestParams.baseUrl = newText
+  }
 }
 
 const sendRequest = async (_event: Event) => {
   const method = (methodSelectRef.value?.value ?? 'GET').toUpperCase()
-  
-  // SỬA LỖI: Lấy env variables từ storage đúng cách
   const envVariables = envStorage.definedEnvVariables;
-  
-  // Bắt đầu với URL từ preview (đã có path vars và query params)
   let url = requestParams.urlPreview;
   
-  // Replace environment variables {{name}} -> value
   envVariables.forEach(variable => {
     if (variable.name && variable.value) {
-      // Dùng regex để replace global
       const escapedName = variable.name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
       url = url.replace(new RegExp(escapedName, 'g'), variable.value);
     }
@@ -53,16 +67,13 @@ const sendRequest = async (_event: Event) => {
   const hasBody = ['POST', 'PUT', 'PATCH'].includes(method)
   const fetchOptions: RequestInit = { method, headers: {} as Record<string, string> }
 
-  // Thêm các headers từ UI (Headers tab)
   requestParams.headers.forEach(header => {
     if (header.enabled && header.key.trim()) {
-      // SỬA LỖI TRIỆT ĐỂ: Loại bỏ tất cả ký tự xuống dòng (\n, \r) trong toàn bộ chuỗi
       const cleanValue = header.value.replace(/[\r\n]+/gm, "").trim();
       (fetchOptions.headers as Record<string, string>)[header.key.trim()] = cleanValue;
     }
   });
 
-  // Nếu có body, ép kiểu Content-Type nếu chưa có
   if (hasBody && requestParams.body) {
     if (!(fetchOptions.headers as Record<string, string>)['Content-Type']) {
       (fetchOptions.headers as Record<string, string>)['Content-Type'] = 'application/json';
@@ -102,8 +113,8 @@ const sendRequest = async (_event: Event) => {
 <template>
   <div class="request-line">
     <div class="method-select-cover">
-      <select ref="methodSelectRef" class="method-select select-control" :value="props.route?.method || 'GET'">
-        <option value="GET" selected>GET</option>
+      <select ref="methodSelectRef" class="method-select select-control" :value="requestParams.method">
+        <option value="GET">GET</option>
         <option value="POST">POST</option>
         <option value="PUT">PUT</option>
         <option value="PATCH">PATCH</option>
@@ -114,12 +125,11 @@ const sendRequest = async (_event: Event) => {
       <TrackedVariableInput
           ref="myComponentRef"
           :route="props.route"
-          :placeholder="'Enter URL'"
+          :placeholder="'Enter URL or paste cURL'"
           :value="requestParams.baseUrl"
           :enabled-env-variable="true"
           :enabled-uri-param="true"
-          @enter="enterUrlInput"
-          @text-change="url => requestParams.baseUrl = url"
+          @text-change="onUrlChange"
       />
     </div>
     <div class="send-request-cover">
@@ -133,22 +143,11 @@ const sendRequest = async (_event: Event) => {
   display: flex;
   align-items: center;
   max-width: 100%;
-  //border: 1px solid black;
-  //gap: 5px;
-  //gap: 10px;
-  //padding: 5px 15px;
-}
-
-.method-select-cover {
 }
 
 .method-select {
-  //width: 10%;
-  //background-color: #888888;
   display: flex;
   border: 1px solid #888888;
-  //border: none;
-  //padding: 5px;
   padding-left: 5px;
   justify-content: center;
   height: 27px;
@@ -161,30 +160,20 @@ const sendRequest = async (_event: Event) => {
   padding-right: 5px;
   padding-top: 1px;
   padding-bottom: 2px;
-  //background-color: #dddddd;
   max-width: 100%;
   width: 100%;
   min-height: 31px;
-  overflow-x: hidden; // Không dùng được do css không hỗ trợ
-}
-
-.send-request-cover {
-  //background-color: #007bff;
-  //padding-left: 5px;
-  //border: 1px solid #888888;
+  overflow-x: hidden;
 }
 
 .btn-send-request {
   cursor: pointer;
-  //width: 30px;
   height: 30px;
   width: 30px;
-  //fill: #666;
   transition: fill 0.2s ease;
 
   &:hover {
     fill: #cccccc;
   }
 }
-
 </style>
