@@ -33,10 +33,6 @@ const clickRoute = (route: RouteInfo) => {
   clickedRoute.value = route
 }
 
-const updateSearchableFields = (customKeys: string[]) => {
-  searchableFields.value = [...new Set(['route', 'group', ...customKeys])]
-}
-
 const localRequests = reactive([...props.requestsData])
 
 watch(() => props.requestsData, (newRequests) => {
@@ -84,7 +80,7 @@ watch(activeRightTab, (newTab) => localStorage.setItem(STORAGE_KEY_ACTIVE_TAB, n
 
     <div class="container-right">
       <RequestEditor v-if="activeRightTab === 'editor'" :route="clickedRoute" />
-      <RequestInfo v-if="activeRightTab === 'info'" :route="clickedRoute" @update:searchable-fields="updateSearchableFields" @route-tags-updated="updateTagsForRoute" />
+      <RequestInfo v-if="activeRightTab === 'info'" :route="clickedRoute" @route-tags-updated="updateTagsForRoute" />
       <EditorEnv v-if="activeRightTab === 'settings'" :route="clickedRoute!" />
     </div>
 

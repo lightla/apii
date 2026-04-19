@@ -38,6 +38,18 @@ const loadContent = () => {
   editorContent.value = localStorage.getItem(props.storageKey) || ''
 }
 
+const getCurrentFontSizeValue = () => `${currentFontSize.value}pt`
+
+const keepCurrentFontSizeForEmptyEditor = () => {
+  const quill = quillRef.value?.getQuill()
+  if (!quill || quill.getLength() > 1) return
+
+  const range = quill.getSelection()
+  if (!range) return
+
+  quill.format('size', getCurrentFontSizeValue(), Quill.sources.SILENT)
+}
+
 const resolveLeafPosition = (leaf: any, offset: number, isEnd: boolean) => {
   const node = leaf?.domNode as Node | undefined
   if (!node) return null
@@ -215,6 +227,7 @@ const onUpdate = () => {
   const quill = quillRef.value?.getQuill()
   if (quill) {
     editorContent.value = quill.root.innerHTML
+    keepCurrentFontSizeForEmptyEditor()
   }
   localStorage.setItem(props.storageKey, editorContent.value)
 }
@@ -271,11 +284,13 @@ const applyFontSize = () => {
   const quill = quillRef.value?.getQuill()
   if (quill && lastSelectionRange.value) {
     const range = lastSelectionRange.value
-    const size = `${currentFontSize.value}pt`
+    const size = getCurrentFontSizeValue()
 
     clearHeldSelection()
     if (range.length > 0) {
       quill.formatText(range.index, range.length, 'size', size, Quill.sources.USER)
+    } else if (quill.getLength() <= 1 && quill.getSelection()) {
+      quill.format('size', size, Quill.sources.SILENT)
     } else {
       quill.formatText(range.index, 1, 'size', size, Quill.sources.USER)
     }
@@ -343,6 +358,7 @@ const handleSelectionChange = (event: { range: QuillSelectionRange | null }) => 
         : Math.round(sizeValue)
       if (!isNaN(sizeNum)) currentFontSize.value = sizeNum
     }
+    keepCurrentFontSizeForEmptyEditor()
   }
 }
 
@@ -460,7 +476,7 @@ watch(() => props.storageKey, () => {
     height: 36px;
     background-color: var(--table-header-bg-color);
     border: none;
-    border-bottom: var(--table-border);
+    border-bottom: 1px solid rgba(170, 170, 170, 0.55);
     display: flex;
     align-items: center;
     padding: 0 10px;
