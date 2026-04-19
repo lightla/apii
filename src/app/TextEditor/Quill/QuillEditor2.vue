@@ -33,6 +33,41 @@ const saveEditorContent = (quill: any) => {
   localStorage.setItem(props.storageKey, editorContent.value)
 }
 
+const getCurrentLineRange = (quill: any, range: QuillSelectionRange): QuillSelectionRange => {
+  const [line, offset] = quill.getLine(range.index)
+  const lineLength = Math.max((line?.length?.() ?? 1) - 1, 0)
+
+  return {
+    index: range.index - offset,
+    length: lineLength
+  }
+}
+
+const toggleInlineFormat = (quill: any, format: 'bold' | 'italic' | 'underline') => {
+  const range = quill.getSelection() || lastSelectionRange.value
+  if (!range) return
+
+  const currentFormat = quill.getFormat(range.index, range.length)
+  const nextValue = !currentFormat[format]
+
+  if (range.length > 0) {
+    quill.format(format, nextValue, Quill.sources.USER)
+    quill.setSelection(range.index, range.length, Quill.sources.SILENT)
+    saveEditorContent(quill)
+    return
+  }
+
+  const lineRange = getCurrentLineRange(quill, range)
+  if (lineRange.length > 0) {
+    quill.formatText(lineRange.index, lineRange.length, format, nextValue, Quill.sources.USER)
+    quill.setSelection(range.index, range.length, Quill.sources.SILENT)
+    saveEditorContent(quill)
+    return
+  }
+
+  quill.format(format, nextValue, Quill.sources.USER)
+}
+
 const keepCurrentFontSizeForEmptyEditor = (quill: any) => {
   if (quill.getLength() > 1) return
 
@@ -45,6 +80,15 @@ const keepCurrentFontSizeForEmptyEditor = (quill: any) => {
 const toolbarOptions = computed(() => ({
   container: `#toolbar-${props.storageKey}`,
   handlers: {
+    bold(this: { quill: any }) {
+      toggleInlineFormat(this.quill, 'bold')
+    },
+    italic(this: { quill: any }) {
+      toggleInlineFormat(this.quill, 'italic')
+    },
+    underline(this: { quill: any }) {
+      toggleInlineFormat(this.quill, 'underline')
+    },
     clean(this: { quill: any }) {
       const range = this.quill.getSelection()
       if (!range) return
