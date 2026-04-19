@@ -34,11 +34,8 @@ const onClickButton = (event: MouseEvent) => {
 
       } else {
         console.log("confirmed-props.envVariableIndex:" + props.envVariableIndex);
-        console.log("confirmed-definedEnvVariables:" , envStorage.definedEnvVariables[props.envVariableIndex]);
-
-        envStorage.definedEnvVariables.splice(props.envVariableIndex, 1);
-
-        console.log("After-splice", envStorage.definedEnvVariables.map(v => v.name));
+        
+        envStorage.removeVariableDefinition(props.envVariableIndex);
 
         clickToConfirmed.value = false;
 

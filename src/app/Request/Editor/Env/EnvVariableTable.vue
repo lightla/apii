@@ -27,11 +27,7 @@ const envDeleteConfirmTimeoutRef = ref<ReturnType<typeof setTimeout> | null>(nul
 console.log("env-table.run:");
 
 const onClickAddRowButton = (event: MouseEvent): void => {
-  envStorage.addDefinedEnvVariable({
-    name: "",
-    value: "",
-    isValidFormat: true,
-  })
+  envStorage.addVariableDefinition()
 }
 
 const onClickAddEnvRowButton = (): void => {
@@ -175,7 +171,7 @@ onBeforeUnmount(() => {
           <IconSquareRoundedPlus @click="onClickAddEnvRowButton" stroke-width="1" class="icon-button-add-row"/>
 
           <div class="env-toolbar-select-wrap">
-            <select class="env-select-in-toolbar">
+            <select class="env-select-in-toolbar" v-model="envStorage.selectedEnvCode">
               <option v-for="env in envStorage.definedEnvs" :key="env.id" :value="env.code">
                 {{env.name}}
               </option>

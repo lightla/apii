@@ -6,14 +6,17 @@ export type StoredEnv = {
   code: string
 }
 
-type EnvStorageBackend = {
-  loadEnvs: () => Promise<StoredEnv[]>
-  saveEnvs: (envs: StoredEnv[]) => Promise<void>
+// Cấu trúc dữ liệu mới mà Store gửi xuống
+export type EnvStorageData = {
+  definedEnvs: StoredEnv[]
+  variableDefinitions: any[]
+  envValues: Record<string, Record<string, string>>
+  selectedEnvCode: string
 }
 
-const DEFAULT_ENV: StoredEnv = {
-  name: 'Default',
-  code: 'default',
+type EnvStorageBackend = {
+  loadEnvs: () => Promise<any>
+  saveEnvs: (data: any) => Promise<void>
 }
 
 const STORAGE_ENVS_KEY = 'app.env.storage.envs'
@@ -22,92 +25,43 @@ const STORAGE_ENVS_KEY = 'app.env.storage.envs'
 let currentProvider: EnvStorageProvider = 'localStorage'
 let apiSaveUrl: string = ''
 
-const normalizeCode = (code: string | undefined | null): string => {
-  return (code ?? '').trim().toLowerCase()
-}
-
-export const sanitizeStoredEnvs = (envs: StoredEnv[]): StoredEnv[] => {
-  const input = Array.isArray(envs) ? envs : []
-  const normalized: StoredEnv[] = input.map((env) => ({
-    id: env.id,
-    name: env.name ?? '',
-    code: normalizeCode(env.code),
-  }))
-
-  const sanitized: StoredEnv[] = []
-  const seenCodes = new Set<string>()
-
-  const noEnvironment = normalized.find((env) => env.code === 'default')
-  sanitized.push({
-    id: noEnvironment?.id,
-    name: noEnvironment?.name || DEFAULT_ENV.name,
-    code: 'default',
-  })
-  seenCodes.add('default')
-
-  normalized.forEach((env) => {
-    if (env.code === 'default') return
-    if (!env.code) {
-      sanitized.push(env)
-      return
-    }
-    if (seenCodes.has(env.code)) return
-    seenCodes.add(env.code)
-    sanitized.push(env)
-  })
-
-  return sanitized
-}
-
 const localStorageBackend: EnvStorageBackend = {
   async loadEnvs() {
-    if (typeof window === 'undefined') {
-      return [DEFAULT_ENV]
-    }
+    if (typeof window === 'undefined') return null
 
     try {
       const raw = window.localStorage.getItem(STORAGE_ENVS_KEY)
-      if (!raw) return [DEFAULT_ENV]
-
-      const parsed = JSON.parse(raw)
-      if (!Array.isArray(parsed)) return [DEFAULT_ENV]
-
-      return sanitizeStoredEnvs(parsed)
+      if (!raw) return null
+      return JSON.parse(raw)
     } catch {
-      return [DEFAULT_ENV]
+      return null
     }
   },
-  async saveEnvs(envs: StoredEnv[]) {
+  async saveEnvs(data: any) {
     if (typeof window === 'undefined') return
-    const sanitized = sanitizeStoredEnvs(envs)
-    window.localStorage.setItem(STORAGE_ENVS_KEY, JSON.stringify(sanitized))
+    window.localStorage.setItem(STORAGE_ENVS_KEY, JSON.stringify(data))
   },
 }
 
 const apiStorageBackend: EnvStorageBackend = {
   async loadEnvs() {
-    if (!apiSaveUrl) {
-      console.warn('[EnvStorage] apiStorage: No URL provided, falling back to empty')
-      return [DEFAULT_ENV]
-    }
+    if (!apiSaveUrl) return null
     try {
       const response = await fetch(`${apiSaveUrl}/envs`)
       if (!response.ok) throw new Error('Failed to load envs from API')
-      const data = await response.json()
-      return sanitizeStoredEnvs(data)
+      return await response.json()
     } catch (e) {
       console.error('[EnvStorage] apiStorage load error:', e)
-      return [DEFAULT_ENV]
+      return null
     }
   },
-  async saveEnvs(envs: StoredEnv[]) {
+  async saveEnvs(data: any) {
     if (!apiSaveUrl) return
     try {
-      const sanitized = sanitizeStoredEnvs(envs)
       await fetch(`${apiSaveUrl}/envs`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(sanitized),
+        body: JSON.stringify(data),
       })
     } catch (e) {
       console.error('[EnvStorage] apiStorage save error:', e)
@@ -131,13 +85,12 @@ export const envStorageManager = {
   getProvider,
   setProvider,
   setApiUrl,
-  async loadEnvs(): Promise<StoredEnv[]> {
+  async loadEnvs(): Promise<any> {
     const backend = getBackend()
-    const envs = await backend.loadEnvs()
-    return sanitizeStoredEnvs(envs)
+    return await backend.loadEnvs()
   },
-  async saveEnvs(envs: StoredEnv[]): Promise<void> {
+  async saveEnvs(data: any): Promise<void> {
     const backend = getBackend()
-    await backend.saveEnvs(sanitizeStoredEnvs(envs))
+    await backend.saveEnvs(data)
   },
 }

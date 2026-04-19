@@ -1,7 +1,7 @@
 import {defineStore} from 'pinia';
 import {computed, ref, watch} from 'vue';
 import { nanoid } from 'nanoid'
-import {envStorageManager, type StoredEnv} from '@/storages/env-storage-manager'
+import {envStorageManager} from '@/storages/env-storage-manager'
 import {replaceHighlightVariables} from "@/utils/variable-input.ts";
 import {
     type HighlightInputParam,
@@ -9,115 +9,148 @@ import {
     HighlightVariableTypeEnum,
 } from "@/types/variable-input.ts";
 
-type EnvVariable = {
-    id?: string;
-    name: string;
-    value: string;
-    isValidFormat: boolean;
-}
-
 type Env = {
     id?: string;
     name: string;
     code: string;
 }
 
+type VariableDefinition = {
+    id: string;
+    name: string;
+}
+
+type EnvValuesMap = Record<string, Record<string, string>>;
+
 const useEnvStorage = defineStore('variables', () => {
+    // 1. Môi trường
     const definedEnvs = ref<Env[]>([
         { id: nanoid(), name: 'Default', code: 'default'},
     ])
-    const isHydratingEnvs = ref(false) 
+    const selectedEnvCode = ref('default')
+    const isHydrating = ref(true)
 
-    const toStoredEnvs = (envs: Env[]): StoredEnv[] => {
-        return envs.map((env) => ({
-            id: env.id,
-            name: env.name,
-            code: env.code,
-        }))
-    }
-
-    const fromStoredEnv = (env: StoredEnv): Env => {
-        return {
-            id: env.id ?? nanoid(),
-            name: env.name,
-            code: env.code,
-        }
-    }
-
-    const persistDefinedEnvs = async (): Promise<void> => {
-        if (isHydratingEnvs.value) return
-        try {
-            const dataToSave = toStoredEnvs(definedEnvs.value)
-            await envStorageManager.saveEnvs(dataToSave)
-        } catch (e) {
-            console.error('[EnvStorage] Persist error:', e)
-        }
-    }
-
-    const hydrateEnvsFromStorage = async () => {
-        isHydratingEnvs.value = true
-        try {
-            const storedEnvs = await envStorageManager.loadEnvs()
-            if (storedEnvs && storedEnvs.length > 0) {
-                definedEnvs.value = storedEnvs.map(fromStoredEnv)
-            }
-        } catch (e) {
-            console.error('[EnvStorage] Hydration error:', e)
-        } finally {
-            // Đảm bảo set false sau khi gán value để không bị watch chặn hoặc gây loop
-            isHydratingEnvs.value = false
-        }
-    }
-
-    const addDefinedEnv = (env: Env): void => {
-        env.id = nanoid();
-        definedEnvs.value.push(env)
-        void persistDefinedEnvs()
-    }
-
-    // Biến môi trường mẫu
-    const definedEnvVariables = ref<EnvVariable[]>([
-        { id: nanoid(), name: '{{v1}}', value: 'Value 1', isValidFormat: true},
-        { id: nanoid(), name: '{{v11}}', value: 'Value 11', isValidFormat: true},
-        { id: nanoid(), name: '{{v2}}', value: 'Value 2', isValidFormat: true},
+    // 2. Định nghĩa biến (Cố định)
+    const variableDefinitions = ref<VariableDefinition[]>([
+        { id: nanoid(), name: '{{v1}}' },
     ])
 
-    const addDefinedEnvVariable = (envVariable: EnvVariable): void => {
-        envVariable.id = nanoid();
-        definedEnvVariables.value.push(envVariable)
+    // 3. Giá trị của biến theo môi trường
+    const envValues = ref<EnvValuesMap>({
+        'default': {}
+    })
+
+    const hydrate = async () => {
+        isHydrating.value = true
+        try {
+            const data = await envStorageManager.loadEnvs()
+            if (data && typeof data === 'object' && data.definedEnvs) {
+                definedEnvs.value = data.definedEnvs
+                variableDefinitions.value = data.variableDefinitions || []
+                envValues.value = data.envValues || { 'default': {} }
+                selectedEnvCode.value = data.selectedEnvCode || 'default'
+            } else {
+                // Nếu chưa có dữ liệu, khởi tạo Default cho envValues
+                if (!envValues.value['default']) {
+                  envValues.value['default'] = {}
+                }
+            }
+        } catch (e) {
+            console.error('[EnvStorage] Hydrate failed:', e)
+        } finally {
+            setTimeout(() => { isHydrating.value = false }, 50)
+        }
+    }
+
+    const persist = async () => {
+        if (isHydrating.value) return
+        const dataToSave = {
+            definedEnvs: definedEnvs.value,
+            variableDefinitions: variableDefinitions.value,
+            envValues: envValues.value,
+            selectedEnvCode: selectedEnvCode.value
+        }
+        await envStorageManager.saveEnvs(dataToSave)
+    }
+
+    const addDefinedEnv = (env: Env) => {
+        env.id = nanoid()
+        definedEnvs.value.push(env)
+        if (!envValues.value[env.code]) {
+            envValues.value[env.code] = {}
+        }
+        void persist()
+    }
+
+    const addVariableDefinition = () => {
+        const id = nanoid()
+        variableDefinitions.value.push({ id, name: '' })
+        void persist()
+    }
+
+    const removeVariableDefinition = (index: number) => {
+        const varDef = variableDefinitions.value[index]
+        if (!varDef) return
+        variableDefinitions.value.splice(index, 1)
+        Object.keys(envValues.value).forEach(code => {
+            delete envValues.value[code][varDef.id]
+        })
+        void persist()
+    }
+
+    const definedEnvVariables = computed(() => {
+        return variableDefinitions.value.map(v => ({
+            id: v.id,
+            name: v.name,
+            value: envValues.value[selectedEnvCode.value]?.[v.id] || '',
+            isValidFormat: v.name.startsWith('{{') && v.name.endsWith('}}')
+        }))
+    })
+
+    const updateVariableName = (index: number, newName: string) => {
+        if (variableDefinitions.value[index]) {
+            variableDefinitions.value[index].name = newName
+            void persist()
+        }
+    }
+
+    const updateVariableValue = (index: number, newValue: string) => {
+        const varDef = variableDefinitions.value[index]
+        if (!varDef) return
+        if (!envValues.value[selectedEnvCode.value]) {
+            envValues.value[selectedEnvCode.value] = {}
+        }
+        envValues.value[selectedEnvCode.value][varDef.id] = newValue
+        void persist()
     }
 
     const collectEnvVariableNames = () => {
-        return computed(() =>
-            definedEnvVariables.value
-                .filter(variable => variable.isValidFormat)
-                .map(variable => variable.name)
-        ).value;
+        return variableDefinitions.value
+            .map(v => v.name)
+            .filter(name => name.startsWith('{{') && name.endsWith('}}'))
     };
 
-    // Watch sâu để tự động lưu khi bất kỳ env nào thay đổi (tên, code...)
-    watch(definedEnvs, () => {
-        void persistDefinedEnvs()
+    watch([definedEnvs, variableDefinitions, envValues, selectedEnvCode], () => {
+        void persist()
     }, { deep: true })
 
-    // Khởi tạo load dữ liệu ngay khi store được sử dụng
-    void hydrateEnvsFromStorage()
+    void hydrate()
 
     return {
-        definedEnvs, addDefinedEnv,
-        definedEnvVariables, addDefinedEnvVariable, collectEnvVariableNames,
-        persistDefinedEnvs,
+        definedEnvs, selectedEnvCode, addDefinedEnv,
+        variableDefinitions, definedEnvVariables, 
+        addVariableDefinition, removeVariableDefinition,
+        updateVariableName, updateVariableValue,
+        collectEnvVariableNames, persist
     };
 });
 
 const useInputStorage = defineStore('inputs', () => {
     const trackedHighlightInputs = ref<HTMLDivElement[]>([]);
-
     const highlightInput = ({inputIndex, options, withCursor = true}: HighlightInputParam) => {
         if (inputIndex === undefined || inputIndex === null) return;
         const trackedInput = trackedHighlightInputs.value[inputIndex];
         if (!trackedInput) return;
-
         const highlightVariableTypes: HighlightVariableTypeParam[] = [];
         if (trackedInput.dataset.enabledEnvVariable) {
             highlightVariableTypes.push({
@@ -132,26 +165,14 @@ const useInputStorage = defineStore('inputs', () => {
                 definedVariableCssClass: "defined-uri-param",
             });
         }
-
-        replaceHighlightVariables({
-            target: trackedInput,
-            variables: highlightVariableTypes,
-            options: options,
-            withCursor: withCursor,
-        });
+        replaceHighlightVariables({ target: trackedInput, variables: highlightVariableTypes, options, withCursor });
     }
-
     const rescanHighlightAllInputs = (exceptInputIndex?: number|null, options ?: any) => {
-        trackedHighlightInputs.value.forEach((trackedInput: HTMLDivElement, index : number) => {
+        trackedHighlightInputs.value.forEach((trackedInput, index) => {
             if (index === exceptInputIndex) return;
-            highlightInput({
-                inputIndex: index,
-                options: options,
-                withCursor: false
-            });
+            highlightInput({ inputIndex: index, options, withCursor: false });
         });
     }
-
     return { trackedHighlightInputs, rescanHighlightAllInputs, highlightInput };
 });
 
