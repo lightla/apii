@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import {onMounted, onUnmounted, ref, nextTick, computed} from 'vue'
 import {useEnvStorage, useInputStorage} from "@/storages";
+import { IconTrash } from '@tabler/icons-vue';
 
 const lastMousePosition = ref({ clientX: 0, clientY: 0 })
 const lastElement = ref<HTMLElement | null>(null)
@@ -96,7 +97,6 @@ function showPopupAt(el: HTMLElement, x: number, y: number) {
   searchQuery.value = '';
   currentVarName.value = el.textContent?.trim() || "";
 
-  // KIỂM TRA TRẠNG THÁI DEFINED GỐC (Dựa trên việc có tồn tại trong danh sách định nghĩa)
   const isActuallyInDefinitions = envStorage.variableDefinitions.some(v => v.name === currentVarName.value);
   isDefined.value = isActuallyInDefinitions;
 
@@ -119,7 +119,6 @@ const onValueInput = (e: Event) => {
 
   const index = envStorage.variableDefinitions.findIndex(v => v.name === currentVarName.value);
   if (index !== -1) {
-    // Nếu biến đã có định nghĩa, cứ gõ là cập nhật Store ngay (giá trị rỗng vẫn ok)
     envStorage.updateVariableValue(index, newValue);
   }
 }
@@ -129,9 +128,7 @@ const onValueBlur = async () => {
 
   let index = envStorage.variableDefinitions.findIndex(v => v.name === currentVarName.value);
 
-  // LUỒNG 1: BIẾN CHƯA CÓ ĐỊNH NGHĨA (UNDEFINED)
   if (index === -1) {
-    // Chỉ tạo mới nếu người dùng nhập giá trị khác rỗng
     if (currentVarValue.value.trim() !== '') {
       const newId = Math.random().toString(36).substr(2, 9);
       envStorage.variableDefinitions.push({
@@ -140,23 +137,31 @@ const onValueBlur = async () => {
       });
       isDefined.value = true;
       index = envStorage.variableDefinitions.length - 1;
-      
-      // Cập nhật giá trị vừa nhập vào Store
       envStorage.updateVariableValue(index, currentVarValue.value);
     }
-  } 
-  // LUỒNG 2: BIẾN ĐÃ CÓ ĐỊNH NGHĨA (DEFINED)
-  else {
-    // Luôn cập nhật giá trị vào Store, dù là rỗng
+  } else {
     envStorage.updateVariableValue(index, currentVarValue.value);
   }
 
   await nextTick();
-
-  // Quét lại toàn bộ để cập nhật màu sắc
   inputStorage.rescanHighlightAllInputs(null, {
     definedEnvVariables: envStorage.collectEnvVariableNames()
   });
+}
+
+const deleteVariable = async () => {
+  const index = envStorage.variableDefinitions.findIndex(v => v.name === currentVarName.value);
+  if (index !== -1) {
+    envStorage.removeVariableDefinition(index);
+    isDefined.value = false;
+    currentVarValue.value = '';
+    
+    await nextTick();
+    inputStorage.rescanHighlightAllInputs(null, {
+      definedEnvVariables: envStorage.collectEnvVariableNames()
+    });
+    hidePopup();
+  }
 }
 
 const selectVariable = (newName: string) => {
@@ -184,8 +189,17 @@ const selectVariable = (newName: string) => {
     <div class="popup-header">
       <div class="d-flex align-items-center w-100">
         <span class="var-label me-2">Variable:</span>
-        <span class="var-name">{{ currentVarName }}</span>
-        <span v-if="!isDefined" class="badge bg-warning text-dark ms-auto" style="font-size: 0.65rem">Undefined</span>
+        <span class="var-name text-truncate" style="max-width: 140px;">{{ currentVarName }}</span>
+        <div class="ms-auto d-flex align-items-center">
+          <IconTrash 
+            v-if="isDefined" 
+            @click="deleteVariable" 
+            class="btn-delete-var" 
+            size="24" 
+            stroke-width="1.5"
+          />
+          <span v-if="!isDefined" class="badge bg-warning text-dark" style="font-size: 0.65rem">Undefined</span>
+        </div>
       </div>
     </div>
     
@@ -269,6 +283,15 @@ const selectVariable = (newName: string) => {
   font-weight: 700;
   color: var(--defined-env-variable-color);
   font-family: 'Consolas', monospace;
+}
+
+.btn-delete-var {
+  cursor: pointer;
+  color: #666;
+  transition: color 0.2s;
+  &:hover {
+    color: #dc3545; /* Màu đỏ khi hover xóa */
+  }
 }
 
 .popup-body {
