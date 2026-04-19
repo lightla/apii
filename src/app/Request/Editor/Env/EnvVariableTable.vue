@@ -51,9 +51,8 @@ const normalizeInputText = (text: string | undefined | null): string => {
 }
 
 const onClickEraserEmptyLine = (): void => {
-  envStorage.definedEnvVariables = envStorage.definedEnvVariables.filter((envVariable) => {
-    const normalizedName = normalizeInputText(envVariable.name);
-    return normalizedName !== '';
+  envStorage.variableDefinitions = envStorage.variableDefinitions.filter((v) => {
+    return normalizeInputText(v.name) !== '';
   })
 }
 
@@ -62,10 +61,8 @@ const onClickEnvEraserEmptyLine = (): void => {
     if (isProtectedEnv(env, envIndex)) {
       return true
     }
-    const normalizedName = normalizeInputText(env.name)
-    return normalizedName !== ''
+    return normalizeInputText(env.name) !== ''
   })
-  void envStorage.persistDefinedEnvs()
 }
 
 const onClickDeleteEnvRow = (envIndex: number): void => {
