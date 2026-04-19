@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, defineProps, inject, provide, watch } from 'vue'
+import { ref, onMounted, inject, provide, watch } from 'vue'
 
 const props = withDefaults(
     defineProps<{ isActive?: boolean }>(),  // isActive là optional
