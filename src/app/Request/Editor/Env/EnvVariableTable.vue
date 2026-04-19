@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import {onBeforeUnmount, onMounted, ref, watch} from 'vue'
+import {onBeforeUnmount, onMounted, ref, watch, computed} from 'vue'
 import type {RouteInfo} from '@/types'
 import {useEnvStorage} from "@/storages/env-variables-tmp.ts";
 import VariableCellButton from "@/app/Request/Editor/Env/VariableTableCell/VariableCellButton.vue";
@@ -23,6 +23,10 @@ let envResizeObserver: ResizeObserver | null = null
 let envVariableResizeObserver: ResizeObserver | null = null
 const envDeleteConfirmIndex = ref<number | null>(null)
 const envDeleteConfirmTimeoutRef = ref<ReturnType<typeof setTimeout> | null>(null)
+
+const filteredEnvsForSelect = computed(() => {
+  return envStorage.definedEnvs.filter(env => env.name.trim() !== '')
+})
 
 console.log("env-table.run:");
 
@@ -172,7 +176,7 @@ onBeforeUnmount(() => {
 
           <div class="env-toolbar-select-wrap">
             <select class="env-select-in-toolbar" v-model="envStorage.selectedEnvCode">
-              <option v-for="env in envStorage.definedEnvs" :key="env.id" :value="env.code">
+              <option v-for="env in filteredEnvsForSelect" :key="env.id" :value="env.code">
                 {{env.name}}
               </option>
             </select>
