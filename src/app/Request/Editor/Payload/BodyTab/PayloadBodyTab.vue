@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, computed } from 'vue'
 import type { RouteInfo } from '@/types'
 import CodeMirrorContainer2 from '@/app/Generals/CodeEditor/CodeMirrorContainer2.vue'
 import TrackedVariableInput from "@/app/Generals/TrackedVariableInput.vue";
@@ -12,7 +12,8 @@ import {
   FileUp,
   FileCode,
   Box,
-  Binary
+  Binary,
+  Eraser
 } from "lucide-vue-next";
 import { IconSquareRoundedPlus } from "@tabler/icons-vue";
 
@@ -26,6 +27,57 @@ const bodyTypes = [
   { label: 'Binary', value: 'binary', icon: Binary },
   { label: 'None', value: 'none', icon: SquareX },
 ]
+
+// Logic Master Toggle Form Data
+const isAnyFormDataEnabled = computed(() => {
+  return store.formData.length > 0 && store.formData.some(i => i.enabled)
+})
+
+function toggleAllFormData() {
+  const target = !isAnyFormDataEnabled.value
+  store.formData.forEach(i => i.enabled = target)
+}
+
+// Logic Master Delete (Eraser) - Xóa hàng rỗng
+function onMasterDeleteClick() {
+  store.formData = store.formData.filter(i => i.key.trim() !== '' || i.value.trim() !== '')
+}
+
+// Logic Delete All (X) - Cạnh nút +
+const isConfirmingDeleteAll = ref(false)
+let confirmAllTimer: ReturnType<typeof setTimeout> | undefined
+
+function onTrashClick() {
+  if (isConfirmingDeleteAll.value) {
+    store.formData = []
+    isConfirmingDeleteAll.value = false
+    clearTimeout(confirmAllTimer)
+  } else {
+    isConfirmingDeleteAll.value = true
+    clearTimeout(confirmAllTimer)
+    confirmAllTimer = setTimeout(() => {
+      isConfirmingDeleteAll.value = false
+    }, 3000)
+  }
+}
+
+// Per-row delete confirm state
+const confirmDeleteIndex = ref<number | null>(null)
+let confirmTimer: ReturnType<typeof setTimeout> | undefined
+
+function onDeleteClick(index: number) {
+  if (confirmDeleteIndex.value === index) {
+    store.removeFormData(index)
+    confirmDeleteIndex.value = null
+    clearTimeout(confirmTimer)
+  } else {
+    confirmDeleteIndex.value = index
+    clearTimeout(confirmTimer)
+    confirmTimer = setTimeout(() => {
+      confirmDeleteIndex.value = null
+    }, 3000)
+  }
+}
 
 const onFileChange = (event: Event) => {
   const target = event.target as HTMLInputElement
@@ -49,7 +101,7 @@ const triggerFileInput = (id: string) => {
 
 <template>
   <div class="body-tab-container">
-    <!-- Body Type Selector with Full Border -->
+    <!-- Body Type Selector -->
     <div class="body-type-toolbar">
       <div 
         v-for="type in bodyTypes" 
@@ -79,76 +131,105 @@ const triggerFileInput = (id: string) => {
       <!-- Form Data Table -->
       <div v-else-if="store.bodyType === 'form-data'" class="form-data-wrap">
         <div class="form-data-toolbar">
-          <IconSquareRoundedPlus @click="store.addFormData()" stroke-width="1.5" class="icon-plus"/>
-          <span class="ms-2 small text-muted">Add Form-Data pair</span>
+          <div class="d-flex align-items-center">
+            <IconSquareRoundedPlus @click="store.addFormData()" stroke-width="1" class="icon-button-add-row"/>
+            
+            <div @click="onTrashClick" title="Delete all form-data" class="d-flex align-items-center cursor-pointer ms-1">
+              <ShieldAlert v-if="isConfirmingDeleteAll" stroke-width="1" class="icon-button icon-button-trash-x" />
+              <SquareX v-else stroke-width="1" class="icon-button icon-button-trash-x" />
+            </div>
+          </div>
         </div>
         
-        <table class="form-data-table">
-          <thead>
-            <tr>
-              <th style="width: 40px;"></th>
-              <th style="width: 30%;">Key</th>
-              <th style="width: 100px;">Type</th>
-              <th>Value</th>
-              <th style="width: 40px;"></th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="(item, index) in store.formData" :key="item.id">
-              <td>
-                <div class="cell-icon-action" @click="item.enabled = !item.enabled">
-                  <SquareCheck v-if="item.enabled" stroke-width="1" size="18" />
-                  <Square v-else stroke-width="1" size="18" />
-                </div>
-              </td>
-              <td>
-                <TrackedVariableInput
-                  :route="props.route"
-                  :value="item.key"
-                  :enabled-env-variable="true"
-                  @text-change="val => item.key = val"
-                />
-              </td>
-              <td>
-                <select v-model="item.type" class="type-select">
-                  <option value="text">Text</option>
-                  <option value="file">File</option>
-                </select>
-              </td>
-              <td>
-                <template v-if="item.type === 'text'">
-                  <TrackedVariableInput
-                    :route="props.route"
-                    :value="item.value"
-                    :enabled-env-variable="true"
-                    @text-change="val => item.value = val"
-                  />
-                </template>
-                <template v-else>
-                  <div class="file-input-wrap">
-                    <button class="btn-select-file" @click="triggerFileInput('fd-file-' + index)">
-                      {{ item.file ? item.file.name : 'Select File' }}
-                    </button>
-                    <input 
-                      :id="'fd-file-' + index" 
-                      type="file" 
-                      class="d-none" 
-                      @change="onFormDataFileChange(index, $event)"
+        <div class="table-scroll-wrapper">
+          <table class="form-data-table">
+            <colgroup>
+              <col style="width: 40px;">
+              <col style="width: 30%;">
+              <col style="width: 100px;">
+              <col style="width: auto;">
+              <col style="width: 40px;">
+            </colgroup>
+            <thead>
+              <tr>
+                <th>
+                  <div class="cell-icon-action" @click="toggleAllFormData">
+                    <SquareCheck v-if="isAnyFormDataEnabled" stroke-width="1" class="icon-button-checkbox"/>
+                    <Square v-else stroke-width="1" class="icon-button-checkbox"/>
+                  </div>
+                </th>
+                <th class="text-center">Key</th>
+                <th class="text-center">Type</th>
+                <th class="text-center">Value</th>
+                <th>
+                  <div class="cell-icon-action" @click="onMasterDeleteClick" title="Clear empty rows">
+                    <Eraser stroke-width="1" class="icon-button-eraser" />
+                  </div>
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="(item, index) in store.formData" :key="item.id">
+                <td>
+                  <div class="cell-icon-action" @click="item.enabled = !item.enabled">
+                    <SquareCheck v-if="item.enabled" stroke-width="1" class="icon-button-checkbox" />
+                    <Square v-else stroke-width="1" class="icon-button-checkbox" />
+                  </div>
+                </td>
+                <td>
+                  <div class="param-input-wrap">
+                    <TrackedVariableInput
+                      :route="props.route"
+                      :value="item.key"
+                      :enabled-env-variable="true"
+                      @text-change="val => item.key = val"
                     />
                   </div>
-                </template>
-              </td>
-              <td>
-                <div class="cell-icon-action" @click="store.removeFormData(index)">
-                  <SquareX stroke-width="1" size="18" />
-                </div>
-              </td>
-            </tr>
-            <tr v-if="store.formData.length === 0">
-              <td colspan="5" class="empty-text">No form-data parameters</td>
-            </tr>
-          </tbody>
-        </table>
+                </td>
+                <td>
+                  <select v-model="item.type" class="type-select">
+                    <option value="text">Text</option>
+                    <option value="file">File</option>
+                  </select>
+                </td>
+                <td>
+                  <div class="param-input-wrap">
+                    <template v-if="item.type === 'text'">
+                      <TrackedVariableInput
+                        :route="props.route"
+                        :value="item.value"
+                        :enabled-env-variable="true"
+                        @text-change="val => item.value = val"
+                      />
+                    </template>
+                    <template v-else>
+                      <div class="file-input-wrap">
+                        <button class="btn-select-file" @click="triggerFileInput('fd-file-' + index)">
+                          {{ item.file ? item.file.name : 'Select File' }}
+                        </button>
+                        <input 
+                          :id="'fd-file-' + index" 
+                          type="file" 
+                          class="d-none" 
+                          @change="onFormDataFileChange(index, $event)"
+                        />
+                      </div>
+                    </template>
+                  </div>
+                </td>
+                <td>
+                  <div class="cell-icon-action" @click="onDeleteClick(index)">
+                    <ShieldAlert v-if="confirmDeleteIndex === index" stroke-width="1" class="icon-button icon-button-row-action" />
+                    <SquareX v-else stroke-width="1" class="icon-button icon-button-row-action" />
+                  </div>
+                </td>
+              </tr>
+              <tr v-if="store.formData.length === 0">
+                <td colspan="5" class="empty-row">No form-data parameters</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
       </div>
 
       <!-- Binary File Upload -->
@@ -180,11 +261,12 @@ const triggerFileInput = (id: string) => {
 </template>
 
 <style scoped lang="scss">
+@use "@/assets/styles/elements";
+
 .body-tab-container {
   display: flex;
   flex-direction: column;
   height: 100%;
-  background-color: transparent;
 }
 
 .body-type-toolbar {
@@ -192,8 +274,9 @@ const triggerFileInput = (id: string) => {
   gap: 2px;
   padding: 5px;
   background-color: rgba(221, 221, 221, 0.4);
-  border: 1px solid #888888; /* Full border cho container */
+  border: 1px solid #888888;
   margin-bottom: 5px;
+  flex-shrink: 0;
 }
 
 .body-type-item {
@@ -204,11 +287,8 @@ const triggerFileInput = (id: string) => {
   align-items: center;
   border: 1px solid transparent;
   color: #555;
-  transition: all 0.2s ease;
   
-  &:hover {
-    background-color: rgba(0, 0, 0, 0.05);
-  }
+  &:hover { background-color: rgba(0, 0, 0, 0.05); }
   
   &.active {
     background-color: #dddddd;
@@ -221,130 +301,169 @@ const triggerFileInput = (id: string) => {
 .body-content-area {
   flex: 1;
   min-height: 0;
-  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
 }
 
 .json-editor-wrap {
+  flex: 1;
+  min-height: 0;
   height: 100%;
 }
 
 .form-data-wrap {
-  padding: 10px;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
 }
 
 .form-data-toolbar {
   display: flex;
-  align-items: center;
-  margin-bottom: 10px;
+  margin-bottom: 2px;
+  padding-left: 0;
+  flex-shrink: 0;
 }
 
-.icon-plus {
-  width: 30px;
-  height: 30px;
-  cursor: pointer;
-  color: #888;
-  &:hover { color: #000; }
+.table-scroll-wrapper {
+  overflow-y: auto;
+  @include elements.scrollbar-hidden;
+  border-bottom: var(--table-border);
+  flex: 1;
 }
 
 .form-data-table {
+  table-layout: fixed;
   width: 100%;
-  border-collapse: collapse;
-  font-size: 13px;
-  
+  border-collapse: separate;
+  border-spacing: 0;
+  border-right: var(--table-border);
+
   th {
-    text-align: left;
-    padding: 8px;
-    background-color: #eeeeee;
-    border: 1px solid #888888;
+    height: 36px;
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    background-color: var(--table-header-bg-color);
+    border-top: var(--table-border);
+    border-left: var(--table-border);
+    border-bottom: var(--table-border);
+    font-size: 15px;
     font-weight: 500;
+    padding: 0;
+    
+    &.text-center {
+        text-align: center !important;
+    }
   }
-  
+
   td {
-    padding: 4px 8px;
-    border: 1px solid #888888;
+    height: 40px;
+    border-left: var(--table-border);
+    border-bottom: var(--table-border);
+    padding: 0 8px;
     vertical-align: middle;
   }
+
+  th:first-child, td:first-child,
+  th:last-child, td:last-child {
+    width: 40px;
+    padding: 4px;
+    text-align: center;
+  }
+
+  tr:last-child td { border-bottom: none !important; }
 }
 
 .type-select {
   width: 100%;
+  height: 28px;
   background: transparent;
-  border: 1px solid #ccc;
+  border: 1px solid #888888;
   padding: 2px 4px;
-  font-size: 12px;
+  font-size: 13px;
   outline: none;
 }
 
 .file-input-wrap {
   display: flex;
   align-items: center;
+  height: 28px;
 }
 
 .btn-select-file {
   background: #eee;
-  border: 1px solid #bbb;
-  padding: 2px 10px;
+  border: 1px solid #888888;
+  padding: 0 10px;
   font-size: 12px;
   cursor: pointer;
   width: 100%;
+  height: 100%;
   text-align: left;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  
   &:hover { background: #e0e0e0; }
 }
 
-.binary-wrap {
-  padding: 30px;
-  height: 100%;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-}
-
-.binary-uploader {
-  width: 100%;
-  max-width: 400px;
-  height: 200px;
-  border: 2px dashed #ccc;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  align-items: center;
+.icon-button-add-row {
+  width: 30px !important;
+  height: 30px;
   cursor: pointer;
-  border-radius: 8px;
-  transition: all 0.2s;
-  
-  &:hover {
-    border-color: #888;
-    background-color: rgba(0,0,0,0.02);
-  }
+  &:hover { fill: #cccccc; }
 }
 
-.file-name {
-  font-weight: 500;
-  margin-bottom: 4px;
+.icon-button-trash-x {
+  width: 30px;
+  height: 30px;
+  cursor: pointer;
+  stroke: #666;
+  &:hover { stroke: #000; }
 }
 
-.none-wrap {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  height: 100%;
-}
-
-.empty-text {
-  text-align: center;
-  padding: 20px !important;
-  color: #aaa;
+.icon-button-checkbox, .icon-button-row-action, .icon-button-eraser {
+  width: 26px;
+  height: 26px;
+  cursor: pointer;
+  display: block;
+  margin: 0 auto;
+  stroke: #666;
+  &:hover { stroke: #000; }
 }
 
 .cell-icon-action {
   display: flex;
   justify-content: center;
+  align-items: center;
+  width: 100%;
+  height: 100%;
   cursor: pointer;
-  color: #666;
-  &:hover { color: #000; }
+}
+
+.param-input-wrap {
+  padding: 2px 0;
+}
+
+.empty-row {
+  text-align: center;
+  color: #aaa;
+  font-size: 15px;
+  height: 40px;
+  vertical-align: middle;
+}
+
+.binary-wrap { padding: 30px; height: 100%; display: flex; justify-content: center; align-items: center; }
+.binary-uploader {
+  width: 100%; max-width: 400px; height: 200px; border: 2px dashed #ccc;
+  display: flex; flex-direction: column; justify-content: center; align-items: center;
+  cursor: pointer; border-radius: 8px; &:hover { border-color: #888; background-color: rgba(0,0,0,0.02); }
+}
+
+.none-wrap {
+    height: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
 }
 </style>
