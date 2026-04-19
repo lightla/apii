@@ -2,7 +2,6 @@
 import {ref, watch} from 'vue'
 import type {RouteInfo} from '@/types'
 import EditorUrlBar from "@/app/Request/Editor/EditorUrlBar.vue";
-import EditorPopupMenu from "@/app/Request/Editor/EditorPopupMenu.vue";
 import ToggleMenuItem from "@/app/Generals/ToggleMenu/ToggleMenuItem.vue";
 import EditorPayload from "@/app/Request/Editor/EditorPayload.vue";
 import EditorResponse from "@/app/Request/Editor/EditorResponse.vue";
@@ -51,7 +50,6 @@ watch(() => payloadStore.$state, () => {
 
 <template>
   <div class="editor" ref="editorRef">
-    <EditorPopupMenu :editor="editorRef"/>
     
     <!-- Environment settings have been moved to its own Tab in RequestContainer.vue -->
 

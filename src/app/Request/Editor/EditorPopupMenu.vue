@@ -1,10 +1,6 @@
 <script setup lang="ts">
-import {onMounted, ref, watch, nextTick} from 'vue'
+import {onMounted, onUnmounted, ref, nextTick} from 'vue'
 import {useEnvStorage, useInputStorage} from "@/storages";
-
-const props = defineProps<{
-  editor: HTMLDivElement | null
-}>()
 
 const lastMousePosition = ref({ clientX: 0, clientY: 0 })
 const lastElement = ref<HTMLElement | null>(null)
@@ -19,14 +15,18 @@ const currentVarName = ref<string>('');
 const currentVarValue = ref<string>('');
 const isDefined = ref<boolean>(false);
 
-watch(() => props.editor, (newValue: HTMLDivElement | null) => {
-  if (newValue) {
-    newValue.tabIndex = 1;
-    newValue.addEventListener('mousemove', onMouseMove)
-    newValue.addEventListener('keydown', onKeyDown)
-    newValue.addEventListener('keyup', onKeyUp)
-    newValue.addEventListener("click", onMouseClick)
-  }
+onMounted(() => {
+  window.addEventListener('mousemove', onMouseMove)
+  window.addEventListener('keydown', onKeyDown)
+  window.addEventListener('keyup', onKeyUp)
+  window.addEventListener("mousedown", onGlobalClick)
+})
+
+onUnmounted(() => {
+  window.removeEventListener('mousemove', onMouseMove)
+  window.removeEventListener('keydown', onKeyDown)
+  window.removeEventListener('keyup', onKeyUp)
+  window.removeEventListener("mousedown", onGlobalClick)
 })
 
 const onMouseMove = (e: MouseEvent) => {
@@ -34,6 +34,7 @@ const onMouseMove = (e: MouseEvent) => {
 }
 
 const onKeyDown = (event: KeyboardEvent) => {
+  // Chỉ trigger khi nhấn Ctrl
   if (! event.ctrlKey || !popupRef.value || popupBlocked.value) {
     return
   }
@@ -41,6 +42,7 @@ const onKeyDown = (event: KeyboardEvent) => {
   const { clientX, clientY } = lastMousePosition.value;
   const el = document.elementFromPoint(clientX, clientY) as HTMLElement | null
 
+  // Kiểm tra nếu phần tử dưới chuột là một biến env
   if (!(
       el?.classList.contains('undefined-env-variable')
       || el?.classList.contains('defined-env-variable')
@@ -74,9 +76,10 @@ const onKeyUp = (event: KeyboardEvent) => {
   }
 }
 
-const onMouseClick = (e : MouseEvent) => {
-  if (!popupRef.value) return;
+const onGlobalClick = (e : MouseEvent) => {
+  if (!popupRef.value || popupRef.value.style.display === "none") return;
 
+  // Nếu click ra ngoài popup thì đóng popup
   if (!popupRef.value.contains(e.target as Node)) {
     hidePopup();
   }
@@ -105,11 +108,18 @@ const onValueBlur = async () => {
 
   if (index === -1) {
     // Tự động tạo định nghĩa biến nếu chưa có
+    const newId = Math.random().toString(36).substr(2, 9);
     envStorage.variableDefinitions.push({
-      id: Math.random().toString(36).substr(2, 9),
+      id: newId,
       name: currentVarName.value
     });
     isDefined.value = true;
+    index = envStorage.variableDefinitions.length - 1;
+  }
+
+  // Cập nhật giá trị vào Store
+  if (index !== -1) {
+    envStorage.updateVariableValue(index, currentVarValue.value);
   }
 
   // Đợi Vue cập nhật Store và Reactivity
@@ -124,7 +134,7 @@ const onValueBlur = async () => {
 </script>
 
 <template>
-  <div ref="popupRef" class="popup shadow-sm" @mouseleave="hidePopup">
+  <div ref="popupRef" class="popup shadow-sm">
     <div class="popup-header">
       <span class="var-name">{{ currentVarName }}</span>
       <span v-if="!isDefined" class="badge bg-warning text-dark ms-2">Undefined</span>
@@ -152,7 +162,7 @@ const onValueBlur = async () => {
 <style scoped lang="scss">
 .popup {
   position: fixed;
-  z-index: 10000;
+  z-index: 100000;
   display: none;
   flex-direction: column;
   background-color: #ffffff;
@@ -161,6 +171,7 @@ const onValueBlur = async () => {
   width: 240px;
   padding: 0;
   font-family: sans-serif;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
 }
 
 .popup-header {
