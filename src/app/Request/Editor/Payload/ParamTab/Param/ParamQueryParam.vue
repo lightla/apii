@@ -75,7 +75,7 @@ function onDeleteClick(index: number) {
         
         <!-- Icon X nằm sát nút dấu + -->
         <div @click="onTrashClick" title="Delete all query parameters" class="d-flex align-items-center cursor-pointer ms-1">
-          <ShieldAlert v-if="isConfirmingDeleteAll" stroke-width="1" class="icon-button icon-button-trash-x confirming" />
+          <ShieldAlert v-if="isConfirmingDeleteAll" stroke-width="1" class="icon-button icon-button-trash-x" />
           <SquareX v-else stroke-width="1" class="icon-button icon-button-trash-x" />
         </div>
       </div>
@@ -97,11 +97,11 @@ function onDeleteClick(index: number) {
                 <Square v-else stroke-width="1" class="icon-button-checkbox"/>
               </div>
             </th>
-            <th>Variable</th>
-            <th>Value</th>
+            <th class="text-center">Variable</th>
+            <th class="text-center">Value</th>
             <th>
               <div class="cell-icon-action" @click="onMasterDeleteClick" title="Clear empty rows">
-                <Eraser stroke-width="1" class="icon-button-eraser" />
+                <Eraser stroke-width="1" class="icon-button icon-button-eraser" />
               </div>
             </th>
           </tr>
@@ -137,7 +137,7 @@ function onDeleteClick(index: number) {
             <td>
               <div class="cell-icon-action" @click="onDeleteClick(index)">
                 <ShieldAlert v-if="confirmDeleteIndex === index"
-                             stroke-width="1" class="icon-button icon-button-row-action confirming" />
+                             stroke-width="1" class="icon-button icon-button-row-action" />
                 <SquareX v-else stroke-width="1" class="icon-button icon-button-row-action" />
               </div>
             </td>
@@ -206,9 +206,11 @@ function onDeleteClick(index: number) {
     border-bottom: var(--table-border);
     font-size: 15px;
     font-weight: 500;
-    text-align: center;
-    vertical-align: middle;
     padding: 0;
+    
+    &.text-center {
+        text-align: center !important;
+    }
   }
 
   td {
@@ -217,6 +219,10 @@ function onDeleteClick(index: number) {
     border-bottom: var(--table-border);
     padding: 0 8px;
     vertical-align: middle;
+  }
+
+  tr:hover td {
+    background-color: rgba(0, 0, 0, 0.02);
   }
 
   th:first-child, td:first-child,
@@ -249,12 +255,9 @@ function onDeleteClick(index: number) {
 
 .icon-button {
   cursor: pointer;
-  stroke: #666;
-  &:hover { stroke: #000; }
-  
-  &.confirming {
-    /* Giữ nguyên màu mặc định */
-  }
+  fill: var(--icon-bg-color);
+  transition: fill 0.2s ease;
+  &:hover { fill: var(--icon-bg-color-active); }
 }
 
 .icon-button-trash-x {
@@ -268,6 +271,9 @@ function onDeleteClick(index: number) {
   cursor: pointer;
   display: block;
   margin: 0 auto;
+  fill: var(--icon-bg-color);
+  transition: fill 0.2s ease;
+  &:hover { fill: var(--icon-bg-color-active); }
 }
 
 .param-input-wrap {

@@ -91,9 +91,9 @@ function onDeleteClick(index: number) {
                 <Square v-else stroke-width="1" class="icon-button-checkbox"/>
               </div>
             </th>
-            <th>Key</th>
-            <th>Value</th>
-            <th>Description</th>
+            <th class="text-center">Key</th>
+            <th class="text-center">Value</th>
+            <th class="text-center">Description</th>
             <th>
               <div class="cell-icon-action" @click="onMasterDeleteClick" title="Clear empty rows">
                 <Eraser stroke-width="1" class="icon-button-eraser" />
@@ -238,9 +238,8 @@ function onDeleteClick(index: number) {
     border-bottom: var(--table-border);
     font-size: 15px;
     font-weight: 500;
-    text-align: center;
-    vertical-align: middle;
     padding: 0;
+    &.text-center { text-align: center !important; }
   }
 
   td {
@@ -249,6 +248,10 @@ function onDeleteClick(index: number) {
     border-bottom: var(--table-border);
     padding: 0 8px;
     vertical-align: middle;
+  }
+
+  tr:hover td {
+    background-color: rgba(0, 0, 0, 0.02);
   }
 
   tr.is-managed {
@@ -297,8 +300,9 @@ function onDeleteClick(index: number) {
 
 .icon-button {
   cursor: pointer;
-  stroke: #666;
-  &:hover { stroke: #000; }
+  fill: var(--icon-bg-color);
+  transition: fill 0.2s ease;
+  &:hover { fill: var(--icon-bg-color-active); }
 }
 
 .icon-button-trash-x {
@@ -312,6 +316,12 @@ function onDeleteClick(index: number) {
   cursor: pointer;
   display: block;
   margin: 0 auto;
+  fill: var(--icon-bg-color);
+  transition: fill 0.2s ease;
+
+  &:hover {
+    fill: var(--icon-bg-color-active);
+  }
   
   &.is-disabled {
     cursor: not-allowed;

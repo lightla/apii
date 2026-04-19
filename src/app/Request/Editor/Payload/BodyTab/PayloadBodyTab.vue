@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, nextTick } from 'vue'
 import type { RouteInfo } from '@/types'
 import CodeMirrorContainer2 from '@/app/Generals/CodeEditor/CodeMirrorContainer2.vue'
 import TrackedVariableInput from "@/app/Generals/TrackedVariableInput.vue";
@@ -101,7 +101,7 @@ const triggerFileInput = (id: string) => {
 
 <template>
   <div class="body-tab-container">
-    <!-- Body Type Selector - Styles matched with SwitchableTabs -->
+    <!-- Body Type Selector -->
     <div class="body-type-toolbar">
       <div 
         v-for="type in bodyTypes" 
@@ -276,22 +276,19 @@ const triggerFileInput = (id: string) => {
   border: var(--tab-border);
   background-color: var(--tab-bg-color);
   flex-shrink: 0;
-  margin-bottom: 10px; /* Tạo khoảng cách với content bên dưới */
+  margin-bottom: 10px;
 }
 
 .body-type-item {
-  padding: 9px 15px; /* Khớp chính xác với style Tab chuẩn */
+  padding: 9px 15px;
   cursor: pointer;
-  font-size: 15px; /* Tăng từ 14px lên 15px */
+  font-size: 15px;
   display: flex;
   align-items: center;
   color: #333;
   transition: background-color 0.2s;
   
-  &:hover {
-    background-color: rgba(0, 0, 0, 0.03); /* Nhạt hơn so với 0.05 */
-  }
-
+  &:hover { background-color: rgba(0, 0, 0, 0.03); }
   
   &.active {
     background-color: var(--tab-bg-color-active);
@@ -353,10 +350,7 @@ const triggerFileInput = (id: string) => {
     font-size: 15px;
     font-weight: 500;
     padding: 0;
-    
-    &.text-center {
-        text-align: center !important;
-    }
+    &.text-center { text-align: center !important; }
   }
 
   td {
@@ -365,6 +359,10 @@ const triggerFileInput = (id: string) => {
     border-bottom: var(--table-border);
     padding: 0 8px;
     vertical-align: middle;
+  }
+
+  tr:hover td {
+    background-color: rgba(0, 0, 0, 0.02);
   }
 
   th:first-child, td:first-child,
@@ -415,12 +413,16 @@ const triggerFileInput = (id: string) => {
   &:hover { fill: #cccccc; }
 }
 
+.icon-button {
+  cursor: pointer;
+  fill: var(--icon-bg-color);
+  transition: fill 0.2s ease;
+  &:hover { fill: var(--icon-bg-color-active); }
+}
+
 .icon-button-trash-x {
   width: 30px;
   height: 30px;
-  cursor: pointer;
-  stroke: #666;
-  &:hover { stroke: #000; }
 }
 
 .icon-button-checkbox, .icon-button-row-action, .icon-button-eraser {
@@ -429,8 +431,9 @@ const triggerFileInput = (id: string) => {
   cursor: pointer;
   display: block;
   margin: 0 auto;
-  stroke: #666;
-  &:hover { stroke: #000; }
+  fill: var(--icon-bg-color);
+  transition: fill 0.2s ease;
+  &:hover { fill: var(--icon-bg-color-active); }
 }
 
 .cell-icon-action {
