@@ -30,6 +30,7 @@ const toolbarRef = ref<HTMLElement | null>(null)
 const editorContent = ref('')
 const currentFontSize = ref(14)
 const lastSelectionRange = ref<QuillSelectionRange | null>(null)
+const isFormatPreviewing = ref(false)
 let formatPreviewState: FormatPreviewState | null = null
 let isPreviewMutating = false
 
@@ -97,6 +98,7 @@ const restoreFormatPreview = () => {
     isPreviewMutating = false
   }
   formatPreviewState = null
+  isFormatPreviewing.value = false
 }
 
 const beginFormatPreview = (
@@ -133,6 +135,7 @@ const beginFormatPreview = (
     format,
     value
   }
+  isFormatPreviewing.value = true
 
   isPreviewMutating = true
   try {
@@ -145,6 +148,7 @@ const beginFormatPreview = (
 
 const commitFormatPreview = (quill: any, selectionRange: QuillSelectionRange) => {
   formatPreviewState = null
+  isFormatPreviewing.value = false
   saveEditorContent(quill)
   quill.setSelection(selectionRange.index, selectionRange.length, Quill.sources.SILENT)
 }
@@ -414,7 +418,10 @@ watch(() => props.storageKey, () => {
 </script>
 
 <template>
-  <div class="note-quill-final-wrapper">
+  <div
+    class="note-quill-final-wrapper"
+    :class="{ 'is-format-previewing': isFormatPreviewing }"
+  >
     <div
       :id="'toolbar-' + props.storageKey"
       ref="toolbarRef"
@@ -588,5 +595,23 @@ watch(() => props.storageKey, () => {
   }
 
   .ql-tooltip { display: none !important; }
+
+  &.is-format-previewing {
+    .ql-editor {
+      caret-color: transparent;
+
+      &::selection,
+      *::selection {
+        background: transparent;
+        color: inherit;
+      }
+
+      &::-moz-selection,
+      *::-moz-selection {
+        background: transparent;
+        color: inherit;
+      }
+    }
+  }
 }
 </style>
