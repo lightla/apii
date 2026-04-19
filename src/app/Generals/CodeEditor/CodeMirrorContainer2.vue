@@ -131,13 +131,17 @@ const fontTheme = EditorView.theme({
   '.cm-scroller': {
     overflow: 'auto',
     fontFamily: 'Menlo, Monaco, Consolas, "Courier New", monospace',
-    scrollbarWidth: 'thin',
-    scrollbarColor: '#555 transparent',
+    /* Ẩn thanh cuộn trên Firefox */
+    scrollbarWidth: 'none',
+    /* Ẩn thanh cuộn trên IE/Edge */
+    msOverflowStyle: 'none',
   },
-  '.cm-scroller::-webkit-scrollbar': { width: '5px', height: '5px' },
-  '.cm-scroller::-webkit-scrollbar-track': { background: 'transparent' },
-  '.cm-scroller::-webkit-scrollbar-thumb': { background: '#555', borderRadius: '3px' },
-  '.cm-scroller::-webkit-scrollbar-thumb:hover': { background: '#888' },
+  /* Ẩn thanh cuộn trên Chrome/Safari */
+  '.cm-scroller::-webkit-scrollbar': { 
+    display: 'none',
+    width: '0',
+    height: '0'
+  },
 })
 
 const extensions = computed(() => [

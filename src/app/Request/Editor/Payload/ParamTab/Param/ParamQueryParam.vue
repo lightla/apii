@@ -184,7 +184,7 @@ function onDeleteClick(index: number) {
   border-right: var(--table-border);
 
   th {
-    height: 36px; /* Chiều cao header cố định */
+    height: 36px;
     position: sticky;
     top: 0;
     z-index: 1;
@@ -192,10 +192,11 @@ function onDeleteClick(index: number) {
     border-top: var(--table-border);
     border-left: var(--table-border);
     border-bottom: var(--table-border);
-    font-size: 13px;
-    font-weight: 600;
-    text-align: left;
-    padding: 0 8px;
+    font-size: 15px;
+    font-weight: 500;
+    text-align: center;
+    vertical-align: middle; /* Căn giữa chiều dọc */
+    padding: 0;
   }
 
   td {
@@ -267,7 +268,9 @@ function onDeleteClick(index: number) {
 .empty-row {
   text-align: center;
   color: #aaa;
-  font-size: 13px;
-  padding: 20px !important;
+  font-size: 15px;
+  height: 40px; /* Chiều cao bằng hàng dữ liệu chuẩn */
+  padding: 0 !important;
+  vertical-align: middle;
 }
 </style>

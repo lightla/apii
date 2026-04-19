@@ -23,17 +23,14 @@ watch(() => props.route?.route, (url) => {
 </template>
 
 <style scoped lang="scss">
+@use "@/assets/styles/elements";
+
 .param-tab {
   display: flex;
   flex-direction: column;
   gap: 10px;
   height: 100%;
   overflow-y: auto;
-  scrollbar-width: thin;
-  scrollbar-color: #ccc transparent;
-
-  &::-webkit-scrollbar { width: 5px; }
-  &::-webkit-scrollbar-track { background: transparent; }
-  &::-webkit-scrollbar-thumb { background: #ccc; border-radius: 3px; }
+  @include elements.scrollbar-hidden;
 }
 </style>
