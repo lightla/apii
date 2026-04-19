@@ -187,7 +187,7 @@ onBeforeUnmount(() => {
         >
           <table class="env-variable-table">
             <colgroup>
-              <col style="width: 7%;">
+              <col style="width: 40px;">
               <col style="width: auto;">
               <col style="width: auto;">
               <col style="width: 40px;">
@@ -257,7 +257,7 @@ onBeforeUnmount(() => {
         >
           <table class="env-variable-table">
             <colgroup>
-              <col style="width: 7%;">
+              <col style="width: 40px;">
               <col style="width: auto;">
               <col style="width: auto;">
               <col style="width: 40px;">
@@ -394,7 +394,7 @@ onBeforeUnmount(() => {
   th, td {
     border-left: var(--table-border);
     border-bottom: var(--table-border);
-    padding: 8px;
+    padding: 4px 8px;
     vertical-align: middle;
   }
   th:first-child,

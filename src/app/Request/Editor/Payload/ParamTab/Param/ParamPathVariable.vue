@@ -29,86 +29,146 @@ function getVarValue(name: string) {
 
 <template>
   <div class="path-variable">
-    <h4>Path Variables</h4>
-    <table class="table-path-variable">
-      <colgroup>
-        <col style="width: 35%;">
-        <col style="width: auto;">
-      </colgroup>
-      <thead>
-        <tr>
-          <th>Variable</th>
-          <th>Value</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr v-for="name in pathVarNames" :key="name">
-          <td><span class="defined-uri-param">{{ '{' + name + '}' }}</span></td>
-          <td>
-            <div class="uri-param-value">
-              <TrackedVariableInput
-                :route="props.route"
-                :value="getVarValue(name)"
-                :enabled-env-variable="true"
-                @text-change="val => store.updatePathVariable(name, val)"
-              />
-            </div>
-          </td>
-        </tr>
-        <tr v-if="pathVarNames.length === 0">
-          <td colspan="2" class="empty-row">No path variables in URL</td>
-        </tr>
-      </tbody>
-    </table>
+    <div class="path-variable-toolbar">
+      <span class="path-variable-toolbar-title">Path Variables</span>
+    </div>
+
+    <div class="query-table-scroll-wrapper">
+      <table class="query-param-table">
+        <colgroup>
+          <col style="width: 40px;">
+          <col style="width: 30%;">
+          <col style="width: auto;">
+        </colgroup>
+        <thead>
+          <tr>
+            <th>No</th>
+            <th>Variable</th>
+            <th>Value</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-for="(name, index) in pathVarNames" :key="name">
+            <td class="cell-no">{{ index + 1 }}</td>
+            <td>
+              <div class="param-input-wrap">
+                <span class="defined-uri-param">{{ '{' + name + '}' }}</span>
+              </div>
+            </td>
+            <td>
+              <div class="param-input-wrap">
+                <TrackedVariableInput
+                  :route="props.route"
+                  :value="getVarValue(name)"
+                  :enabled-env-variable="true"
+                  @text-change="val => store.updatePathVariable(name, val)"
+                />
+              </div>
+            </td>
+          </tr>
+          <tr v-if="pathVarNames.length === 0">
+            <td colspan="3" class="empty-row">No path variables in URL</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
   </div>
 </template>
 
 <style scoped lang="scss">
+@use "@/assets/styles/elements";
+
 .path-variable {
   display: flex;
   flex-direction: column;
-  gap: 5px;
-  flex-shrink: 0;
+  gap: 8px;
+  height: 100%;
 }
 
-.table-path-variable {
-  table-layout: fixed;
-  border: 1px solid #666666;
+.path-variable-toolbar {
+  display: flex;
+  flex-direction: row;
+  gap: 5px;
+  align-items: center;
   width: 100%;
+  flex-shrink: 0;
+  margin-bottom: 2px;
+}
 
-  th {
-    border: 1px solid #666666;
-    background-color: #dddddd;
-    padding: 5px;
-    font-size: 13px;
-    text-align: left;
-  }
+.path-variable-toolbar-title {
+  padding: 5px;
+  background-color: rgba(221, 221, 221, 0.65);
+  border: 1px solid #888888;
+  font-size: 13px;
+  font-weight: 500;
+}
 
-  td {
-    border: 1px solid #666666;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    padding: 5px;
+.query-table-scroll-wrapper {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  @include elements.scrollbar-hidden;
+}
+
+.query-param-table {
+  table-layout: fixed;
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  border-right: var(--table-border);
+
+  th, td {
+    border-left: var(--table-border);
+    border-bottom: var(--table-border);
+    padding: 4px 8px;
     vertical-align: middle;
   }
 
-  .uri-param-value {
-    padding: 2px 4px;
+  th {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    background-color: var(--table-header-bg-color);
+    border-top: var(--table-border);
+    font-size: 13px;
+    font-weight: 600;
+    text-align: left;
+  }
+
+  th:first-child, td:first-child {
+    width: 40px;
+    padding: 4px;
+    text-align: center;
+  }
+
+  tr:last-child td {
+    border-bottom: var(--table-border);
   }
 }
 
-.empty-row {
-  text-align: center;
-  color: #aaa;
+.cell-no {
   font-size: 12px;
-  padding: 8px;
-  border: 1px solid #666;
+  color: #666;
+  text-align: center;
+}
+
+.param-input-wrap {
+  padding: 2px 0;
+  display: flex;
+  align-items: center;
 }
 
 .defined-uri-param {
   color: var(--defined-uri-param);
   font-weight: 600;
   font-size: 13px;
+  padding-left: 4px;
+}
+
+.empty-row {
+  text-align: center;
+  color: #aaa;
+  font-size: 13px;
+  padding: 20px !important;
 }
 </style>

@@ -3,13 +3,13 @@ import { ref, computed } from 'vue'
 import type { RouteInfo } from "@/types";
 import TrackedVariableInput from "@/app/Generals/TrackedVariableInput.vue";
 import {
-  SquarePlus,
   SquareCheck,
   Square,
   SquareX,
   ShieldAlert,
   Eraser,
 } from "lucide-vue-next";
+import { IconSquareRoundedPlus } from "@tabler/icons-vue";
 import { useRequestParamsStorage } from '@/storages/payload.ts'
 
 const props = defineProps<{
@@ -62,149 +62,189 @@ function onDeleteClick(index: number) {
 
 <template>
   <div class="query-param">
-    <div class="query-param-control">
-      <h4 class="param-control-title">Query Parameters</h4>
-      <div class="param-control-icon">
-        <SquarePlus @click="store.addQueryParam()" stroke-width="1" class="param-control-button-add-row"/>
-      </div>
+    <div class="query-param-toolbar">
+      <span class="query-param-toolbar-title">Query Parameters</span>
+      <IconSquareRoundedPlus @click="store.addQueryParam()" stroke-width="1" class="icon-button-add-row"/>
     </div>
-    <table class="query-param-table">
-      <colgroup>
-        <col style="width: 5%;">
-        <col style="width: 25%;">
-        <col style="width: 25%;">
-        <col style="width: auto;">
-        <col style="width: 5%;">
-      </colgroup>
-      <thead>
-        <tr>
-          <th>
-            <div class="param-control-icon" @click="store.toggleAllQueryParams()">
-              <SquareCheck v-if="isAnyParamEnabled" stroke-width="1" class="param-control-button-add-row"/>
-              <Square v-else stroke-width="1" class="param-control-button-add-row"/>
-            </div>
-          </th>
-          <th>Variable</th>
-          <th>Value</th>
-          <th>Description</th>
-          <th>
-            <div class="param-control-icon" @click="onMasterDeleteClick">
-              <!-- Master Delete with Confirmation -->
-              <ShieldAlert v-if="isConfirmingDeleteAll"
-                           stroke-width="1" class="icon-button-warning confirming" />
-              <Eraser v-else stroke-width="1" class="icon-button-warning" />
-            </div>
-          </th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr v-for="(param, index) in store.queryParams" :key="param.id">
-          <td class="cell-action">
-            <div class="param-control-icon" @click="store.toggleQueryParam(index)">
-              <SquareCheck v-if="param.enabled" stroke-width="1" class="param-control-button-add-row"/>
-              <Square v-else stroke-width="1" class="param-control-button-add-row"/>
-            </div>
-          </td>
-          <td>
-            <div class="uri-param-value">
-              <TrackedVariableInput
-                :route="props.route"
-                :value="param.key"
-                :enabled-env-variable="true"
-                @text-change="val => param.key = val"
-              />
-            </div>
-          </td>
-          <td>
-            <div class="uri-param-value">
-              <TrackedVariableInput
-                :route="props.route"
-                :value="param.value"
-                :enabled-env-variable="true"
-                @text-change="val => param.value = val"
-              />
-            </div>
-          </td>
-          <td>
-            <div class="uri-param-value">
-              <TrackedVariableInput
-                :route="props.route"
-                :value="param.description"
-                :enabled-env-variable="false"
-                @text-change="val => param.description = val"
-              />
-            </div>
-          </td>
-          <td class="cell-action">
-            <div class="param-control-icon" @click="onDeleteClick(index)">
-              <ShieldAlert v-if="confirmDeleteIndex === index"
-                           stroke-width="1" class="icon-button-warning confirming" width="27px" height="27px"/>
-              <SquareX v-else stroke-width="1" class="icon-button-warning" />
-            </div>
-          </td>
-        </tr>
+    
+    <div class="query-table-scroll-wrapper">
+      <table class="query-param-table">
+        <colgroup>
+          <col style="width: 40px;">
+          <col style="width: 30%;">
+          <col style="width: auto;">
+          <col style="width: 40px;">
+        </colgroup>
+        <thead>
+          <tr>
+            <th>
+              <div class="cell-icon-action" @click="store.toggleAllQueryParams()">
+                <SquareCheck v-if="isAnyParamEnabled" stroke-width="1" class="icon-button-checkbox"/>
+                <Square v-else stroke-width="1" class="icon-button-checkbox"/>
+              </div>
+            </th>
+            <th>Variable</th>
+            <th>Value</th>
+            <th>
+              <div class="cell-icon-action" @click="onMasterDeleteClick">
+                <ShieldAlert v-if="isConfirmingDeleteAll" stroke-width="1" class="icon-button icon-button-eraser confirming" />
+                <Eraser v-else stroke-width="1" class="icon-button icon-button-eraser" />
+              </div>
+            </th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-for="(param, index) in store.queryParams" :key="param.id">
+            <td>
+              <div class="cell-icon-action" @click="store.toggleQueryParam(index)">
+                <SquareCheck v-if="param.enabled" stroke-width="1" class="icon-button-checkbox"/>
+                <Square v-else stroke-width="1" class="icon-button-checkbox"/>
+              </div>
+            </td>
+            <td>
+              <div class="param-input-wrap">
+                <TrackedVariableInput
+                  :route="props.route"
+                  :value="param.key"
+                  :enabled-env-variable="true"
+                  @text-change="val => param.key = val"
+                />
+              </div>
+            </td>
+            <td>
+              <div class="param-input-wrap">
+                <TrackedVariableInput
+                  :route="props.route"
+                  :value="param.value"
+                  :enabled-env-variable="true"
+                  @text-change="val => param.value = val"
+                />
+              </div>
+            </td>
+            <td>
+              <div class="cell-icon-action" @click="onDeleteClick(index)">
+                <ShieldAlert v-if="confirmDeleteIndex === index"
+                             stroke-width="1" class="icon-button icon-button-row-action confirming" />
+                <SquareX v-else stroke-width="1" class="icon-button icon-button-row-action" />
+              </div>
+            </td>
+          </tr>
 
-        <tr v-if="store.queryParams.length === 0">
-          <td colspan="5" class="empty-row">No query parameters</td>
-        </tr>
-      </tbody>
-    </table>
+          <tr v-if="store.queryParams.length === 0">
+            <td colspan="4" class="empty-row">No query parameters</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
   </div>
 </template>
 
 <style scoped lang="scss">
+@use "@/assets/styles/elements";
+
 .query-param {
   display: flex;
   flex-direction: column;
+  gap: 8px;
+  height: 100%;
+}
+
+.query-param-toolbar {
+  display: flex;
+  flex-direction: row;
   gap: 5px;
+  align-items: center;
+  width: 100%;
   flex-shrink: 0;
+  margin-bottom: 2px;
+}
+
+.query-param-toolbar-title {
+  padding: 5px;
+  background-color: rgba(221, 221, 221, 0.65);
+  border: 1px solid #888888;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.query-table-scroll-wrapper {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  @include elements.scrollbar-hidden;
 }
 
 .query-param-table {
   table-layout: fixed;
-  border: 1px solid #666666;
   width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  border-right: var(--table-border);
 
-  %cell-style {
-    border: 1px solid #666666;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    padding: 5px;
+  th, td {
+    border-left: var(--table-border);
+    border-bottom: var(--table-border);
+    padding: 4px 8px;
     vertical-align: middle;
   }
 
   th {
-    @extend %cell-style;
-    background-color: #dddddd;
-    border-left: 1px solid #666666;
-    border-top: 1px solid #666666;
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    background-color: var(--table-header-bg-color);
+    border-top: var(--table-border);
+    font-size: 13px;
+    font-weight: 600;
+    text-align: left;
+  }
+
+  th:first-child, td:first-child,
+  th:last-child, td:last-child {
+    width: 40px;
+    padding: 4px;
     text-align: center;
   }
 
-  td {
-    @extend %cell-style;
-    &.cell-action {
-      padding: 0;
-    }
+  tr:last-child td {
+    border-bottom: var(--table-border);
   }
+}
 
-  .icon-button-warning {
-    height: 100% !important;
-    cursor: pointer;
-    transition: fill 0.2s ease;
-    fill: var(--app-bg-color);
+.cell-icon-action {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+  height: 100%;
+  cursor: pointer;
+}
 
-    &:hover {
-      fill: #cccccc;
-    }
+.icon-button-add-row {
+  width: 30px !important;
+  height: 30px;
+  cursor: pointer;
+  &:hover { fill: #cccccc; }
+}
 
-    &.confirming {
-      fill: #fff3e0;
-      stroke: #e65100;
-      animation: pulse-shield 0.5s ease-in-out infinite alternate;
-    }
+.icon-button {
+  cursor: pointer;
+  fill: var(--icon-bg-color);
+  &:hover { fill: var(--icon-bg-color-active); }
+  
+  &.confirming {
+    fill: #fff3e0;
+    stroke: #e65100;
+    animation: pulse-shield 0.5s ease-in-out infinite alternate;
   }
+}
+
+.icon-button-checkbox, .icon-button-eraser, .icon-button-row-action {
+  width: 26px;
+  height: 26px;
+  cursor: pointer;
+  display: block;
+  margin: 0 auto;
 }
 
 @keyframes pulse-shield {
@@ -212,45 +252,14 @@ function onDeleteClick(index: number) {
   to   { opacity: 1; }
 }
 
-.query-param-control {
-  display: flex;
-  flex-direction: row;
-  align-items: center;
-  gap: 5px;
-}
-
-.param-control-title {
-  display: inline-block;
-}
-
-.param-control-icon {
-  display: flex;
-  flex-direction: row;
-  align-items: center;
-  justify-content: center;
-  height: 200%;
-  cursor: pointer;
-}
-
-.param-control-button-add-row {
-  height: 100%;
-  cursor: pointer;
-  transition: fill 0.2s ease;
-
-  &:hover {
-    fill: #cccccc;
-  }
-}
-
-.uri-param-value {
-  padding: 4px 6px;
+.param-input-wrap {
+  padding: 2px 0;
 }
 
 .empty-row {
   text-align: center;
   color: #aaa;
-  font-size: 12px;
-  padding: 10px;
-  border: 1px solid #666;
+  font-size: 13px;
+  padding: 20px !important;
 }
 </style>
