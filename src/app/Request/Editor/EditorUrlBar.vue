@@ -25,7 +25,6 @@ const onUrlChange = (newText: string) => {
   if (trimmed.startsWith('curl ')) {
     const parsed = parseCurl(trimmed)
     
-    // 1. Logic khớp URI pattern thông minh
     if (props.route?.route) {
       const uriMatches = matchUrlPattern(props.route.route, parsed.url)
       if (uriMatches) {
@@ -40,7 +39,6 @@ const onUrlChange = (newText: string) => {
       requestParams.baseUrl = parsed.url
     }
 
-    // 2. Điền các tham số còn lại
     requestParams.applyParsedCurl(parsed)
   } else {
     requestParams.baseUrl = newText
@@ -50,8 +48,11 @@ const onUrlChange = (newText: string) => {
 const sendRequest = async (_event: Event) => {
   const method = (methodSelectRef.value?.value ?? 'GET').toUpperCase()
   const envVariables = envStorage.definedEnvVariables;
+  
+  // Bắt đầu với URL từ preview
   let url = requestParams.urlPreview;
   
+  // Replace environment variables {{name}} -> value
   envVariables.forEach(variable => {
     if (variable.name && variable.value) {
       const escapedName = variable.name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -60,6 +61,11 @@ const sendRequest = async (_event: Event) => {
   });
 
   if (!url) return
+
+  // --- Áp dụng CORS Proxy nếu được bật ---
+  const finalUrl = requestParams.useProxy 
+    ? `${requestParams.proxyUrl}${url}`
+    : url;
 
   responseStorage.reset()
   responseStorage.loading = true
@@ -81,12 +87,12 @@ const sendRequest = async (_event: Event) => {
     fetchOptions.body = requestParams.body
   }
 
-  responseStorage.requestUrl = url
+  responseStorage.requestUrl = finalUrl
   responseStorage.requestMethod = method
 
   const startTime = Date.now()
   try {
-    const res = await fetch(url, fetchOptions)
+    const res = await fetch(finalUrl, fetchOptions)
     responseStorage.status = res.status
     responseStorage.statusText = res.statusText
     responseStorage.responseTime = Date.now() - startTime

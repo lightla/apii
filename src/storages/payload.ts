@@ -24,6 +24,9 @@ export const useRequestParamsStorage = defineStore('requestParams', {
     headers: [] as { id: string; key: string; value: string; enabled: boolean; description: string }[],
     body: '',
     requestName: '',
+    // Cấu hình CORS Proxy
+    useProxy: false,
+    proxyUrl: 'http://localhost:8080/', // Trỏ về local proxy vừa tạo
   }),
 
   getters: {

@@ -4,7 +4,8 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
+    "dev": "node proxy.js & vite",
+    "proxy": "node proxy.js",
     "build": "vite build --mode production",
     "build-sdk": "vite build --config vite.config.sdk.js --mode production",
     "preview": "vite preview",

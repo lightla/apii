@@ -1,0 +1,113 @@
+.env-variable-table-toolbar {
+  display: flex;
+  flex-direction: row;
+  gap: 5px;
+  align-items: center;
+  width: 100%;
+  flex-shrink: 0;
+  margin-bottom: 8px;
+}
+
+.env-toolbar-select-wrap {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+}
+
+.env-select-in-toolbar {
+  border: 1px solid #888888;
+  padding: 5px 10px;
+  font-size: 14px;
+  min-width: 140px;
+  min-height: 32px;
+  background-color: #f8f9fa;
+  cursor: pointer;
+}
+
+.env-variable-table-toolbar-title {
+  padding: 5px;
+  background-color: rgba(221, 221, 221, 0.65);
+  border: 1px solid #888888;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.env-table-scroll-wrapper {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  box-sizing: border-box;
+  &::-webkit-scrollbar { display: none; }
+  scrollbar-width: none;
+
+  &.show-bottom-divider {
+    border-bottom: var(--table-border);
+  }
+}
+
+.env-variable-table {
+  table-layout: fixed;
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  th, td {
+    border-left: var(--table-border);
+    border-bottom: var(--table-border);
+    padding: 4px 8px;
+    vertical-align: middle;
+  }
+  th:first-child,
+  td:first-child {
+    text-align: center;
+  }
+  th {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    background-color: var(--table-header-bg-color);
+    border-top: var(--table-border);
+  }
+  th:last-child, td:last-child {
+    width: 40px;
+    padding: 4px;
+    text-align: center;
+    border-right: var(--table-border);
+  }
+  tr:last-child td { border-bottom: var(--table-border); }
+}
+
+.cell-icon-action { display: flex; justify-content: center; width: 100%; align-items: center; }
+
+.icon-button-add-row {
+  width: 30px !important;
+  height: 30px;
+  cursor: pointer;
+  &:hover { fill: #cccccc; }
+}
+
+.icon-button {
+  cursor: pointer;
+  fill: var(--icon-bg-color);
+  &:hover { fill: var(--icon-bg-color-active); }
+}
+
+.icon-button-eraser, .icon-button-row-action {
+  width: 26px;
+  height: 26px;
+  cursor: pointer;
+  display: block;
+  margin: 0 auto;
+}
+
+.protected-env-name-text {
+  display: flex;
+  align-items: center;
+  height: 30px;
+  padding: 0 10px;
+  font-weight: 500;
+  color: #666;
+}
+
+.table-empty {
+  text-align: center;
+}
