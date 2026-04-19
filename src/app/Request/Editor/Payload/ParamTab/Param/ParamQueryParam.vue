@@ -146,7 +146,7 @@ function onDeleteClick(index: number) {
   display: flex;
   flex-direction: column;
   gap: 8px;
-  height: 100%;
+  height: auto;
 }
 
 .query-param-toolbar {
@@ -168,10 +168,12 @@ function onDeleteClick(index: number) {
 }
 
 .query-table-scroll-wrapper {
-  flex: 1;
   min-height: 0;
+  height: fit-content; /* Co lại sát bảng khi ít hàng */
+  max-height: 156px; 
   overflow-y: auto;
   @include elements.scrollbar-hidden;
+  border-bottom: var(--table-border); /* Viền dưới duy nhất nằm ở wrapper */
 }
 
 .query-param-table {
@@ -181,24 +183,27 @@ function onDeleteClick(index: number) {
   border-spacing: 0;
   border-right: var(--table-border);
 
-  th, td {
-    border-left: var(--table-border);
-    border-bottom: var(--table-border);
-    padding: 4px 8px;
-    vertical-align: middle;
-    height: 36px; /* Cố định chiều cao hàng */
-  }
-
   th {
+    height: 36px; /* Chiều cao header cố định */
     position: sticky;
     top: 0;
     z-index: 1;
     background-color: var(--table-header-bg-color);
     border-top: var(--table-border);
+    border-left: var(--table-border);
+    border-bottom: var(--table-border);
     font-size: 13px;
     font-weight: 600;
     text-align: left;
-    padding: 0 8px; /* Giảm padding để khớp height 36px */
+    padding: 0 8px;
+  }
+
+  td {
+    height: 40px; /* Chiều cao row cố định để calc() chính xác */
+    border-left: var(--table-border);
+    border-bottom: var(--table-border);
+    padding: 0 8px; /* Giảm padding dọc để khớp 40px */
+    vertical-align: middle;
   }
 
   th:first-child, td:first-child,
@@ -208,8 +213,9 @@ function onDeleteClick(index: number) {
     text-align: center;
   }
 
+  /* Khử border-bottom hàng cuối để không bị double với border-bottom của wrapper */
   tr:last-child td {
-    border-bottom: var(--table-border);
+    border-bottom: none !important;
   }
 }
 

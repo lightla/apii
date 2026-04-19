@@ -82,7 +82,7 @@ function getVarValue(name: string) {
   display: flex;
   flex-direction: column;
   gap: 8px;
-  height: 100%;
+  height: auto;
 }
 
 .path-variable-toolbar {
@@ -104,10 +104,12 @@ function getVarValue(name: string) {
 }
 
 .query-table-scroll-wrapper {
-  flex: 1;
   min-height: 0;
+  height: fit-content; /* Co lại sát bảng khi ít hàng */
+  max-height: 156px; 
   overflow-y: auto;
   @include elements.scrollbar-hidden;
+  border-bottom: var(--table-border); /* Viền dưới duy nhất nằm ở wrapper */
 }
 
 .query-param-table {
@@ -116,25 +118,29 @@ function getVarValue(name: string) {
   border-collapse: separate;
   border-spacing: 0;
   border-right: var(--table-border);
-
-  th, td {
-    border-left: var(--table-border);
-    border-bottom: var(--table-border);
-    padding: 4px 8px;
-    vertical-align: middle;
-    height: 36px; /* Cố định chiều cao hàng */
-  }
+  /* Bỏ border-bottom ở table để wrapper lo liệu */
 
   th {
+    height: 36px; /* Chiều cao header cố định */
     position: sticky;
     top: 0;
     z-index: 1;
     background-color: var(--table-header-bg-color);
     border-top: var(--table-border);
+    border-left: var(--table-border);
+    border-bottom: var(--table-border);
     font-size: 13px;
     font-weight: 600;
     text-align: left;
-    padding: 0 8px; /* Giảm padding dọc để khớp height */
+    padding: 0 8px;
+  }
+
+  td {
+    height: 40px; /* Chiều cao row cố định để calc() chính xác */
+    border-left: var(--table-border);
+    border-bottom: var(--table-border);
+    padding: 0 8px; /* Giảm padding dọc để khớp 40px */
+    vertical-align: middle;
   }
 
   th:first-child, td:first-child {
@@ -143,27 +149,29 @@ function getVarValue(name: string) {
     text-align: center;
   }
 
+  /* Khử border-bottom hàng cuối để không bị double với border-bottom của wrapper */
   tr:last-child td {
-    border-bottom: var(--table-border);
+    border-bottom: none !important;
   }
 }
 
 .cell-no {
-  font-size: 12px;
-  color: #666;
+  font-size: 16px;
+  font-weight: 400;
+  color: #333;
   text-align: center;
 }
 
 .param-input-wrap {
-  padding: 2px 0;
+  padding: 4px 0;
   display: flex;
   align-items: center;
 }
 
 .defined-uri-param {
   color: var(--defined-uri-param);
-  font-weight: 600;
-  font-size: 13px;
+  font-weight: 400;
+  font-size: 16px;
   padding-left: 4px;
 }
 
