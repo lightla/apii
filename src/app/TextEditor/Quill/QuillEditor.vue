@@ -17,10 +17,14 @@ const quillRef = ref<any>(null)
 const wrapperRef = ref<HTMLElement | null>(null)
 const editorContent = ref('')
 const currentFontSize = ref(14)
+const pendingCursorFontSize = ref<string | null>(null)
 const lastSelectionRange = ref<QuillSelectionRange | null>(null)
 const heldSelectionRects = ref<HeldSelectionRect[]>([])
+const heldCaretRect = ref<HeldSelectionRect | null>(null)
 let selectionAnimationFrame: number | null = null
 let isPointerSelecting = false
+let isApplyingCursorFontSize = false
+let previewState: PreviewState | null = null
 
 type QuillSelectionRange = {
   index: number
@@ -34,11 +38,42 @@ type HeldSelectionRect = {
   height: number
 }
 
+type PreviewState = {
+  range: QuillSelectionRange
+  contents: any
+}
+
 const loadContent = () => {
   editorContent.value = localStorage.getItem(props.storageKey) || ''
 }
 
 const getCurrentFontSizeValue = () => `${currentFontSize.value}pt`
+
+const isSameRange = (first: QuillSelectionRange, second: QuillSelectionRange) => {
+  return first.index === second.index && first.length === second.length
+}
+
+const getCurrentLineRange = (quill: any, range: QuillSelectionRange): QuillSelectionRange => {
+  const [line, offset] = quill.getLine(range.index)
+  const lineLength = Math.max((line?.length?.() ?? 1) - 1, 0)
+
+  return {
+    index: range.index - offset,
+    length: lineLength
+  }
+}
+
+const getActiveFormatRange = (quill: any): QuillSelectionRange | null => {
+  const range = lastSelectionRange.value
+  if (!range) return null
+
+  return range.length > 0 ? range : getCurrentLineRange(quill, range)
+}
+
+const saveEditorContent = (quill: any) => {
+  editorContent.value = quill.root.innerHTML
+  localStorage.setItem(props.storageKey, editorContent.value)
+}
 
 const keepCurrentFontSizeForEmptyEditor = () => {
   const quill = quillRef.value?.getQuill()
@@ -48,6 +83,18 @@ const keepCurrentFontSizeForEmptyEditor = () => {
   if (!range) return
 
   quill.format('size', getCurrentFontSizeValue(), Quill.sources.SILENT)
+}
+
+const applyPendingCursorFontSize = (quill: any, range: QuillSelectionRange) => {
+  if (!pendingCursorFontSize.value || range.length > 0) return
+
+  isApplyingCursorFontSize = true
+  try {
+    quill.format('size', pendingCursorFontSize.value, Quill.sources.SILENT)
+    pendingCursorFontSize.value = null
+  } finally {
+    isApplyingCursorFontSize = false
+  }
 }
 
 const resolveLeafPosition = (leaf: any, offset: number, isEnd: boolean) => {
@@ -132,6 +179,48 @@ const clearHeldSelection = () => {
   heldSelectionRects.value = []
 }
 
+const clearHeldCaret = () => {
+  heldCaretRect.value = null
+}
+
+const restorePreview = () => {
+  const quill = quillRef.value?.getQuill()
+  if (!quill || !previewState) return
+
+  const { range, contents } = previewState
+  quill.updateContents(
+    new Delta().retain(range.index).delete(range.length).concat(contents),
+    Quill.sources.SILENT
+  )
+  previewState = null
+}
+
+const beginPreview = (quill: any, range: QuillSelectionRange) => {
+  if (previewState && isSameRange(previewState.range, range)) {
+    const contents = previewState.contents
+    quill.updateContents(
+      new Delta().retain(range.index).delete(range.length).concat(contents),
+      Quill.sources.SILENT
+    )
+    return
+  }
+
+  restorePreview()
+  previewState = {
+    range: { ...range },
+    contents: quill.getContents(range.index, range.length)
+  }
+}
+
+const commitPreview = (quill: any, range?: QuillSelectionRange) => {
+  previewState = null
+  saveEditorContent(quill)
+  if (range && range.length > 0) {
+    quill.setSelection(range.index, range.length, Quill.sources.SILENT)
+    holdSelectionHighlight()
+  }
+}
+
 const collapseMultilineSelection = (rects: HeldSelectionRect[]) => {
   const lineTolerance = 3
   const lineTops = new Set(rects.map(rect => Math.round(rect.top / lineTolerance)))
@@ -189,6 +278,31 @@ const holdSelectionHighlight = () => {
   renderHeldSelectionRects(domRange)
 }
 
+const holdCursorCaret = () => {
+  const quill = quillRef.value?.getQuill()
+  const wrapper = wrapperRef.value
+  const range = lastSelectionRange.value
+
+  if (!quill || !wrapper || !range || range.length > 0) {
+    clearHeldCaret()
+    return
+  }
+
+  const bounds = quill.getBounds(range.index, 0)
+  const wrapperRect = wrapper.getBoundingClientRect()
+  const containerRect = quill.container.getBoundingClientRect()
+  const fontHeight = Math.ceil(currentFontSize.value * (4 / 3) * 1.6)
+  const height = Math.max(fontHeight, Math.ceil(bounds.height || 0))
+  const centerY = containerRect.top - wrapperRect.top + bounds.top + ((bounds.height || height) / 2)
+
+  heldCaretRect.value = {
+    left: snapPixel(containerRect.left - wrapperRect.left + bounds.left),
+    top: snapPixel(centerY - (height / 2)),
+    width: 1,
+    height
+  }
+}
+
 const isRangeInsideEditor = (range: Range) => {
   const quill = quillRef.value?.getQuill()
   const root = quill?.root as HTMLElement | undefined
@@ -223,18 +337,53 @@ const scheduleNativeSelectionHighlight = () => {
 }
 
 const onUpdate = () => {
+  previewState = null
   clearHeldSelection()
+  clearHeldCaret()
   const quill = quillRef.value?.getQuill()
   if (quill) {
-    editorContent.value = quill.root.innerHTML
+    saveEditorContent(quill)
     keepCurrentFontSizeForEmptyEditor()
   }
-  localStorage.setItem(props.storageKey, editorContent.value)
+}
+
+const previewInlineFormat = (format: string, value: string | boolean) => {
+  const quill = quillRef.value?.getQuill()
+  const range = lastSelectionRange.value
+  if (!quill || !range || range.length === 0) return
+
+  beginPreview(quill, range)
+  clearHeldSelection()
+  clearHeldCaret()
+  quill.formatText(range.index, range.length, format, value, Quill.sources.SILENT)
+}
+
+const commitInlineFormat = (quill: any, format: string, value: string | boolean) => {
+  const targetRange = getActiveFormatRange(quill)
+  if (!targetRange) return
+
+  if (targetRange.length > 0) {
+    if (!previewState) {
+      quill.formatText(targetRange.index, targetRange.length, format, value, Quill.sources.USER)
+    }
+    commitPreview(quill, lastSelectionRange.value?.length ? lastSelectionRange.value : undefined)
+    return
+  }
+
+  pendingCursorFontSize.value = null
+  quill.format(format, value, Quill.sources.USER)
+  saveEditorContent(quill)
 }
 
 const toolbarOptions = computed(() => ({
   container: `#toolbar-${props.storageKey}`,
   handlers: {
+    color(this: { quill: any }, value: string) {
+      commitInlineFormat(this.quill, 'color', value || false)
+    },
+    background(this: { quill: any }, value: string) {
+      commitInlineFormat(this.quill, 'background', value || false)
+    },
     clean(this: { quill: any }) {
       const range = this.quill.getSelection()
       if (!range) return
@@ -282,37 +431,82 @@ const toolbarOptions = computed(() => ({
 
 const applyFontSize = () => {
   const quill = quillRef.value?.getQuill()
-  if (quill && lastSelectionRange.value) {
-    const range = lastSelectionRange.value
-    const size = getCurrentFontSizeValue()
+  const targetRange = quill ? getActiveFormatRange(quill) : null
+  if (!quill || !targetRange) return
 
-    clearHeldSelection()
-    if (range.length > 0) {
-      quill.formatText(range.index, range.length, 'size', size, Quill.sources.USER)
-    } else if (quill.getLength() <= 1 && quill.getSelection()) {
-      quill.format('size', size, Quill.sources.SILENT)
-    } else {
-      quill.formatText(range.index, 1, 'size', size, Quill.sources.USER)
+  const size = getCurrentFontSizeValue()
+
+  if (targetRange.length > 0) {
+    if (lastSelectionRange.value?.length) {
+      beginPreview(quill, lastSelectionRange.value)
+      clearHeldSelection()
+      clearHeldCaret()
+      quill.formatText(lastSelectionRange.value.index, lastSelectionRange.value.length, 'size', size, Quill.sources.SILENT)
+      return
     }
 
-    editorContent.value = quill.root.innerHTML
-    localStorage.setItem(props.storageKey, editorContent.value)
-    holdSelectionHighlight()
+    pendingCursorFontSize.value = null
+    clearHeldSelection()
+    clearHeldCaret()
+    quill.formatText(targetRange.index, targetRange.length, 'size', size, Quill.sources.USER)
+    saveEditorContent(quill)
+    return
   }
+
+  pendingCursorFontSize.value = size
+  holdCursorCaret()
+}
+
+const commitFontSize = () => {
+  const quill = quillRef.value?.getQuill()
+  if (!quill || !previewState) return
+
+  commitPreview(quill, lastSelectionRange.value?.length ? lastSelectionRange.value : undefined)
 }
 
 const stopToolbarInputEvent = (event: Event) => {
   event.stopPropagation()
 }
 
+const handleFontSizeKeyDown = (event: KeyboardEvent) => {
+  event.stopPropagation()
+  if (event.key === 'Enter') {
+    commitFontSize()
+  }
+}
+
 const handleToolbarInputEvent = (event: Event) => {
   event.stopPropagation()
+  holdSelectionHighlight()
+  holdCursorCaret()
+}
+
+const getToolbarPickerItem = (target: EventTarget | null) => {
+  if (!(target instanceof HTMLElement)) return null
+  return target.closest('.ql-color .ql-picker-item, .ql-background .ql-picker-item') as HTMLElement | null
+}
+
+const handleToolbarMouseOver = (event: MouseEvent) => {
+  const item = getToolbarPickerItem(event.target)
+  if (!item) return
+
+  const format = item.closest('.ql-color') ? 'color' : 'background'
+  const value = item.getAttribute('data-value') || false
+  previewInlineFormat(format, value)
+}
+
+const handleToolbarMouseLeave = () => {
+  if (!previewState) return
+  restorePreview()
   holdSelectionHighlight()
 }
 
 const handleDocumentPointerDown = (event: PointerEvent) => {
   if (!wrapperRef.value?.contains(event.target as Node)) {
+    restorePreview()
     clearHeldSelection()
+    clearHeldCaret()
+    pendingCursorFontSize.value = null
   }
 }
 
@@ -331,32 +525,40 @@ const handleDocumentPointerUp = () => {
 
 const handleEditorPointerDown = () => {
   isPointerSelecting = true
+  clearHeldCaret()
   scheduleNativeSelectionHighlight()
 }
 
 const handleSelectionChange = (event: { range: QuillSelectionRange | null }) => {
   if (!event.range) {
+    if (wrapperRef.value?.contains(document.activeElement)) return
     clearHeldSelection()
+    clearHeldCaret()
     return
   }
 
   lastSelectionRange.value = event.range
   if (event.range.length > 0) {
+    clearHeldCaret()
     holdSelectionHighlight()
   } else {
     clearHeldSelection()
+    clearHeldCaret()
   }
 
   const quill = quillRef.value?.getQuill()
   if (quill) {
-    const format = quill.getFormat(event.range.index, event.range.length)
-    if (format.size) {
-      const sizeText = String(format.size)
-      const sizeValue = parseFloat(sizeText)
-      const sizeNum = sizeText.endsWith('px')
-        ? Math.round(sizeValue * 0.75)
-        : Math.round(sizeValue)
-      if (!isNaN(sizeNum)) currentFontSize.value = sizeNum
+    applyPendingCursorFontSize(quill, event.range)
+    if (!isApplyingCursorFontSize) {
+      const format = quill.getFormat(event.range.index, event.range.length)
+      if (format.size) {
+        const sizeText = String(format.size)
+        const sizeValue = parseFloat(sizeText)
+        const sizeNum = sizeText.endsWith('px')
+          ? Math.round(sizeValue * 0.75)
+          : Math.round(sizeValue)
+        if (!isNaN(sizeNum)) currentFontSize.value = sizeNum
+      }
     }
     keepCurrentFontSizeForEmptyEditor()
   }
@@ -389,7 +591,12 @@ watch(() => props.storageKey, () => {
 <template>
   <div ref="wrapperRef" class="note-quill-final-wrapper">
     <!-- Toolbar -->
-    <div :id="'toolbar-' + props.storageKey" class="custom-note-toolbar">
+    <div
+      :id="'toolbar-' + props.storageKey"
+      class="custom-note-toolbar"
+      @mouseover="handleToolbarMouseOver"
+      @mouseleave="handleToolbarMouseLeave"
+    >
       <span class="ql-formats">
         <select class="ql-header">
           <option value="1">H1</option>
@@ -403,9 +610,11 @@ watch(() => props.storageKey, () => {
           type="number" 
           v-model="currentFontSize" 
           @input="applyFontSize"
+          @change="commitFontSize"
+          @blur="commitFontSize"
           @mousedown="handleToolbarInputEvent"
           @click="handleToolbarInputEvent"
-          @keydown="stopToolbarInputEvent"
+          @keydown="handleFontSizeKeyDown"
           @keyup="stopToolbarInputEvent"
           @focus="handleToolbarInputEvent"
           class="fs-input"
@@ -455,6 +664,15 @@ watch(() => props.storageKey, () => {
           transform: `translate(${rect.left}px, ${rect.top}px)`,
           width: `${rect.width}px`,
           height: `${rect.height}px`
+        }"
+      />
+      <div
+        v-if="heldCaretRect"
+        class="held-caret-rect"
+        :style="{
+          transform: `translate(${heldCaretRect.left}px, ${heldCaretRect.top}px)`,
+          width: `${heldCaretRect.width}px`,
+          height: `${heldCaretRect.height}px`
         }"
       />
     </div>
@@ -541,6 +759,8 @@ watch(() => props.storageKey, () => {
     
     &.ql-blank::before {
       color: #999;
+      font-size: 14pt;
+      line-height: 1.6;
       font-style: normal;
       pointer-events: none;
     }
@@ -560,6 +780,13 @@ watch(() => props.storageKey, () => {
     left: 0;
     top: 0;
     background-color: rgba(0, 123, 255, 0.14);
+  }
+
+  .held-caret-rect {
+    position: absolute;
+    left: 0;
+    top: 0;
+    background-color: #333;
   }
 }
 

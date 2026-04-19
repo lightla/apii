@@ -2,7 +2,7 @@
 import { ref, watch } from 'vue'
 import type { RouteInfo } from '@/types'
 import RequestTagManager from "@/app/Generals/TagManager/RequestTagManager.vue";
-import QuillEditor from "@/app/TextEditor/Quill/QuillEditor.vue";
+import QuillEditor from "@/app/TextEditor/Quill/QuillEditor2.vue";
 import RequestBrowserTabManager2 from "./RequestBrowserTabManager2.vue";
 
 const props = defineProps<{ route: RouteInfo | null }>()
