@@ -97,14 +97,14 @@ watch([() => requestParams.useProxy, () => requestParams.proxyUrl], () => {
   padding: 5px 10px;
   border: 1px solid #888888;
   font-size: 13px;
-  background: white;
+  background: transparent; /* Đổi sang trong suốt */
   outline: none;
   transition: all 0.2s ease;
   &:focus {
     border-color: #007bff;
   }
   &.is-disabled {
-    background-color: #f0f0f0;
+    background-color: rgba(0, 0, 0, 0.05); /* Xám cực nhẹ khi disabled */
     color: #888;
     cursor: not-allowed;
   }
