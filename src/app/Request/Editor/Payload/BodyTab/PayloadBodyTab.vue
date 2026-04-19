@@ -132,7 +132,8 @@ const triggerFileInput = (id: string) => {
       <div v-else-if="store.bodyType === 'form-data'" class="form-data-wrap">
         <div class="form-data-toolbar">
           <div class="d-flex align-items-center">
-            <IconSquareRoundedPlus @click="store.addFormData()" stroke-width="1" class="icon-button-add-row"/>
+            <span class="form-data-toolbar-title">Form Data Parameters</span>
+            <IconSquareRoundedPlus @click="store.addFormData()" stroke-width="1" class="icon-button-add-row ms-3"/>
             
             <div @click="onTrashClick" title="Delete all form-data" class="d-flex align-items-center cursor-pointer ms-1">
               <ShieldAlert v-if="isConfirmingDeleteAll" stroke-width="1" class="icon-button icon-button-trash-x" />
@@ -313,6 +314,7 @@ const triggerFileInput = (id: string) => {
   flex-direction: column;
   flex: 1;
   min-height: 0;
+  gap: 8px;
 }
 
 .form-data-toolbar {
@@ -322,11 +324,20 @@ const triggerFileInput = (id: string) => {
   flex-shrink: 0;
 }
 
+.form-data-toolbar-title {
+  padding: 5px;
+  background-color: rgba(221, 221, 221, 0.65);
+  border: 1px solid #888888;
+  font-size: 13px;
+  font-weight: 500;
+}
+
 .table-scroll-wrapper {
+  min-height: 0;
+  height: fit-content;
   overflow-y: auto;
   @include elements.scrollbar-hidden;
   border-bottom: var(--table-border);
-  flex: 1;
 }
 
 .form-data-table {
