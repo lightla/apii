@@ -38,7 +38,7 @@ const isFormatPreviewing = ref(false)
 const isFontSizePickerOpen = ref(false)
 let formatPreviewState: FormatPreviewState | null = null
 let isPreviewMutating = false
-const isSelectionSuppressed = computed(() => isFormatPreviewing.value || isFontSizePickerOpen.value)
+const isSelectionSuppressed = computed(() => isFormatPreviewing.value)
 
 const fontSizeOptions = [8, 9, 10, 11, 12, 14, 16, 18, 20, 22, 24, 26, 28, 36, 48, 72]
 
@@ -333,6 +333,11 @@ const stopToolbarInputEvent = (event: Event) => {
   event.stopPropagation()
 }
 
+const handleFontSizeToggleMouseDown = (event: MouseEvent) => {
+  event.preventDefault()
+  event.stopPropagation()
+}
+
 const handleFontSizeInput = (event: Event) => {
   event.stopPropagation()
   restoreFormatPreview()
@@ -521,7 +526,7 @@ watch(() => props.storageKey, () => {
           <button
             type="button"
             class="fs-picker-toggle"
-            @mousedown="stopToolbarInputEvent"
+            @mousedown="handleFontSizeToggleMouseDown"
             @click="toggleFontSizePicker"
           >
             <span class="fs-picker-caret"></span>
