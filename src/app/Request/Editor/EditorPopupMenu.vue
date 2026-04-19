@@ -28,6 +28,7 @@ onMounted(() => {
   window.addEventListener('keydown', onKeyDown)
   window.addEventListener('keyup', onKeyUp)
   window.addEventListener("mousedown", onGlobalClick)
+  window.addEventListener("contextmenu", onContextMenu)
 })
 
 onUnmounted(() => {
@@ -35,6 +36,7 @@ onUnmounted(() => {
   window.removeEventListener('keydown', onKeyDown)
   window.removeEventListener('keyup', onKeyUp)
   window.removeEventListener("mousedown", onGlobalClick)
+  window.removeEventListener("contextmenu", onContextMenu)
 })
 
 const onMouseMove = (e: MouseEvent) => {
@@ -48,7 +50,7 @@ const onKeyDown = (event: KeyboardEvent) => {
       otherKeyPressed.value = false;
     }
   } else if (isCtrlDown.value) {
-    // Nếu đang giữ Ctrl mà nhấn thêm phím bất kỳ (C, V, v.v.)
+    // Nếu đang giữ Ctrl mà nhấn thêm phím bất kỳ (như C, V...) -> Hủy trigger
     otherKeyPressed.value = true;
   }
 }
@@ -57,7 +59,7 @@ const onKeyUp = (event: KeyboardEvent) => {
   if (event.key === 'Control') {
     isCtrlDown.value = false;
 
-    // Chỉ trigger popup nếu: Không có phím khác nhấn kèm + Popup đang không hiện
+    // TRIGGER 1: Tap phím Control (Ctrl Down & Up sạch)
     if (!otherKeyPressed.value && (!popupRef.value || popupRef.value.style.display !== 'flex')) {
       const { clientX, clientY } = lastMousePosition.value;
       const el = document.elementFromPoint(clientX, clientY) as HTMLElement | null
@@ -73,11 +75,21 @@ const onKeyUp = (event: KeyboardEvent) => {
 const onGlobalClick = (e : MouseEvent) => {
   if (!popupRef.value) return;
 
-  // Click ra ngoài đóng popup
+  // Click chuột trái ra ngoài đóng popup
   if (popupRef.value.style.display === "flex") {
     if (!popupRef.value.contains(e.target as Node)) {
       hidePopup();
     }
+  }
+}
+
+// TRIGGER 2: Hover + Chuột phải (Không cần Ctrl)
+const onContextMenu = (e: MouseEvent) => {
+  const el = document.elementFromPoint(e.clientX, e.clientY) as HTMLElement | null
+
+  if (el?.classList.contains('undefined-env-variable') || el?.classList.contains('defined-env-variable')) {
+    e.preventDefault(); // Ngăn menu mặc định của trình duyệt
+    showPopupAt(el, e.clientX, e.clientY);
   }
 }
 
