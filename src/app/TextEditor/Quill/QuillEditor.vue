@@ -120,6 +120,27 @@ const clearHeldSelection = () => {
   heldSelectionRects.value = []
 }
 
+const collapseMultilineSelection = (rects: HeldSelectionRect[]) => {
+  const lineTolerance = 3
+  const lineTops = new Set(rects.map(rect => Math.round(rect.top / lineTolerance)))
+
+  if (lineTops.size <= 1) {
+    return rects
+  }
+
+  const left = Math.min(...rects.map(rect => rect.left))
+  const top = Math.min(...rects.map(rect => rect.top))
+  const right = Math.max(...rects.map(rect => rect.left + rect.width))
+  const bottom = Math.max(...rects.map(rect => rect.top + rect.height))
+
+  return [{
+    left,
+    top,
+    width: right - left,
+    height: bottom - top
+  }]
+}
+
 const renderHeldSelectionRects = (domRange: Range) => {
   const wrapper = wrapperRef.value
   if (!wrapper) return
@@ -138,7 +159,7 @@ const renderHeldSelectionRects = (domRange: Range) => {
       }
     })
 
-  heldSelectionRects.value = mergeSelectionRects(nextRects)
+  heldSelectionRects.value = collapseMultilineSelection(mergeSelectionRects(nextRects))
 }
 
 const holdSelectionHighlight = () => {
@@ -522,7 +543,7 @@ watch(() => props.storageKey, () => {
     position: absolute;
     left: 0;
     top: 0;
-    background: rgba(0, 123, 255, 0.14);
+    background-color: rgba(0, 123, 255, 0.14);
   }
 }
 
