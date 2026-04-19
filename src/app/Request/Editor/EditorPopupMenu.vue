@@ -50,7 +50,6 @@ const onKeyDown = (event: KeyboardEvent) => {
       otherKeyPressed.value = false;
     }
   } else if (isCtrlDown.value) {
-    // Nếu đang giữ Ctrl mà nhấn thêm phím bất kỳ (như C, V...) -> Hủy trigger
     otherKeyPressed.value = true;
   }
 }
@@ -59,7 +58,6 @@ const onKeyUp = (event: KeyboardEvent) => {
   if (event.key === 'Control') {
     isCtrlDown.value = false;
 
-    // TRIGGER 1: Tap phím Control (Ctrl Down & Up sạch)
     if (!otherKeyPressed.value && (!popupRef.value || popupRef.value.style.display !== 'flex')) {
       const { clientX, clientY } = lastMousePosition.value;
       const el = document.elementFromPoint(clientX, clientY) as HTMLElement | null
@@ -75,7 +73,6 @@ const onKeyUp = (event: KeyboardEvent) => {
 const onGlobalClick = (e : MouseEvent) => {
   if (!popupRef.value) return;
 
-  // Click chuột trái ra ngoài đóng popup
   if (popupRef.value.style.display === "flex") {
     if (!popupRef.value.contains(e.target as Node)) {
       hidePopup();
@@ -83,12 +80,11 @@ const onGlobalClick = (e : MouseEvent) => {
   }
 }
 
-// TRIGGER 2: Hover + Chuột phải (Không cần Ctrl)
 const onContextMenu = (e: MouseEvent) => {
   const el = document.elementFromPoint(e.clientX, e.clientY) as HTMLElement | null
 
   if (el?.classList.contains('undefined-env-variable') || el?.classList.contains('defined-env-variable')) {
-    e.preventDefault(); // Ngăn menu mặc định của trình duyệt
+    e.preventDefault(); 
     showPopupAt(el, e.clientX, e.clientY);
   }
 }
@@ -100,14 +96,12 @@ function showPopupAt(el: HTMLElement, x: number, y: number) {
   searchQuery.value = '';
   currentVarName.value = el.textContent?.trim() || "";
 
+  // KIỂM TRA TRẠNG THÁI DEFINED GỐC (Dựa trên việc có tồn tại trong danh sách định nghĩa)
+  const isActuallyInDefinitions = envStorage.variableDefinitions.some(v => v.name === currentVarName.value);
+  isDefined.value = isActuallyInDefinitions;
+
   const foundVar = envStorage.definedEnvVariables.find(v => v.name === currentVarName.value);
-  if (foundVar) {
-    currentVarValue.value = foundVar.value;
-    isDefined.value = true;
-  } else {
-    currentVarValue.value = '';
-    isDefined.value = false;
-  }
+  currentVarValue.value = foundVar?.value || '';
 
   popupRef.value.style.display = 'flex';
   popupRef.value.style.left = `${x + 5}px`
@@ -125,6 +119,7 @@ const onValueInput = (e: Event) => {
 
   const index = envStorage.variableDefinitions.findIndex(v => v.name === currentVarName.value);
   if (index !== -1) {
+    // Nếu biến đã có định nghĩa, cứ gõ là cập nhật Store ngay (giá trị rỗng vẫn ok)
     envStorage.updateVariableValue(index, newValue);
   }
 }
@@ -134,22 +129,31 @@ const onValueBlur = async () => {
 
   let index = envStorage.variableDefinitions.findIndex(v => v.name === currentVarName.value);
 
+  // LUỒNG 1: BIẾN CHƯA CÓ ĐỊNH NGHĨA (UNDEFINED)
   if (index === -1) {
-    const newId = Math.random().toString(36).substr(2, 9);
-    envStorage.variableDefinitions.push({
-      id: newId,
-      name: currentVarName.value
-    });
-    isDefined.value = true;
-    index = envStorage.variableDefinitions.length - 1;
-  }
-
-  if (index !== -1) {
+    // Chỉ tạo mới nếu người dùng nhập giá trị khác rỗng
+    if (currentVarValue.value.trim() !== '') {
+      const newId = Math.random().toString(36).substr(2, 9);
+      envStorage.variableDefinitions.push({
+        id: newId,
+        name: currentVarName.value
+      });
+      isDefined.value = true;
+      index = envStorage.variableDefinitions.length - 1;
+      
+      // Cập nhật giá trị vừa nhập vào Store
+      envStorage.updateVariableValue(index, currentVarValue.value);
+    }
+  } 
+  // LUỒNG 2: BIẾN ĐÃ CÓ ĐỊNH NGHĨA (DEFINED)
+  else {
+    // Luôn cập nhật giá trị vào Store, dù là rỗng
     envStorage.updateVariableValue(index, currentVarValue.value);
   }
 
   await nextTick();
 
+  // Quét lại toàn bộ để cập nhật màu sắc
   inputStorage.rescanHighlightAllInputs(null, {
     definedEnvVariables: envStorage.collectEnvVariableNames()
   });
@@ -176,7 +180,7 @@ const selectVariable = (newName: string) => {
 </script>
 
 <template>
-  <div ref="popupRef" class="popup">
+  <div ref="popupRef" class="popup shadow-lg">
     <div class="popup-header">
       <div class="d-flex align-items-center w-100">
         <span class="var-label me-2">Variable:</span>
