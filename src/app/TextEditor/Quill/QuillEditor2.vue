@@ -21,18 +21,26 @@ type FormatPreviewState = {
   range: QuillSelectionRange
   selectionRange: QuillSelectionRange
   contents: any
-  format: 'color' | 'background'
+  format: PreviewFormat
   value: string | boolean
+  previousFontSize: number
 }
+
+type PreviewFormat = 'color' | 'background' | 'size'
 
 const quillRef = ref<any>(null)
 const toolbarRef = ref<HTMLElement | null>(null)
 const editorContent = ref('')
 const currentFontSize = ref(14)
+const fontSizeInput = ref('14')
 const lastSelectionRange = ref<QuillSelectionRange | null>(null)
 const isFormatPreviewing = ref(false)
+const isFontSizePickerOpen = ref(false)
 let formatPreviewState: FormatPreviewState | null = null
 let isPreviewMutating = false
+const isSelectionSuppressed = computed(() => isFormatPreviewing.value || isFontSizePickerOpen.value)
+
+const fontSizeOptions = [8, 9, 10, 11, 12, 14, 16, 18, 20, 22, 24, 26, 28, 36, 48, 72]
 
 const textColors = [
   '#000000', '#444444', '#666666', '#999999', '#cccccc', '#ffffff',
@@ -82,11 +90,21 @@ const isSameRange = (first: QuillSelectionRange, second: QuillSelectionRange) =>
   return first.index === second.index && first.length === second.length
 }
 
+const syncFontSizeFromValue = (value: string | boolean) => {
+  if (typeof value !== 'string') return
+
+  const sizeValue = parseFloat(value)
+  if (!isNaN(sizeValue)) {
+    currentFontSize.value = Math.round(sizeValue)
+    fontSizeInput.value = String(Math.round(sizeValue))
+  }
+}
+
 const restoreFormatPreview = () => {
   const quill = quillRef.value?.getQuill()
   if (!quill || !formatPreviewState) return
 
-  const { range, selectionRange, contents } = formatPreviewState
+  const { range, selectionRange, contents, previousFontSize } = formatPreviewState
   isPreviewMutating = true
   try {
     quill.updateContents(
@@ -98,6 +116,8 @@ const restoreFormatPreview = () => {
     isPreviewMutating = false
   }
   formatPreviewState = null
+  currentFontSize.value = previousFontSize
+  fontSizeInput.value = String(previousFontSize)
   isFormatPreviewing.value = false
 }
 
@@ -105,11 +125,12 @@ const beginFormatPreview = (
   quill: any,
   range: QuillSelectionRange,
   selectionRange: QuillSelectionRange,
-  format: 'color' | 'background',
+  format: PreviewFormat,
   value: string | boolean
 ) => {
   if (range.length === 0) return
 
+  const previousFontSize = formatPreviewState?.previousFontSize ?? currentFontSize.value
   if (formatPreviewState) {
     const { range: previewRange, contents } = formatPreviewState
     isPreviewMutating = true
@@ -133,9 +154,13 @@ const beginFormatPreview = (
     selectionRange: { ...selectionRange },
     contents: quill.getContents(range.index, range.length),
     format,
-    value
+    value,
+    previousFontSize
   }
   isFormatPreviewing.value = true
+  if (format === 'size') {
+    syncFontSizeFromValue(value)
+  }
 
   isPreviewMutating = true
   try {
@@ -147,6 +172,9 @@ const beginFormatPreview = (
 }
 
 const commitFormatPreview = (quill: any, selectionRange: QuillSelectionRange) => {
+  if (formatPreviewState?.format === 'size') {
+    syncFontSizeFromValue(formatPreviewState.value)
+  }
   formatPreviewState = null
   isFormatPreviewing.value = false
   saveEditorContent(quill)
@@ -184,7 +212,7 @@ const toggleInlineFormat = (quill: any, format: 'bold' | 'italic' | 'underline')
   quill.format(format, nextValue, Quill.sources.USER)
 }
 
-const applyInlineFormat = (quill: any, format: 'color' | 'background', value: string | boolean) => {
+const applyInlineFormat = (quill: any, format: PreviewFormat, value: string | boolean) => {
   const range = quill.getSelection() || lastSelectionRange.value
   if (!range) return
 
@@ -205,6 +233,9 @@ const applyInlineFormat = (quill: any, format: 'color' | 'background', value: st
   if (range.length > 0) {
     quill.format(format, value, Quill.sources.USER)
     quill.setSelection(range.index, range.length, Quill.sources.SILENT)
+    if (format === 'size') {
+      syncFontSizeFromValue(value)
+    }
     saveEditorContent(quill)
     return
   }
@@ -213,11 +244,17 @@ const applyInlineFormat = (quill: any, format: 'color' | 'background', value: st
   if (lineRange.length > 0) {
     quill.formatText(lineRange.index, lineRange.length, format, value, Quill.sources.USER)
     quill.setSelection(range.index, range.length, Quill.sources.SILENT)
+    if (format === 'size') {
+      syncFontSizeFromValue(value)
+    }
     saveEditorContent(quill)
     return
   }
 
   quill.format(format, value, Quill.sources.USER)
+  if (format === 'size') {
+    syncFontSizeFromValue(value)
+  }
 }
 
 const keepCurrentFontSizeForEmptyEditor = (quill: any) => {
@@ -292,42 +329,70 @@ const toolbarOptions = computed(() => ({
   }
 }))
 
-const applyFontSize = () => {
-  const quill = quillRef.value?.getQuill()
-  const range = lastSelectionRange.value
-  if (!quill || !range) return
-
-  const size = getCurrentFontSizeValue()
-
-  if (range.length > 0) {
-    quill.formatText(range.index, range.length, 'size', size, Quill.sources.USER)
-    quill.setSelection(range.index, range.length, Quill.sources.SILENT)
-    saveEditorContent(quill)
-    return
-  }
-
-  const activeRange = quill.getSelection()
-  if (activeRange && activeRange.index === range.index && activeRange.length === 0) {
-    quill.format('size', size, Quill.sources.USER)
-  }
-}
-
 const stopToolbarInputEvent = (event: Event) => {
   event.stopPropagation()
 }
 
-const handleFontSizeKeyDown = (event: KeyboardEvent) => {
+const handleFontSizeInput = (event: Event) => {
   event.stopPropagation()
+  restoreFormatPreview()
+  const input = event.target as HTMLInputElement
+  fontSizeInput.value = input.value
 }
 
-const getToolbarColorItem = (target: EventTarget | null) => {
+const applyTypedFontSize = () => {
+  const size = parseFloat(fontSizeInput.value)
+  if (isNaN(size) || size <= 0) {
+    fontSizeInput.value = String(currentFontSize.value)
+    return
+  }
+
+  const quill = quillRef.value?.getQuill()
+  if (!quill) return
+
+  applyInlineFormat(quill, 'size', `${Math.round(size)}pt`)
+  isFontSizePickerOpen.value = false
+}
+
+const handleToolbarKeyDown = (event: KeyboardEvent) => {
+  event.stopPropagation()
+  if (event.key === 'Enter') {
+    applyTypedFontSize()
+    return
+  }
+  if (event.key === 'Escape') {
+    restoreFormatPreview()
+    fontSizeInput.value = String(currentFontSize.value)
+    isFontSizePickerOpen.value = false
+  }
+}
+
+const getToolbarPreviewItem = (target: EventTarget | null) => {
   if (!(target instanceof HTMLElement)) return null
 
-  return target.closest('.ql-color .ql-picker-item, .ql-background .ql-picker-item') as HTMLElement | null
+  return target.closest('.ql-color .ql-picker-item, .ql-background .ql-picker-item, .fs-picker-option') as HTMLElement | null
+}
+
+const resolvePreviewFormat = (item: HTMLElement): PreviewFormat => {
+  if (item.classList.contains('fs-picker-option')) return 'size'
+  return item.closest('.ql-color') ? 'color' : 'background'
+}
+
+const resolvePreviewValue = (item: HTMLElement) => {
+  if (item.classList.contains('fs-picker-option')) {
+    return `${item.dataset.size}pt`
+  }
+
+  return item.getAttribute('data-value') || false
+}
+
+const toggleFontSizePicker = (event: MouseEvent) => {
+  event.stopPropagation()
+  isFontSizePickerOpen.value = !isFontSizePickerOpen.value
 }
 
 const handleToolbarMouseOver = (event: MouseEvent) => {
-  const item = getToolbarColorItem(event.target)
+  const item = getToolbarPreviewItem(event.target)
   if (!item) return
 
   const quill = quillRef.value?.getQuill()
@@ -341,8 +406,8 @@ const handleToolbarMouseOver = (event: MouseEvent) => {
     : getCurrentLineRange(quill, selectionRange))
   if (range.length === 0) return
 
-  const format = item.closest('.ql-color') ? 'color' : 'background'
-  const value = item.getAttribute('data-value') || false
+  const format = resolvePreviewFormat(item)
+  const value = resolvePreviewValue(item)
   beginFormatPreview(quill, range, selectionRange, format, value)
 }
 
@@ -351,7 +416,7 @@ const handleToolbarMouseLeave = () => {
 }
 
 const handleToolbarClick = (event: MouseEvent) => {
-  const item = getToolbarColorItem(event.target)
+  const item = getToolbarPreviewItem(event.target)
   if (!item) return
 
   const quill = quillRef.value?.getQuill()
@@ -360,17 +425,19 @@ const handleToolbarClick = (event: MouseEvent) => {
   if (formatPreviewState) {
     commitFormatPreview(quill, formatPreviewState.selectionRange)
   } else {
-    const format = item.closest('.ql-color') ? 'color' : 'background'
-    const value = item.getAttribute('data-value') || false
+    const format = resolvePreviewFormat(item)
+    const value = resolvePreviewValue(item)
     applyInlineFormat(quill, format, value)
   }
 
   closeToolbarPickers()
+  isFontSizePickerOpen.value = false
 }
 
 const handleDocumentPointerDown = (event: PointerEvent) => {
   if (toolbarRef.value?.contains(event.target as Node)) return
   restoreFormatPreview()
+  isFontSizePickerOpen.value = false
 }
 
 const handleSelectionChange = (event: { range: QuillSelectionRange | null }) => {
@@ -389,6 +456,7 @@ const handleSelectionChange = (event: { range: QuillSelectionRange | null }) => 
       ? Math.round(sizeValue * 0.75)
       : Math.round(sizeValue)
     if (!isNaN(sizeNum)) currentFontSize.value = sizeNum
+    if (!isNaN(sizeNum)) fontSizeInput.value = String(sizeNum)
   }
 
   keepCurrentFontSizeForEmptyEditor(quill)
@@ -413,6 +481,7 @@ onBeforeUnmount(() => {
 
 watch(() => props.storageKey, () => {
   restoreFormatPreview()
+  fontSizeInput.value = String(currentFontSize.value)
   loadContent()
 })
 </script>
@@ -420,7 +489,7 @@ watch(() => props.storageKey, () => {
 <template>
   <div
     class="note-quill-final-wrapper"
-    :class="{ 'is-format-previewing': isFormatPreviewing }"
+    :class="{ 'is-format-previewing': isSelectionSuppressed }"
   >
     <div
       :id="'toolbar-' + props.storageKey"
@@ -438,19 +507,41 @@ watch(() => props.storageKey, () => {
         </select>
       </span>
 
-      <span class="ql-formats">
-        <input
-          v-model="currentFontSize"
-          type="number"
-          class="fs-input"
-          @input="applyFontSize"
-          @mousedown="stopToolbarInputEvent"
-          @click="stopToolbarInputEvent"
-          @keydown="handleFontSizeKeyDown"
-          @keyup="stopToolbarInputEvent"
-          @focus="stopToolbarInputEvent"
-        />
-        <span class="fs-unit">pt</span>
+      <span class="ql-formats fs-picker">
+        <div class="fs-picker-control">
+          <input
+            :value="fontSizeInput"
+            type="text"
+            inputmode="numeric"
+            class="fs-picker-input"
+            @mousedown="stopToolbarInputEvent"
+            @input="handleFontSizeInput"
+            @keydown="handleToolbarKeyDown"
+          />
+          <button
+            type="button"
+            class="fs-picker-toggle"
+            @mousedown="stopToolbarInputEvent"
+            @click="toggleFontSizePicker"
+          >
+            <span class="fs-picker-caret"></span>
+          </button>
+        </div>
+        <div
+          v-if="isFontSizePickerOpen"
+          class="fs-picker-menu"
+        >
+          <button
+            v-for="size in fontSizeOptions"
+            :key="size"
+            type="button"
+            class="fs-picker-option"
+            :class="{ 'is-active': currentFontSize === size }"
+            :data-size="size"
+          >
+            {{ size }}pt
+          </button>
+        </div>
       </span>
 
       <span class="ql-formats">
@@ -527,20 +618,86 @@ watch(() => props.storageKey, () => {
       align-items: center;
     }
 
-    .fs-input {
-      width: 54px;
-      height: 22px;
-      border: 1px solid #999;
-      border-radius: 2px;
-      font-size: 11px;
-      padding: 0 4px;
+    .fs-picker {
+      position: relative;
     }
 
-    .fs-unit {
-      font-size: 11px;
-      color: #666;
-      margin-left: 2px;
-      font-weight: bold;
+    .fs-picker-control {
+      display: flex;
+      align-items: center;
+      width: 66px;
+      height: 24px;
+      border: 1px solid #999;
+      border-radius: 2px;
+      background: #fff;
+      overflow: hidden;
+    }
+
+    .fs-picker-input {
+      width: 100%;
+      height: 100%;
+      border: 0;
+      outline: none;
+      color: #333;
+      font-size: 12px;
+      line-height: 22px;
+      padding: 0 6px;
+      text-align: left;
+      background: transparent;
+    }
+
+    .fs-picker-toggle {
+      width: 18px;
+      height: 100%;
+      border: 0;
+      border-left: 1px solid #bbb;
+      border-radius: 0;
+      background: #f6f6f6;
+      padding: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .fs-picker-caret {
+      width: 0;
+      height: 0;
+      border-left: 4px solid transparent;
+      border-right: 4px solid transparent;
+      border-top: 5px solid #555;
+    }
+
+    .fs-picker-menu {
+      position: absolute;
+      left: 0;
+      top: 28px;
+      z-index: 10;
+      width: 82px;
+      max-height: 240px;
+      overflow-y: auto;
+      background: #fff;
+      border: 1px solid #999;
+      box-shadow: 0 3px 8px rgba(0, 0, 0, 0.18);
+      padding: 3px 0;
+    }
+
+    .fs-picker-option {
+      display: block;
+      width: 100%;
+      height: 24px;
+      border: 0;
+      border-radius: 0;
+      background: #fff;
+      color: #333;
+      font-size: 12px;
+      line-height: 24px;
+      padding: 0 8px;
+      text-align: left;
+    }
+
+    .fs-picker-option:hover,
+    .fs-picker-option.is-active {
+      background: #e9ecef;
     }
 
     .ql-stroke { stroke: #444; }
