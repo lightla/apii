@@ -36,9 +36,10 @@ const onClickAddRowButton = (event: MouseEvent): void => {
 
 const onClickAddEnvRowButton = (): void => {
   envStorage.addDefinedEnv({
-    name: "",
-    code: "",
+    name: '',
+    code: '',
   })
+  void envStorage.persistDefinedEnvs()
 }
 
 const isProtectedEnv = (env: { code: string }, envIndex: number): boolean => {
@@ -64,6 +65,7 @@ const onClickEnvEraserEmptyLine = (): void => {
     const normalizedName = normalizeInputText(env.name)
     return normalizedName !== ''
   })
+  void envStorage.persistDefinedEnvs()
 }
 
 const onClickDeleteEnvRow = (envIndex: number): void => {
@@ -85,6 +87,7 @@ const onClickDeleteEnvRow = (envIndex: number): void => {
   }
 
   envStorage.definedEnvs.splice(envIndex, 1)
+  void envStorage.persistDefinedEnvs()
   envDeleteConfirmIndex.value = null
   if (envDeleteConfirmTimeoutRef.value) {
     clearTimeout(envDeleteConfirmTimeoutRef.value)

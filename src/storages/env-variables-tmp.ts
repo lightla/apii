@@ -1,6 +1,7 @@
 import {defineStore} from 'pinia';
-import {computed, ref} from 'vue';
+import {computed, ref, watch} from 'vue';
 import { nanoid } from 'nanoid'
+import {envStorageManager, type StoredEnv} from '@/storages/env-storage-manager'
 import {replaceHighlightVariables} from "@/utils/variable-input.ts";
 import {
     type HighlightVariableOptionParam,
@@ -30,11 +31,29 @@ const useEnvStorage = defineStore('variables', () => {
     const definedEnvs = ref<Env[]>([
         { id: nanoid(), name: 'No Environment', code: 'no-environment'},
     ])
+    const isHydratingEnvs = ref(false)
+
+    const toStoredEnvs = (envs: Env[]): StoredEnv[] => {
+        return envs.map((env) => ({
+            id: env.id,
+            name: env.name,
+            code: env.code,
+        }))
+    }
+
+    const fromStoredEnv = (env: StoredEnv): Env => {
+        return {
+            id: env.id ?? nanoid(),
+            name: env.name,
+            code: env.code,
+        }
+    }
 
     const addDefinedEnv = (env: Env): void => {
         env.id = nanoid();
 
         definedEnvs.value.push(env)
+        void persistDefinedEnvs()
     }
 
     /*******************
@@ -73,9 +92,42 @@ const useEnvStorage = defineStore('variables', () => {
         ).value;
     };
 
+    const hydrateEnvsFromStorage = async () => {
+        isHydratingEnvs.value = true
+        try {
+            const storedEnvs = await envStorageManager.loadEnvs()
+            if (storedEnvs.length) {
+                definedEnvs.value = storedEnvs.map(fromStoredEnv)
+            } else {
+                definedEnvs.value = [{ id: nanoid(), name: 'No Environment', code: 'no-environment'}]
+                await envStorageManager.saveEnvs(toStoredEnvs(definedEnvs.value))
+            }
+        } finally {
+            isHydratingEnvs.value = false
+        }
+    }
+
+    const persistDefinedEnvs = async (): Promise<void> => {
+        try {
+            await envStorageManager.saveEnvs(toStoredEnvs(definedEnvs.value))
+        } catch {
+            // Ignore storage errors to avoid breaking UI; envs just won't persist.
+        }
+    }
+
+    watch(definedEnvs, (nextEnvs) => {
+        if (isHydratingEnvs.value) {
+            return
+        }
+        void envStorageManager.saveEnvs(toStoredEnvs(nextEnvs))
+    }, { deep: true })
+
+    void hydrateEnvsFromStorage()
+
     return {
         definedEnvs, addDefinedEnv,
         definedEnvVariables, addDefinedEnvVariable, collectEnvVariableNames,
+        persistDefinedEnvs,
     };
 });
 

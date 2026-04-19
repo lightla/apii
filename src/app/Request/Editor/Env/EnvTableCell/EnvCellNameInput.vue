@@ -93,6 +93,7 @@ const onBlurEnvNameInput = (event: Event): void => {
   env.code = nextCode
   previousValidNameRef.value = env.name
   previousValidCodeRef.value = env.code
+  void envStorage.persistDefinedEnvs()
 }
 
 </script>
