@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, onUnmounted } from 'vue'
 import type { RouteInfo } from '@/types'
 import TrackedVariableInput from "@/app/Generals/TrackedVariableInput.vue";
 import {useInputStorage, useEnvStorage} from "@/storages/env-variables-tmp.ts";
@@ -19,6 +19,43 @@ const requestParams = useRequestParamsStorage()
 
 const myComponentRef = ref<InstanceType<typeof TrackedVariableInput> | null>(null)
 const methodSelectRef = ref<HTMLSelectElement | null>(null)
+
+const isMethodSelectOpen = ref(false)
+const methods = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE']
+const methodDropdownStyle = ref({ top: '0px', left: '0px', width: '0px' })
+
+const toggleMethodSelect = (event: Event) => {
+  event.stopPropagation()
+  if (isMethodSelectOpen.value) {
+    isMethodSelectOpen.value = false;
+  } else {
+    isMethodSelectOpen.value = true;
+    const target = event.currentTarget as HTMLElement;
+    const rect = target.getBoundingClientRect();
+    methodDropdownStyle.value = {
+      top: `${rect.bottom + 2}px`,
+      left: `${rect.left}px`,
+      width: `${rect.width}px`
+    };
+  }
+}
+
+const selectMethod = (method: string) => {
+  requestParams.method = method
+  isMethodSelectOpen.value = false
+}
+
+const closeMethodSelect = () => {
+  isMethodSelectOpen.value = false
+}
+
+onMounted(() => {
+  window.addEventListener('click', closeMethodSelect)
+})
+
+onUnmounted(() => {
+  window.removeEventListener('click', closeMethodSelect)
+})
 
 // Hàm xử lý phân giải cURL tập trung
 const processCurlIfPresent = (text: string) => {
@@ -155,19 +192,23 @@ const sendRequest = async (_event: Event) => {
 
 <template>
   <div class="request-line">
-    <div class="method-select-cover">
-      <select 
-        ref="methodSelectRef" 
-        class="method-select select-control" 
-        :value="requestParams.method"
-        @change="requestParams.method = ($event.target as HTMLSelectElement).value"
-      >
-        <option value="GET">GET</option>
-        <option value="POST">POST</option>
-        <option value="PUT">PUT</option>
-        <option value="PATCH">PATCH</option>
-        <option value="DELETE">DELETE</option>
-      </select>
+    <div class="custom-method-select" :class="{ 'is-active': isMethodSelectOpen }">
+      <div class="method-select-trigger" @click="toggleMethodSelect">
+        <span>{{ requestParams.method }}</span>
+        <span class="dropdown-arrow">▼</span>
+      </div>
+      <Teleport to="body">
+        <div class="method-select-dropdown" v-if="isMethodSelectOpen" :style="methodDropdownStyle">
+          <div 
+            v-for="m in methods" 
+            :key="m" 
+            class="method-select-option" 
+            @click="selectMethod(m)"
+          >
+            {{ m }}
+          </div>
+        </div>
+      </Teleport>
     </div>
     <div class="url-bar-cover">
       <TrackedVariableInput
@@ -195,12 +236,61 @@ const sendRequest = async (_event: Event) => {
   max-width: 100%;
 }
 
-.method-select {
-  display: flex;
-  border: 1px solid #888888;
-  padding-left: 5px;
-  justify-content: center;
+.custom-method-select {
+  position: relative;
+  width: 100px; /* Cố định width cho method */
   height: 27px;
+  font-size: 13px;
+  color: #333;
+  
+  &.is-active {
+    z-index: 1000;
+  }
+}
+
+.method-select-trigger {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  height: 100%;
+  background-color: #e8e8e8;
+  border: 1px solid #888888;
+  padding: 2px 8px;
+  cursor: pointer;
+  user-select: none;
+  font-weight: 500;
+  
+  &:hover {
+    background-color: #e2e2e2;
+  }
+}
+
+.dropdown-arrow {
+  font-size: 9px;
+  color: #666;
+}
+
+.method-select-dropdown {
+  position: fixed;
+  background-color: #f0f0f0;
+  border: 1px solid #888888;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+  z-index: 100000;
+  font-family: "Calibri", Arial, sans-serif;
+  font-size: 13px;
+  color: #333;
+}
+
+.method-select-option {
+  padding: 6px 8px;
+  cursor: pointer;
+  user-select: none;
+  font-weight: 500;
+  
+  &:hover {
+    background-color: #cccccc;
+    color: #000;
+  }
 }
 
 .url-bar-cover {

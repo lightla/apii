@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, nextTick } from 'vue'
+import { ref, computed, nextTick, onMounted, onUnmounted } from 'vue'
 import type { RouteInfo } from '@/types'
 import CodeMirrorContainer2 from '@/app/Generals/CodeEditor/CodeMirrorContainer2.vue'
 import TrackedVariableInput from "@/app/Generals/TrackedVariableInput.vue";
@@ -77,6 +77,42 @@ function onDeleteClick(index: number) {
       confirmDeleteIndex.value = null
     }, 3000)
   }
+}
+
+const activeSelectIndex = ref<number | null>(null);
+const dropdownStyle = ref({ top: '0px', left: '0px', width: '0px' });
+
+const closeCustomSelect = () => {
+  activeSelectIndex.value = null;
+}
+
+onMounted(() => {
+  window.addEventListener('click', closeCustomSelect);
+})
+
+onUnmounted(() => {
+  window.removeEventListener('click', closeCustomSelect);
+})
+
+const toggleSelect = (index: number, event: Event) => {
+  event.stopPropagation();
+  if (activeSelectIndex.value === index) {
+    activeSelectIndex.value = null;
+  } else {
+    activeSelectIndex.value = index;
+    const target = event.currentTarget as HTMLElement;
+    const rect = target.getBoundingClientRect();
+    dropdownStyle.value = {
+      top: `${rect.bottom + 2}px`,
+      left: `${rect.left}px`,
+      width: `${rect.width}px`
+    };
+  }
+}
+
+const selectType = (item: any, type: string) => {
+  item.type = type;
+  activeSelectIndex.value = null;
 }
 
 const onFileChange = (event: Event) => {
@@ -188,10 +224,18 @@ const triggerFileInput = (id: string) => {
                   </div>
                 </td>
                 <td>
-                  <select v-model="item.type" class="type-select">
-                    <option value="text">Text</option>
-                    <option value="file">File</option>
-                  </select>
+                  <div class="custom-type-select" :class="{ 'is-active': activeSelectIndex === index }">
+                    <div class="type-select-trigger" @click="toggleSelect(index, $event)">
+                      <span>{{ item.type === 'text' ? 'Text' : 'File' }}</span>
+                      <span class="dropdown-arrow">▼</span>
+                    </div>
+                    <Teleport to="body">
+                      <div class="type-select-dropdown" v-if="activeSelectIndex === index" :style="dropdownStyle">
+                        <div class="type-select-option" @click="selectType(item, 'text')">Text</div>
+                        <div class="type-select-option" @click="selectType(item, 'file')">File</div>
+                      </div>
+                    </Teleport>
+                  </div>
                 </td>
                 <td>
                   <div class="param-input-wrap">
@@ -385,14 +429,59 @@ const triggerFileInput = (id: string) => {
   tr:last-child td { border-bottom: none !important; }
 }
 
-.type-select {
+.custom-type-select {
+  position: relative;
   width: 100%;
   height: 28px;
-  background: transparent;
-  border: 1px solid #888888;
-  padding: 2px 4px;
   font-size: 13px;
-  outline: none;
+  color: #333;
+  
+  &.is-active {
+    z-index: 1000;
+  }
+}
+
+.type-select-trigger {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  height: 100%;
+  background-color: transparent;
+  border: 1px solid #888888;
+  padding: 2px 8px;
+  cursor: pointer;
+  user-select: none;
+  
+  &:hover {
+    background-color: #e2e2e2; /* Tăng độ đậm để thấy rõ hiệu ứng hover khi chưa chọn */
+  }
+}
+
+.dropdown-arrow {
+  font-size: 9px;
+  color: #666;
+}
+
+.type-select-dropdown {
+  position: fixed; /* Chuyển từ absolute sang fixed */
+  background-color: #f0f0f0;
+  border: 1px solid #888888;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+  z-index: 100000; /* Nâng z-index lên mức cao nhất */
+  font-family: "Calibri", Arial, sans-serif;
+  font-size: 13px;
+  color: #333;
+}
+
+.type-select-option {
+  padding: 6px 8px;
+  cursor: pointer;
+  user-select: none;
+  
+  &:hover {
+    background-color: #cccccc;
+    color: #000;
+  }
 }
 
 .file-input-wrap {
