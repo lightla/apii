@@ -282,13 +282,11 @@ const triggerFileInput = (id: string) => {
 .body-type-item {
   padding: 9px 15px;
   cursor: pointer;
-  font-size: 15px;
+  font-size: 14px; /* Giảm từ 15px xuống 14px */
   display: flex;
   align-items: center;
   color: #333;
   transition: background-color 0.2s;
-  
-  &:hover { background-color: rgba(0, 0, 0, 0.03); }
   
   &.active {
     background-color: var(--tab-bg-color-active);
