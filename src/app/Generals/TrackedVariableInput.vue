@@ -65,10 +65,15 @@ onMounted(() => {
 })
 
 watch(() => props.value, (newVal) => {
-  if (variableInputRef.value && variableInputRef.value.innerText.trim() !== (newVal ?? '').trim()) {
-    variableInputRef.value.innerText = newVal || '';
+  if (!variableInputRef.value) return;
+  
+  // So sánh văn bản thuần túy, tránh so sánh HTML có chứa các thẻ span màu
+  const currentText = variableInputRef.value.textContent || '';
+  const incomingText = newVal || '';
+  
+  if (currentText !== incomingText) {
+    variableInputRef.value.innerText = incomingText;
     
-    // trigger highlight on update
     nextTick(() => {
       triggerHighlight(false);
     });

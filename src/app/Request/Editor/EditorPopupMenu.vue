@@ -154,7 +154,7 @@ const selectVariable = (newName: string) => {
 </script>
 
 <template>
-  <div ref="popupRef" class="popup">
+  <div ref="popupRef" class="popup shadow-lg">
     <div class="popup-header">
       <div class="d-flex align-items-center w-100">
         <span class="var-label me-2">Variable:</span>
@@ -166,10 +166,10 @@ const selectVariable = (newName: string) => {
     <div class="popup-body">
       <!-- Edit Value Section -->
       <div class="section-label">Current Value</div>
-      <div class="input-group input-group-sm mb-3">
+      <div class="mb-3">
         <input
             :value="currentVarValue"
-            class="form-control value-input"
+            class="popup-input"
             placeholder="No value set..."
             @input="onValueInput"
             @blur="onValueBlur"
@@ -182,10 +182,10 @@ const selectVariable = (newName: string) => {
         <span>Switch To...</span>
         <span class="text-muted" style="font-size: 0.65rem">{{ filteredVariables.length }} found</span>
       </div>
-      <div class="search-box mb-2">
+      <div class="mb-2">
         <input 
             v-model="searchQuery" 
-            class="form-control form-control-sm search-input" 
+            class="popup-input" 
             placeholder="Search variables..." 
             @keydown.stop
         />
@@ -252,46 +252,33 @@ const selectVariable = (newName: string) => {
 
 .section-label {
   font-size: 11px;
-  font-weight: 700;
   text-transform: uppercase;
   color: #555;
   margin-bottom: 6px;
 }
 
-.value-input {
+.popup-input {
+  width: 100%;
   background-color: transparent !important;
   border: 1px solid #888888 !important;
-  font-size: 13px;
+  font-size: 13px !important;
   font-family: 'Consolas', monospace;
   color: #000;
   border-radius: 0;
   padding: 5px 8px;
   height: 28px;
+  font-weight: 400 !important;
+  outline: none;
+  display: block;
   
   &:focus {
     background-color: rgba(255, 255, 255, 0.05) !important;
     border-color: #007bff !important;
-    box-shadow: none !important;
   }
 
   &::placeholder {
     color: #888;
     font-style: italic;
-  }
-}
-
-.search-input {
-  background-color: transparent !important;
-  border: 1px solid #888888 !important;
-  font-size: 12px;
-  border-radius: 0;
-  color: #000;
-  height: 26px;
-  
-  &:focus {
-    background-color: rgba(255, 255, 255, 0.05) !important;
-    box-shadow: none !important;
-    border-color: #007bff !important;
   }
 }
 
@@ -305,11 +292,12 @@ const selectVariable = (newName: string) => {
 
 .variable-item {
   padding: 4px 10px;
-  font-size: 12px;
+  font-size: 13px;
   cursor: pointer;
   font-family: monospace;
   color: #333;
   transition: all 0.1s;
+  font-weight: 400 !important;
 
   &:hover {
     background-color: #cccccc;
