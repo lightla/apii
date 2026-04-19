@@ -30,7 +30,7 @@ const props = defineProps<{ route: RouteInfo }>()
 const store = useRequestParamsStorage()
 
 const displayUrl = computed(() => {
-  return (store.urlPreview || '').trim() || '<Url Preview>'
+  return (store.urlPreview || '').trim() || 'No URL to preview'
 })
 
 const isPlaceholder = computed(() => {

@@ -122,6 +122,7 @@ function getVarValue(name: string) {
     border-bottom: var(--table-border);
     padding: 4px 8px;
     vertical-align: middle;
+    height: 36px; /* Cố định chiều cao hàng */
   }
 
   th {
@@ -133,6 +134,7 @@ function getVarValue(name: string) {
     font-size: 13px;
     font-weight: 600;
     text-align: left;
+    padding: 0 8px; /* Giảm padding dọc để khớp height */
   }
 
   th:first-child, td:first-child {
