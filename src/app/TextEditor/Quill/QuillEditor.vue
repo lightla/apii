@@ -9,7 +9,7 @@ const props = defineProps<{
 
 // Đăng ký Style Attributor để hỗ trợ font-size tự do (inline style)
 const fontSizeStyle = Quill.import('attributors/style/size');
-fontSizeStyle.whitelist = null; // Cho phép mọi giá trị
+fontSizeStyle.whitelist = null; 
 Quill.register(fontSizeStyle, true);
 
 const quillRef = ref<any>(null)
@@ -24,7 +24,6 @@ const onUpdate = () => {
   localStorage.setItem(props.storageKey, editorContent.value)
 }
 
-// Hàm áp dụng cỡ chữ
 const applyFontSize = () => {
   const quill = quillRef.value?.getQuill()
   if (quill) {
@@ -32,7 +31,6 @@ const applyFontSize = () => {
   }
 }
 
-// Đồng bộ ô số khi người dùng chọn đoạn văn bản khác
 const handleSelectionChange = () => {
   const quill = quillRef.value?.getQuill()
   if (quill) {
@@ -40,9 +38,7 @@ const handleSelectionChange = () => {
     if (format.size) {
       const sizeValue = String(format.size).replace('px', '')
       const size = parseInt(sizeValue)
-      if (!isNaN(size)) {
-        currentFontSize.value = size
-      }
+      if (!isNaN(size)) currentFontSize.value = size
     }
   }
 }
@@ -58,6 +54,7 @@ watch(() => props.storageKey, () => {
 
 <template>
   <div class="note-quill-wrapper">
+    <!-- Toolbar thiết kế giống Header của Table (36px) -->
     <div id="custom-toolbar">
       <span class="ql-formats">
         <select class="ql-header">
@@ -68,7 +65,6 @@ watch(() => props.storageKey, () => {
         </select>
       </span>
       
-      <!-- Ô NHẬP SỐ - ĐÃ FIX LỖI ĐƠ -->
       <span class="ql-formats custom-size-input-wrap">
         <input 
           type="number" 
@@ -121,65 +117,71 @@ watch(() => props.storageKey, () => {
   display: flex;
   flex-direction: column;
   min-height: 200px;
-  background-color: transparent !important;
+  background-color: transparent;
 
   #custom-toolbar {
-    border: none;
-    border-bottom: 1px solid #dee2e6;
-    background-color: rgba(0, 0, 0, 0.02);
-    padding: 4px 8px;
+    height: 36px; /* Khớp với Header Table */
+    border: var(--table-border);
+    background-color: var(--table-header-bg-color);
+    padding: 0 10px;
     display: flex;
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
     align-items: center;
+    box-sizing: border-box;
 
     .ql-formats {
-      margin-right: 10px;
+      margin-right: 12px;
       display: flex;
       align-items: center;
       padding: 0;
       border: none;
+      
+      &:last-child { margin-right: 0; }
     }
 
     .custom-size-input-wrap {
       display: flex;
       align-items: center;
       gap: 4px;
-      .unit { font-size: 11px; color: #888; font-weight: bold; }
+      .unit { font-size: 11px; color: #666; font-weight: 600; }
     }
 
     .font-size-input {
-      width: 48px;
-      height: 24px;
-      border: 1px solid #bbb;
-      border-radius: 3px;
+      width: 42px;
+      height: 22px;
+      border: 1px solid #999;
+      border-radius: 2px;
       padding: 0 4px;
-      font-size: 12px;
+      font-size: 11px;
       background: white;
-      color: #333;
       outline: none;
-      &:focus { border-color: #007bff; }
     }
 
-    /* Thu nhỏ các dropdown mặc định của Quill */
-    .ql-header.ql-picker { width: 55px; }
+    /* Đưa các icon về màu xám giống table header */
+    .ql-stroke { stroke: #444; }
+    .ql-fill { fill: #444; }
+    .ql-picker { color: #444; font-size: 12px; font-weight: 500; }
+    
+    .ql-header.ql-picker { width: 50px; }
     .ql-color.ql-picker, .ql-background.ql-picker { width: 28px; }
   }
 
   .ql-container.ql-snow {
-    border: none !important;
-    background-color: transparent !important;
+    border: var(--table-border) !important;
+    border-top: none !important;
+    background-color: #f5f5f5 !important; /* Giống màu nền các tab */
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   }
 
   .ql-editor {
     min-height: 180px;
-    background-color: transparent !important;
-    padding: 15px;
+    padding: 10px 15px;
     font-size: 14px;
     line-height: 1.6;
+    color: #333;
     
     &.ql-blank::before {
-      color: #aaa;
+      color: #999;
       font-style: normal;
       left: 15px;
     }

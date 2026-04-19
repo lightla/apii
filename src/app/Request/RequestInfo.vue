@@ -83,21 +83,20 @@ function deleteAllFields() { if (confirm('Bạn có chắc muốn xóa tất c�
           @click:outside="handleTagsOutsideClick"
       />
 
-      <!-- Accordion Note -->
-      <AccordionContainer>
-        <AccordionItem :start-open="true">
-          <template #summary>Note</template>
-          <template #details>
-            <div class="note-editor-wrapper">
-              <QuillEditor
-                  v-if="editorStorageKey"
-                  :key="editorStorageKey"
-                  :storage-key="editorStorageKey"
-              />
-            </div>
-          </template>
-        </AccordionItem>
+      <!-- Note Section: Nằm ngoài details, full width -->
+      <div class="note-section">
+        <h2 class="section-title">Note</h2>
+        <div class="note-editor-wrapper">
+          <QuillEditor
+              v-if="editorStorageKey"
+              :key="editorStorageKey"
+              :storage-key="editorStorageKey"
+          />
+        </div>
+      </div>
 
+      <!-- Requests Section -->
+      <AccordionContainer>
         <AccordionItem :start-open="true">
           <template #summary>Requests</template>
           <template #details>
@@ -140,7 +139,7 @@ function deleteAllFields() { if (confirm('Bạn có chắc muốn xóa tất c�
 
 <style scoped lang="scss">
 .info-panel { padding: 15px; display: flex; flex-direction: column; gap: 20px; }
-.info-section h2, .search-config-section h2 { margin-top: 0; margin-bottom: 15px; font-size: 1.2em; }
+.info-section h2, .search-config-section h2, .section-title { margin-top: 0; margin-bottom: 15px; font-size: 1.2em; color: #333; }
 .separator { border: none; border-top: 1px solid #dee2e6; }
 .table-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
 .action-btn { padding: 6px 12px; border: 1px solid transparent; border-radius: 4px; cursor: pointer; font-size: 0.9em; margin-left: 8px; }
@@ -154,9 +153,15 @@ function deleteAllFields() { if (confirm('Bạn có chắc muốn xóa tất c�
 .delete-row-btn { background: none; border: none; color: #dc3545; font-weight: bold; cursor: pointer; font-size: 1.1em; }
 .empty-row { color: #6c757d; padding: 20px; }
 
-.note-editor-wrapper {
-  min-height: 200px;
+.note-section {
   width: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.note-editor-wrapper {
+  width: 100%;
+  min-height: 200px;
   border: 1px solid #dee2e6;
   background-color: transparent !important;
   overflow: hidden;
