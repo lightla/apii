@@ -196,10 +196,31 @@ watch(() => props.theme, (newTheme) => {
 
 .copy-button {
   top: 10px;
+  background: #cfe2ff; /* Màu xanh đồng bộ */
+  border: 1px solid #007bff;
+  color: #007bff;
+  &:hover { 
+    background: #b6d4fe; 
+    border-color: #0056b3;
+  }
+}
+
+.copy-button svg {
+  stroke: #007bff; /* Đảm bảo icon màu xanh */
 }
 
 .beautify-button {
   top: 48px;
+  background: #cfe2ff;
+  border: 1px solid #007bff;
+  color: #007bff;
+  &:hover { 
+    background: #b6d4fe; 
+    border-color: #0056b3;
+  }
+}
+.beautify-button svg {
+  stroke: #007bff;
 }
 
 /* Lớp overlay trong suốt để bắt sự kiện click */
@@ -224,19 +245,22 @@ watch(() => props.theme, (newTheme) => {
   width: 32px;
   height: 32px;
   border-radius: 4px;
-  border: 1px solid #ccc;
-  background-color: #fff;
+  border: 1px solid #007bff; /* Đổi viền xanh */
+  background-color: #cfe2ff; /* Đổi nền xanh */
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
+  transition: all 0.2s ease;
 }
 .theme-icon-button:hover {
-  background-color: #f0f0f0;
+  background-color: #b6d4fe;
+  border-color: #0056b3;
 }
 .theme-icon-button svg {
   width: 18px;
   height: 18px;
+  stroke: #007bff; /* Icon màu xanh */
 }
 
 /* Định vị component CodeMirrorThemeSelector */

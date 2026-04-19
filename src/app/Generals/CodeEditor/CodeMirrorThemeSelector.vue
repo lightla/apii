@@ -82,10 +82,10 @@ defineExpose({ setHighlightedIndex });
 <style scoped>
 /* SỬA LỖI: Copy chính xác 100% CSS từ V1 */
 .theme-popup {
-  background: white;
-  border: 1px solid #ccc;
+  background: #f5f5f5; /* Đổi sang màu xám dịu */
+  border: 1px solid #888888;
   border-radius: 6px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, .15);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, .15);
   max-height: 250px;
   overflow-y: auto;
   padding: 5px 0;
@@ -99,9 +99,10 @@ defineExpose({ setHighlightedIndex });
   cursor: pointer;
   white-space: nowrap;
   position: relative;
+  font-size: 13px;
 }
 .theme-option.highlighted {
-  background-color: #e9e9e9;
+  background-color: #e0e0e0; /* Highlight đậm hơn trên nền xám dịu */
 }
 .theme-option.selected::before {
   content: '✓';
