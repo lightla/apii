@@ -61,14 +61,19 @@ const sendRequest = async (_event: Event) => {
   const currentUrl = myComponentRef.value?.getText() || ''
   processCurlIfPresent(currentUrl)
 
+  const resolveEnvVars = (text: string): string => {
+    let result = text
+    envVariables.forEach(variable => {
+      if (variable.name && variable.value) {
+        const escapedName = variable.name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        result = result.replace(new RegExp(escapedName, 'g'), variable.value);
+      }
+    });
+    return result
+  }
+
   let url = requestParams.urlPreview;
-  
-  envVariables.forEach(variable => {
-    if (variable.name && variable.value) {
-      const escapedName = variable.name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-      url = url.replace(new RegExp(escapedName, 'g'), variable.value);
-    }
-  });
+  url = resolveEnvVars(url)
 
   if (!url) return
 
@@ -79,21 +84,45 @@ const sendRequest = async (_event: Event) => {
   responseStorage.reset()
   responseStorage.loading = true
 
-  const hasBody = ['POST', 'PUT', 'PATCH'].includes(method)
   const fetchOptions: RequestInit = { method, headers: {} as Record<string, string> }
 
+  // 1. Build Headers
   requestParams.headers.forEach(header => {
     if (header.enabled && header.key.trim()) {
-      const cleanValue = header.value.replace(/[\r\n]+/gm, "").trim();
+      const cleanValue = resolveEnvVars(header.value.replace(/[\r\n]+/gm, "").trim());
       (fetchOptions.headers as Record<string, string>)[header.key.trim()] = cleanValue;
     }
   });
 
-  if (hasBody && requestParams.body) {
-    if (!(fetchOptions.headers as Record<string, string>)['Content-Type']) {
-      (fetchOptions.headers as Record<string, string>)['Content-Type'] = 'application/json';
+  // 2. Build Body dựa trên bodyType
+  const hasBody = ['POST', 'PUT', 'PATCH', 'DELETE'].includes(method)
+  
+  if (hasBody) {
+    if (requestParams.bodyType === 'json' && requestParams.body) {
+      if (!(fetchOptions.headers as Record<string, string>)['Content-Type']) {
+        (fetchOptions.headers as Record<string, string>)['Content-Type'] = 'application/json';
+      }
+      fetchOptions.body = resolveEnvVars(requestParams.body)
+    } 
+    else if (requestParams.bodyType === 'form-data') {
+      const formData = new FormData();
+      requestParams.formData.forEach(item => {
+        if (item.enabled && item.key.trim()) {
+          const key = resolveEnvVars(item.key.trim());
+          if (item.type === 'file' && item.file) {
+            formData.append(key, item.file);
+          } else {
+            formData.append(key, resolveEnvVars(item.value));
+          }
+        }
+      });
+      fetchOptions.body = formData;
+      // QUAN TRỌNG: Xóa Content-Type để trình duyệt tự thêm boundary
+      delete (fetchOptions.headers as Record<string, string>)['Content-Type'];
     }
-    fetchOptions.body = requestParams.body
+    else if (requestParams.bodyType === 'binary' && requestParams.binaryFile) {
+      fetchOptions.body = requestParams.binaryFile;
+    }
   }
 
   responseStorage.requestUrl = finalUrl
@@ -127,7 +156,12 @@ const sendRequest = async (_event: Event) => {
 <template>
   <div class="request-line">
     <div class="method-select-cover">
-      <select ref="methodSelectRef" class="method-select select-control" :value="requestParams.method">
+      <select 
+        ref="methodSelectRef" 
+        class="method-select select-control" 
+        :value="requestParams.method"
+        @change="requestParams.method = ($event.target as HTMLSelectElement).value"
+      >
         <option value="GET">GET</option>
         <option value="POST">POST</option>
         <option value="PUT">PUT</option>

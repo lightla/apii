@@ -31,6 +31,10 @@ watch(() => props.route?.route, (newUrl, oldUrl) => {
     if (!payloadStore.baseUrl) {
       payloadStore.baseUrl = newUrl
     }
+    // Đồng bộ method từ route info nếu store chưa có hoặc là mặc định
+    if (props.route.method) {
+      payloadStore.method = props.route.method
+    }
   }
 }, { immediate: true })
 

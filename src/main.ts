@@ -9,6 +9,7 @@
       { id: nanoid(), group: 'Auth', method: 'POST', route: '{domain}/login' },
       { id: nanoid(), group: 'Sample', method: 'GET', route: 'https://api.sampleapis.com/codingresources/codingResources' },
       { id: nanoid(), group: 'Sample', method: 'POST', route: 'https://api.restful-api.dev/objects' },
+      { id: nanoid(), group: 'Sample', method: 'POST', route: 'https://api.escuelajs.co/api/v1/files/upload' },
     ],
     saveUrl: '/dev-url',
     mountId: '#app',

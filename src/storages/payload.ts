@@ -15,6 +15,18 @@ export interface UriParameter {
   value: string
 }
 
+export interface FormDataParam {
+  id: string
+  key: string
+  value: string
+  type: 'text' | 'file'
+  enabled: boolean
+  description: string
+  file?: File | null
+}
+
+export type BodyType = 'none' | 'json' | 'form-data' | 'binary'
+
 const GLOBAL_SETTINGS_KEY = 'api_global_settings'
 
 export const useRequestParamsStorage = defineStore('requestParams', {
@@ -36,8 +48,11 @@ export const useRequestParamsStorage = defineStore('requestParams', {
       uriParameters: [] as UriParameter[],
       baseUrl: '',
       method: 'GET',
-      headers: [] as { id: string; key: string; value: string; enabled: boolean; description: string }[],
+      headers: [] as { id: string; key: string; value: string; enabled: boolean; description: string; isManaged?: boolean }[],
       body: '',
+      bodyType: 'json' as BodyType,
+      formData: [] as FormDataParam[],
+      binaryFile: null as File | null,
       requestName: '',
       // CORS Proxy (Khởi tạo từ localStorage)
       useProxy: globalSettings.useProxy,
@@ -93,6 +108,35 @@ export const useRequestParamsStorage = defineStore('requestParams', {
       localStorage.setItem(GLOBAL_SETTINGS_KEY, JSON.stringify(data))
     },
 
+    syncManagedHeaders() {
+      // Loại bỏ các header managed cũ liên quan đến Content-Type
+      this.headers = this.headers.filter(h => !h.isManaged);
+
+      let contentType = '';
+      if (this.bodyType === 'json') {
+        contentType = 'application/json';
+      } else if (this.bodyType === 'form-data') {
+        contentType = 'multipart/form-data';
+      }
+
+      if (contentType) {
+        // Thêm header mới lên đầu
+        this.headers.unshift({
+          id: 'managed-content-type',
+          key: 'Content-Type',
+          value: contentType,
+          enabled: true,
+          description: 'Managed by Body settings',
+          isManaged: true
+        });
+      }
+    },
+
+    setBodyType(type: BodyType) {
+      this.bodyType = type;
+      this.syncManagedHeaders();
+    },
+
     addQueryParam() {
       this.queryParams.push({ id: nanoid(), key: '', value: '', enabled: true, description: '' })
     },
@@ -123,6 +167,8 @@ export const useRequestParamsStorage = defineStore('requestParams', {
       this.headers.push({ id: nanoid(), key: '', value: '', enabled: true, description: '' })
     },
     removeHeader(index: number) {
+      const header = this.headers[index];
+      if (header?.isManaged) return; // Không cho xóa managed header
       this.headers.splice(index, 1)
     },
     toggleHeader(index: number) {
@@ -134,13 +180,24 @@ export const useRequestParamsStorage = defineStore('requestParams', {
       this.headers.forEach(h => h.enabled = targetState)
     },
     removeAllHeaders() {
-      this.headers = []
+      // Giữ lại managed headers
+      this.headers = this.headers.filter(h => h.isManaged);
+    },
+    addFormData() {
+      this.formData.push({ id: nanoid(), key: '', value: '', type: 'text', enabled: true, description: '' })
+    },
+    removeFormData(index: number) {
+      this.formData.splice(index, 1)
     },
     setBaseUrl(url: string) {
       this.baseUrl = url
     },
     setMethod(method: string) {
       this.method = method
+      // Một số method không có body (GET, HEAD)
+      if (['GET', 'HEAD'].includes(method)) {
+        // Có thể set bodyType = none nếu muốn
+      }
     },
     resetAll() {
       this.queryParams = []
@@ -149,7 +206,11 @@ export const useRequestParamsStorage = defineStore('requestParams', {
       this.baseUrl = ''
       this.method = 'GET'
       this.body = ''
+      this.bodyType = 'json'
+      this.formData = []
+      this.binaryFile = null
       this.requestName = ''
+      this.syncManagedHeaders();
     },
     saveToStorage(routeId: string) {
       if (!routeId) return
@@ -160,6 +221,8 @@ export const useRequestParamsStorage = defineStore('requestParams', {
         method: this.method,
         headers: this.headers,
         body: this.body,
+        bodyType: this.bodyType,
+        formData: this.formData.map(fd => ({...fd, file: null})), // Không lưu File object trực tiếp
       }
       localStorage.setItem(`api_request_data_${routeId}`, JSON.stringify(data))
     },
@@ -175,11 +238,24 @@ export const useRequestParamsStorage = defineStore('requestParams', {
           this.method = data.method || 'GET'
           this.headers = data.headers || []
           this.body = data.body || ''
+          this.bodyType = data.bodyType || 'json'
+          this.formData = data.formData || []
+          this.syncManagedHeaders();
         } catch (e) {
           console.error('Failed to parse saved request data', e)
         }
       } else {
         this.resetAll()
+        
+        // Mặc định cho ví dụ upload file nếu là new request cho URL này
+        if (this.baseUrl.includes('api.escuelajs.co/api/v1/files/upload')) {
+          this.method = 'POST'
+          this.bodyType = 'form-data'
+          this.formData = [
+            { id: nanoid(), key: 'file', value: '', type: 'file', enabled: true, description: 'The file to upload' }
+          ]
+          this.syncManagedHeaders()
+        }
       }
     },
     applyParsedCurl(parsed: { method: string, url: string, headers: Record<string, string>, body: string, params: Record<string, string> }) {
@@ -203,6 +279,7 @@ export const useRequestParamsStorage = defineStore('requestParams', {
           this.queryParams.push({ id: nanoid(), key, value, enabled: true, description: '' })
         }
       })
+      this.syncManagedHeaders();
     }
   }
 })

@@ -2,7 +2,7 @@
 import { ref, computed } from 'vue'
 import type { RouteInfo } from '@/types'
 import TrackedVariableInput from '@/app/Generals/TrackedVariableInput.vue'
-import { SquareCheck, Square, SquareX, ShieldAlert, Eraser } from 'lucide-vue-next'
+import { SquareCheck, Square, SquareX, ShieldAlert, Eraser, Lock } from 'lucide-vue-next'
 import { IconSquareRoundedPlus } from "@tabler/icons-vue";
 import { useRequestParamsStorage } from '@/storages/payload.ts'
 
@@ -20,7 +20,7 @@ let confirmAllTimer: ReturnType<typeof setTimeout> | undefined
 
 function onTrashClick() {
   if (isConfirmingDeleteAll.value) {
-    store.headers = []
+    store.removeAllHeaders()
     isConfirmingDeleteAll.value = false
     clearTimeout(confirmAllTimer)
   } else {
@@ -34,7 +34,7 @@ function onTrashClick() {
 
 // Logic cho Master Delete ở Header (Eraser) - CHỈ XÓA CÁC DÒNG RỖNG
 function onMasterDeleteClick() {
-  store.headers = store.headers.filter(h => h.key.trim() !== '' || h.value.trim() !== '')
+  store.headers = store.headers.filter(h => h.isManaged || h.key.trim() !== '' || h.value.trim() !== '')
 }
 
 // Per-row delete confirm state
@@ -42,6 +42,9 @@ const confirmDeleteIndex = ref<number | null>(null)
 let confirmTimer: ReturnType<typeof setTimeout> | undefined
 
 function onDeleteClick(index: number) {
+  const header = store.headers[index];
+  if (header?.isManaged) return; // Bảo vệ managed header
+
   if (confirmDeleteIndex.value === index) {
     store.removeHeader(index)
     confirmDeleteIndex.value = null
@@ -99,48 +102,75 @@ function onDeleteClick(index: number) {
           </tr>
         </thead>
         <tbody>
-          <tr v-for="(header, index) in store.headers" :key="header.id">
+          <tr v-for="(header, index) in store.headers" :key="header.id" :class="{ 'is-managed': header.isManaged }">
             <td>
-              <div class="cell-icon-action" @click="store.toggleHeader(index)">
-                <SquareCheck v-if="header.enabled" stroke-width="1" class="icon-button-checkbox"/>
-                <Square v-else stroke-width="1" class="icon-button-checkbox"/>
+              <div class="cell-icon-action" @click="!header.isManaged && store.toggleHeader(index)">
+                <template v-if="header.isManaged">
+                  <SquareCheck stroke-width="1" class="icon-button-checkbox is-disabled"/>
+                </template>
+                <template v-else>
+                  <SquareCheck v-if="header.enabled" stroke-width="1" class="icon-button-checkbox"/>
+                  <Square v-else stroke-width="1" class="icon-button-checkbox"/>
+                </template>
               </div>
             </td>
             <td>
               <div class="param-input-wrap">
-                <TrackedVariableInput
-                  :route="props.route"
-                  :value="header.key"
-                  :enabled-env-variable="true"
-                  @text-change="val => header.key = val"
-                />
+                <template v-if="header.isManaged">
+                  <div class="readonly-input">{{ header.key }}</div>
+                </template>
+                <template v-else>
+                  <TrackedVariableInput
+                    :route="props.route"
+                    :value="header.key"
+                    :enabled-env-variable="true"
+                    @text-change="val => header.key = val"
+                  />
+                </template>
               </div>
             </td>
             <td>
               <div class="param-input-wrap">
-                <TrackedVariableInput
-                  :route="props.route"
-                  :value="header.value"
-                  :enabled-env-variable="true"
-                  @text-change="val => header.value = val"
-                />
+                <template v-if="header.isManaged">
+                  <div class="readonly-input">{{ header.value }}</div>
+                </template>
+                <template v-else>
+                  <TrackedVariableInput
+                    :route="props.route"
+                    :value="header.value"
+                    :enabled-env-variable="true"
+                    @text-change="val => header.value = val"
+                  />
+                </template>
               </div>
             </td>
             <td>
               <div class="param-input-wrap">
-                <TrackedVariableInput
-                  :route="props.route"
-                  :value="header.description"
-                  :enabled-env-variable="false"
-                  @text-change="val => header.description = val"
-                />
+                <template v-if="header.isManaged">
+                  <div class="readonly-input managed-desc">{{ header.description }}</div>
+                </template>
+                <template v-else>
+                  <TrackedVariableInput
+                    :route="props.route"
+                    :value="header.description"
+                    :enabled-env-variable="false"
+                    @text-change="val => header.description = val"
+                  />
+                </template>
               </div>
             </td>
             <td>
-              <div class="cell-icon-action" @click="onDeleteClick(index)">
-                <ShieldAlert v-if="confirmDeleteIndex === index"
-                             stroke-width="1" class="icon-button icon-button-row-action" />
-                <SquareX v-else stroke-width="1" class="icon-button icon-button-row-action" />
+              <div class="cell-icon-action">
+                <template v-if="header.isManaged">
+                  <Lock size="16" stroke-width="1.5" class="text-muted" />
+                </template>
+                <template v-else>
+                  <div class="w-100 h-100 d-flex align-items-center justify-content-center" @click="onDeleteClick(index)">
+                    <ShieldAlert v-if="confirmDeleteIndex === index"
+                                stroke-width="1" class="icon-button icon-button-row-action" />
+                    <SquareX v-else stroke-width="1" class="icon-button icon-button-row-action" />
+                  </div>
+                </template>
               </div>
             </td>
           </tr>
@@ -221,6 +251,10 @@ function onDeleteClick(index: number) {
     vertical-align: middle;
   }
 
+  tr.is-managed {
+    background-color: rgba(0, 0, 0, 0.02);
+  }
+
   th:first-child, td:first-child,
   th:last-child, td:last-child {
     width: 40px;
@@ -230,6 +264,18 @@ function onDeleteClick(index: number) {
 
   tr:last-child td {
     border-bottom: none !important;
+  }
+}
+
+.readonly-input {
+  font-size: 13px;
+  color: #555;
+  padding: 4px 0;
+  font-family: monospace;
+  &.managed-desc {
+    font-family: sans-serif;
+    font-style: italic;
+    font-size: 12px;
   }
 }
 
@@ -266,6 +312,11 @@ function onDeleteClick(index: number) {
   cursor: pointer;
   display: block;
   margin: 0 auto;
+  
+  &.is-disabled {
+    cursor: not-allowed;
+    stroke: #aaa;
+  }
 }
 
 .param-input-wrap {
