@@ -101,7 +101,7 @@ const triggerFileInput = (id: string) => {
 
 <template>
   <div class="body-tab-container">
-    <!-- Body Type Selector -->
+    <!-- Body Type Selector - Styles matched with SwitchableTabs -->
     <div class="body-type-toolbar">
       <div 
         v-for="type in bodyTypes" 
@@ -110,7 +110,7 @@ const triggerFileInput = (id: string) => {
         :class="{ 'active': store.bodyType === type.value }"
         @click="store.setBodyType(type.value as any)"
       >
-        <component :is="type.icon" size="18" class="me-2" stroke-width="1.5" />
+        <component :is="type.icon" size="20" class="me-2" stroke-width="1.5" />
         {{ type.label }}
       </div>
     </div>
@@ -271,29 +271,29 @@ const triggerFileInput = (id: string) => {
 
 .body-type-toolbar {
   display: flex;
-  gap: 2px;
-  padding: 5px;
-  background-color: rgba(221, 221, 221, 0.4);
-  border: 1px solid #888888;
-  margin-bottom: 5px;
+  flex-direction: row;
+  align-items: center;
+  border: var(--tab-border);
+  background-color: var(--tab-bg-color);
   flex-shrink: 0;
+  margin-bottom: 10px; /* Tạo khoảng cách với content bên dưới */
 }
 
 .body-type-item {
-  padding: 6px 16px;
-  font-size: 13px;
+  padding: 9px 15px; /* Khớp chính xác với style Tab chuẩn */
   cursor: pointer;
+  font-size: 15px; /* Tăng từ 14px lên 15px */
   display: flex;
   align-items: center;
-  border: 1px solid transparent;
-  color: #555;
+  color: #333;
+  transition: background-color 0.2s;
   
-  &:hover { background-color: rgba(0, 0, 0, 0.05); }
+  &:hover {
+    background-color: rgba(0, 0, 0, 0.05);
+  }
   
   &.active {
-    background-color: #dddddd;
-    border: 1px solid #888888;
-    color: #000;
+    background-color: var(--tab-bg-color-active);
     font-weight: 500;
   }
 }
