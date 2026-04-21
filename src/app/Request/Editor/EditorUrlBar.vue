@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref, onMounted, onUnmounted, getCurrentInstance } from 'vue'
 import type { RouteInfo } from '@/types'
 import TrackedVariableInput from "@/app/Generals/TrackedVariableInput.vue";
 import {useInputStorage, useEnvStorage} from "@/storages/env-variables-tmp.ts";
@@ -18,7 +18,6 @@ const responseStorage = useResponseStorage()
 const requestParams = useRequestParamsStorage()
 
 const myComponentRef = ref<InstanceType<typeof TrackedVariableInput> | null>(null)
-const methodSelectRef = ref<HTMLSelectElement | null>(null)
 
 const isMethodSelectOpen = ref(false)
 const methods = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE']
@@ -49,12 +48,25 @@ const closeMethodSelect = () => {
   isMethodSelectOpen.value = false
 }
 
+const instance = getCurrentInstance()
+const handleGlobalKeyDown = (event: KeyboardEvent) => {
+  if ((event.ctrlKey || event.metaKey) && event.key === 'Enter') {
+    // Chỉ trigger nếu component này đang hiển thị (tránh bị trigger ở tab ẩn)
+    const el = instance?.vnode.el as HTMLElement
+    if (el && el.offsetParent !== null) {
+      sendRequest()
+    }
+  }
+}
+
 onMounted(() => {
   window.addEventListener('click', closeMethodSelect)
+  window.addEventListener('keydown', handleGlobalKeyDown)
 })
 
 onUnmounted(() => {
   window.removeEventListener('click', closeMethodSelect)
+  window.removeEventListener('keydown', handleGlobalKeyDown)
 })
 
 // Hàm xử lý phân giải cURL tập trung
@@ -90,8 +102,8 @@ const onUrlCommit = (text: string) => {
   processCurlIfPresent(text)
 }
 
-const sendRequest = async (_event: Event) => {
-  const method = (methodSelectRef.value?.value ?? 'GET').toUpperCase()
+const sendRequest = async (_event?: any) => {
+  const method = (requestParams.method || 'GET').toUpperCase()
   const envVariables = envStorage.definedEnvVariables;
   
   // Trước khi gửi, đảm bảo đã xử lý cURL nếu còn sót
@@ -220,13 +232,26 @@ const sendRequest = async (_event: Event) => {
           :enabled-uri-param="true"
           @text-change="onUrlChange"
           @blur="onUrlCommit"
-          @enter="el => onUrlCommit(el.textContent || '')"
+          @enter="() => sendRequest()"
       />
     </div>
-    <div class="send-request-cover">
+      <div class="send-request-cover">
       <IconBrandTelegram @click="sendRequest" class="btn-send-request" stroke-width="1"/>
     </div>
   </div>
+
+  <Teleport to="body">
+    <div class="method-select-dropdown" v-if="isMethodSelectOpen" :style="methodDropdownStyle">
+      <div 
+        v-for="m in methods" 
+        :key="m" 
+        class="method-select-option" 
+        @click="selectMethod(m)"
+      >
+        {{ m }}
+      </div>
+    </div>
+  </Teleport>
 </template>
 
 <style scoped lang="scss">

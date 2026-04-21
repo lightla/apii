@@ -56,3 +56,33 @@ body {
 //  justify-content: center;
 //  background-color: var(--app-bg-color);
 //}
+
+/* Toast Customization */
+.custom-app-toast {
+    background-color: #dddddd !important;
+    border: 1px solid #888888 !important;
+    border-radius: 0 !important;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.2) !important;
+    padding: 10px 15px !important;
+    min-height: auto !important;
+    
+    &.Vue-Toastification__toast--success {
+        border-left: 4px solid #007bff !important;
+    }
+}
+
+.custom-app-toast-body {
+    color: #333 !important;
+    font-family: "Calibri", Arial, sans-serif !important;
+    font-size: 13px !important;
+    font-weight: 400 !important; /* Remove bôi đen */
+}
+
+.Vue-Toastification__icon {
+    color: #007bff !important;
+}
+
+.Vue-Toastification__progress-bar {
+    background-color: #007bff !important;
+    height: 3px !important;
+}

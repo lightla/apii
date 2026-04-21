@@ -16,6 +16,9 @@ import "@milkdown/crepe/theme/nord.css";
 //     "./theme/frame.css": "./lib/theme/frame/style.css",
 //     "./theme/frame-dark.css": "./lib/theme/frame-dark/style.css"
 import "vuestic-ui/css";
+import Toast from "vue-toastification";
+import "vue-toastification/dist/index.css";
+import CloseToast from "./app/Generals/CloseToast.vue";
 import App from './App.vue'
 import { createPinia } from 'pinia'
 import installFontAwesome from './plugins/fontawesome'
@@ -42,6 +45,25 @@ export function createVueApp(options: {
 
     app.use(createPinia())
     app.use(createVuestic())
+    app.use(Toast, {
+        transition: "Vue-Toastification__bounce",
+        maxToasts: 20,
+        newestOnTop: true,
+        position: "bottom-right",
+        timeout: 2000,
+        closeOnClick: true,
+        pauseOnFocusLoss: true,
+        pauseOnHover: true,
+        draggable: true,
+        draggablePercent: 0.6,
+        showCloseButtonOnHover: false,
+        hideProgressBar: false,
+        closeButton: CloseToast,
+        icon: true,
+        rtl: false,
+        toastClassName: "custom-app-toast",
+        bodyClassName: ["custom-app-toast-body"]
+    })
     // app.use(mdiVue, {icons: mdijs})
 
     installFontAwesome(app)

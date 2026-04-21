@@ -1,10 +1,16 @@
 <script setup lang="ts">
 import {onMounted, onUnmounted, ref, nextTick, computed} from 'vue'
 import {useEnvStorage, useInputStorage} from "@/storages";
-import { IconTrash } from '@tabler/icons-vue';
+
+import VariableEditor from './Popup/VariableEditor.vue';
+import InputMenu from './Popup/InputMenu.vue';
+import VariablePicker from './Popup/VariablePicker.vue';
+
+import { useToast } from "vue-toastification";
 
 const lastMousePosition = ref({ clientX: 0, clientY: 0 })
 const lastElement = ref<HTMLElement | null>(null)
+const lastInput = ref<HTMLDivElement | null>(null)
 
 const popupRef = ref<HTMLDivElement | null>(null)
 const otherKeyPressed = ref<boolean>(false) 
@@ -12,16 +18,23 @@ const isCtrlDown = ref<boolean>(false)
 
 const envStorage = useEnvStorage();
 const inputStorage = useInputStorage();
+const toast = useToast();
 
 const currentVarName = ref<string>('');
 const currentVarValue = ref<string>('');
 const isDefined = ref<boolean>(false);
 const searchQuery = ref<string>('');
 
+// 'variable' | 'input' | 'selection'
+const menuMode = ref<'variable' | 'input' | 'selection'>('variable');
+
 const allVariables = computed(() => envStorage.collectEnvVariableNames());
 const filteredVariables = computed(() => {
   const query = searchQuery.value.toLowerCase();
-  return allVariables.value.filter(v => v.toLowerCase().includes(query) && v !== currentVarName.value);
+  return allVariables.value.filter(v => 
+    v.toLowerCase().includes(query) && 
+    (menuMode.value !== 'variable' || v !== currentVarName.value)
+  );
 });
 
 onMounted(() => {
@@ -63,8 +76,10 @@ const onKeyUp = (event: KeyboardEvent) => {
       const { clientX, clientY } = lastMousePosition.value;
       const el = document.elementFromPoint(clientX, clientY) as HTMLElement | null
 
-      if (el?.classList.contains('undefined-env-variable') || el?.classList.contains('defined-env-variable')) {
-        showPopupAt(el, clientX, clientY);
+      const varEl = el?.closest('.undefined-env-variable, .defined-env-variable') as HTMLElement | null;
+      if (varEl) {
+        menuMode.value = 'variable';
+        showPopupAt(varEl, clientX, clientY);
       }
     }
     otherKeyPressed.value = false;
@@ -83,10 +98,23 @@ const onGlobalClick = (e : MouseEvent) => {
 
 const onContextMenu = (e: MouseEvent) => {
   const el = document.elementFromPoint(e.clientX, e.clientY) as HTMLElement | null
+  
+  const variableEl = el?.closest('.undefined-env-variable, .defined-env-variable') as HTMLElement | null;
+  const inputEl = el?.closest('.var-input-content') as HTMLElement | null;
 
-  if (el?.classList.contains('undefined-env-variable') || el?.classList.contains('defined-env-variable')) {
-    e.preventDefault(); 
-    showPopupAt(el, e.clientX, e.clientY);
+  e.preventDefault(); 
+
+  if (variableEl) {
+    menuMode.value = 'variable';
+    showPopupAt(variableEl, e.clientX, e.clientY);
+  } else if (inputEl) {
+    menuMode.value = 'input';
+    lastInput.value = inputEl;
+    showPopupAt(inputEl, e.clientX, e.clientY);
+  } else {
+    menuMode.value = 'input';
+    lastInput.value = null;
+    showPopupAt(el as HTMLElement || document.body, e.clientX, e.clientY);
   }
 }
 
@@ -95,13 +123,16 @@ function showPopupAt(el: HTMLElement, x: number, y: number) {
 
   lastElement.value = el;
   searchQuery.value = '';
-  currentVarName.value = el.textContent?.trim() || "";
+  
+  if (menuMode.value === 'variable') {
+    currentVarName.value = el.textContent?.trim() || "";
 
-  const isActuallyInDefinitions = envStorage.variableDefinitions.some(v => v.name === currentVarName.value);
-  isDefined.value = isActuallyInDefinitions;
+    const isActuallyInDefinitions = envStorage.variableDefinitions.some(v => v.name === currentVarName.value);
+    isDefined.value = isActuallyInDefinitions;
 
-  const foundVar = envStorage.definedEnvVariables.find(v => v.name === currentVarName.value);
-  currentVarValue.value = foundVar?.value || '';
+    const foundVar = envStorage.definedEnvVariables.find(v => v.name === currentVarName.value);
+    currentVarValue.value = foundVar?.value || '';
+  }
 
   popupRef.value.style.display = 'flex';
   popupRef.value.style.left = `${x + 5}px`
@@ -113,28 +144,22 @@ function hidePopup() {
   popupRef.value.style.display = "none";
 }
 
-const onValueInput = (e: Event) => {
-  const newValue = (e.target as HTMLInputElement).value;
+const onVariableValueUpdate = (newValue: string) => {
   currentVarValue.value = newValue;
-
   const index = envStorage.variableDefinitions.findIndex(v => v.name === currentVarName.value);
   if (index !== -1) {
     envStorage.updateVariableValue(index, newValue);
   }
 }
 
-const onValueBlur = async () => {
+const onVariableValueBlur = async () => {
   if (!currentVarName.value) return;
 
   let index = envStorage.variableDefinitions.findIndex(v => v.name === currentVarName.value);
-
   if (index === -1) {
     if (currentVarValue.value.trim() !== '') {
       const newId = Math.random().toString(36).substr(2, 9);
-      envStorage.variableDefinitions.push({
-        id: newId,
-        name: currentVarName.value
-      });
+      envStorage.variableDefinitions.push({ id: newId, name: currentVarName.value });
       isDefined.value = true;
       index = envStorage.variableDefinitions.length - 1;
       envStorage.updateVariableValue(index, currentVarValue.value);
@@ -144,9 +169,7 @@ const onValueBlur = async () => {
   }
 
   await nextTick();
-  inputStorage.rescanHighlightAllInputs(null, {
-    definedEnvVariables: envStorage.collectEnvVariableNames()
-  });
+  inputStorage.rescanHighlightAllInputs(null, { definedEnvVariables: envStorage.collectEnvVariableNames() });
 }
 
 const deleteVariable = async () => {
@@ -155,103 +178,96 @@ const deleteVariable = async () => {
     envStorage.removeVariableDefinition(index);
     isDefined.value = false;
     currentVarValue.value = '';
-    
     await nextTick();
-    inputStorage.rescanHighlightAllInputs(null, {
-      definedEnvVariables: envStorage.collectEnvVariableNames()
-    });
+    inputStorage.rescanHighlightAllInputs(null, { definedEnvVariables: envStorage.collectEnvVariableNames() });
     hidePopup();
   }
 }
 
 const selectVariable = (newName: string) => {
-  if (lastElement.value) {
+  navigator.clipboard.writeText(newName).then(() => {
+    toast.success('Variable Copied!', { timeout: 2000 });
+  }).catch(err => {
+    console.error('Failed to copy: ', err);
+  });
+
+  if (menuMode.value === 'variable' && lastElement.value) {
     lastElement.value.textContent = newName;
     const parentInput = lastElement.value.closest('.var-input-content') as HTMLDivElement;
     if (parentInput) {
       const inputIndex = inputStorage.trackedHighlightInputs.indexOf(parentInput);
       if (inputIndex !== -1) {
-        inputStorage.highlightInput({
-          inputIndex,
-          options: { definedEnvVariables: envStorage.collectEnvVariableNames() },
-          withCursor: false
-        });
+        inputStorage.highlightInput({ inputIndex, options: { definedEnvVariables: envStorage.collectEnvVariableNames() }, withCursor: false });
       }
     }
-    hidePopup();
+  } else if (menuMode.value === 'selection' && lastInput.value) {
+    insertAtCursor(lastInput.value, newName);
+    const inputIndex = inputStorage.trackedHighlightInputs.indexOf(lastInput.value);
+    if (inputIndex !== -1) {
+      inputStorage.highlightInput({ inputIndex, options: { definedEnvVariables: envStorage.collectEnvVariableNames() }, withCursor: true });
+    }
   }
+  hidePopup();
+}
+
+function insertAtCursor(el: HTMLDivElement, text: string) {
+  const sel = window.getSelection();
+  if (sel && sel.rangeCount > 0 && el.contains(sel.anchorNode)) {
+    const range = sel.getRangeAt(0);
+    range.deleteContents();
+    const textNode = document.createTextNode(text);
+    range.insertNode(textNode);
+    range.setStartAfter(textNode);
+    range.setEndAfter(textNode);
+    sel.removeAllRanges();
+    sel.addRange(range);
+  } else {
+    el.textContent = (el.textContent || "") + text;
+  }
+}
+
+const switchToSelection = () => {
+  menuMode.value = 'selection';
 }
 
 </script>
 
 <template>
   <div ref="popupRef" class="popup shadow-lg">
-    <div class="popup-header">
-      <div class="d-flex align-items-center w-100">
-        <span class="var-label me-2">Variable:</span>
-        <span class="var-name text-truncate" style="max-width: 140px;">{{ currentVarName }}</span>
-        <div class="ms-auto d-flex align-items-center">
-          <IconTrash 
-            v-if="isDefined" 
-            @click="deleteVariable" 
-            class="btn-delete-var" 
-            size="24" 
-            stroke-width="1.5"
-          />
-          <span v-if="!isDefined" class="badge bg-warning text-dark" style="font-size: 0.65rem">Undefined</span>
-        </div>
-      </div>
-    </div>
+    <!-- Modular Content -->
+    <VariableEditor 
+      v-if="menuMode === 'variable'"
+      :varName="currentVarName"
+      :varValue="currentVarValue"
+      :isDefined="isDefined"
+      :searchQuery="searchQuery"
+      :filteredVariables="filteredVariables"
+      @update:varValue="onVariableValueUpdate"
+      @update:searchQuery="searchQuery = $event"
+      @delete="deleteVariable"
+      @select="selectVariable"
+      @input-blur="onVariableValueBlur"
+    />
     
-    <div class="popup-body">
-      <div class="section-label">Current Value</div>
-      <div class="mb-3">
-        <input
-            :value="currentVarValue"
-            class="popup-input"
-            placeholder="No value set..."
-            @input="onValueInput"
-            @blur="onValueBlur"
-            @keydown.stop
-        />
-      </div>
-
-      <div class="section-label d-flex justify-content-between">
-        <span>Switch To...</span>
-        <span class="text-muted" style="font-size: 0.65rem">{{ filteredVariables.length }} found</span>
-      </div>
-      <div class="mb-2">
-        <input 
-            v-model="searchQuery" 
-            class="popup-input" 
-            placeholder="Search variables..." 
-            @keydown.stop
-        />
-      </div>
-      
-      <div class="variable-list custom-scrollbar">
-        <div 
-            v-for="v in filteredVariables" 
-            :key="v" 
-            class="variable-item"
-            @click="selectVariable(v)"
-        >
-          {{ v }}
-        </div>
-        <div v-if="filteredVariables.length === 0" class="text-center p-2 text-muted small">
-          No other variables
-        </div>
-      </div>
-
-      <div class="mt-2 pt-2 extra-info">
-        Env: <span class="fw-bold">{{ envStorage.selectedEnvCode }}</span>
-      </div>
-    </div>
+    <InputMenu 
+      v-else-if="menuMode === 'input'"
+      @select-variable="switchToSelection"
+    />
+    
+    <VariablePicker 
+      v-else-if="menuMode === 'selection'"
+      :searchQuery="searchQuery"
+      :filteredVariables="filteredVariables"
+      @update:searchQuery="searchQuery = $event"
+      @select="selectVariable"
+    />
   </div>
 </template>
 
 
-<style scoped lang="scss">
+<style lang="scss">
+/* THIẾT LẬP LẠI STYLE GỐC (Calibri/Gray) */
+
 .popup {
   position: fixed;
   z-index: 100000;
@@ -290,7 +306,7 @@ const selectVariable = (newName: string) => {
   color: #666;
   transition: color 0.2s;
   &:hover {
-    color: #dc3545; /* Màu đỏ khi hover xóa */
+    color: #dc3545;
   }
 }
 

@@ -290,6 +290,9 @@ importers:
       vue-draggable-next:
         specifier: ^2.3.0
         version: 2.3.0(sortablejs@1.10.2)(vue@3.5.32(typescript@5.9.3))
+      vue-toastification:
+        specifier: 2.0.0-rc.5
+        version: 2.0.0-rc.5(vue@3.5.32(typescript@5.9.3))
       vuedraggable:
         specifier: ^2.24.3
         version: 2.24.3
@@ -3818,6 +3821,11 @@ packages:
     peerDependencies:
       sortablejs: ^1.14.0
       vue: ^3.5.17
+
+  vue-toastification@2.0.0-rc.5:
+    resolution: {integrity: sha512-q73e5jy6gucEO/U+P48hqX+/qyXDozAGmaGgLFm5tXX4wJBcVsnGp4e/iJqlm9xzHETYOilUuwOUje2Qg1JdwA==}
+    peerDependencies:
+      vue: ^3.0.2
 
   vue-tsc@2.2.12:
     resolution: {integrity: sha512-P7OP77b2h/Pmk+lZdJ0YWs+5tJ6J2+uOQPo7tlBnY44QqQSPYvS0qVT4wqDJgwrZaLe47etJLLQRFia71GYITw==}
@@ -8108,6 +8116,10 @@ snapshots:
   vue-draggable-next@2.3.0(sortablejs@1.10.2)(vue@3.5.32(typescript@5.9.3)):
     dependencies:
       sortablejs: 1.10.2
+      vue: 3.5.32(typescript@5.9.3)
+
+  vue-toastification@2.0.0-rc.5(vue@3.5.32(typescript@5.9.3)):
+    dependencies:
       vue: 3.5.32(typescript@5.9.3)
 
   vue-tsc@2.2.12(typescript@5.9.3):

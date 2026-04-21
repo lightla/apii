@@ -16,3 +16,6 @@ const props = defineProps<{
     <RequestContainer :requestsData="props.requestsData"/>
   </div>
 </template>
+
+<style scoped>
+</style>

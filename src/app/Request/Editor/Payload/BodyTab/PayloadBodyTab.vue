@@ -80,39 +80,64 @@ function onDeleteClick(index: number) {
 }
 
 const activeSelectIndex = ref<number | null>(null);
-const dropdownStyle = ref({ top: '0px', left: '0px', width: '0px' });
+const activeSelectItem = ref<any>(null);
+const dropdownStyle = ref<Record<string, string>>({ top: '0px', left: '0px', width: '0px' });
 
 const closeCustomSelect = () => {
   activeSelectIndex.value = null;
+  activeSelectItem.value = null;
 }
 
 onMounted(() => {
   window.addEventListener('click', closeCustomSelect);
+  // Cập nhật lại vị trí khi scroll nếu cần thiết
+  window.addEventListener('scroll', closeCustomSelect, true); // true để bắt scroll trên mọi element
 })
 
 onUnmounted(() => {
   window.removeEventListener('click', closeCustomSelect);
+  window.removeEventListener('scroll', closeCustomSelect, true);
 })
 
-const toggleSelect = (index: number, event: Event) => {
+const toggleSelect = (index: number, item: any, event: Event) => {
   event.stopPropagation();
   if (activeSelectIndex.value === index) {
-    activeSelectIndex.value = null;
+    closeCustomSelect();
   } else {
     activeSelectIndex.value = index;
+    activeSelectItem.value = item;
+    
     const target = event.currentTarget as HTMLElement;
     const rect = target.getBoundingClientRect();
-    dropdownStyle.value = {
-      top: `${rect.bottom + 2}px`,
-      left: `${rect.left}px`,
-      width: `${rect.width}px`
-    };
+    
+    // Tính toán xem có đủ chỗ bên dưới không (cần khoảng 70px cho 2 options)
+    const spaceBelow = window.innerHeight - rect.bottom;
+    
+    if (spaceBelow < 70) {
+      // Mở ngược lên trên
+      dropdownStyle.value = {
+        bottom: `${window.innerHeight - rect.top + 2}px`,
+        top: 'auto',
+        left: `${rect.left}px`,
+        width: `${rect.width}px`
+      };
+    } else {
+      // Mở xuống dưới bình thường
+      dropdownStyle.value = {
+        top: `${rect.bottom + 2}px`,
+        bottom: 'auto',
+        left: `${rect.left}px`,
+        width: `${rect.width}px`
+      };
+    }
   }
 }
 
-const selectType = (item: any, type: string) => {
-  item.type = type;
-  activeSelectIndex.value = null;
+const selectType = (type: string) => {
+  if (activeSelectItem.value) {
+    activeSelectItem.value.type = type;
+  }
+  closeCustomSelect();
 }
 
 const onFileChange = (event: Event) => {
@@ -225,16 +250,10 @@ const triggerFileInput = (id: string) => {
                 </td>
                 <td>
                   <div class="custom-type-select" :class="{ 'is-active': activeSelectIndex === index }">
-                    <div class="type-select-trigger" @click="toggleSelect(index, $event)">
+                    <div class="type-select-trigger" @click="toggleSelect(index, item, $event)">
                       <span>{{ item.type === 'text' ? 'Text' : 'File' }}</span>
                       <span class="dropdown-arrow">▼</span>
                     </div>
-                    <Teleport to="body">
-                      <div class="type-select-dropdown" v-if="activeSelectIndex === index" :style="dropdownStyle">
-                        <div class="type-select-option" @click="selectType(item, 'text')">Text</div>
-                        <div class="type-select-option" @click="selectType(item, 'file')">File</div>
-                      </div>
-                    </Teleport>
                   </div>
                 </td>
                 <td>
@@ -303,6 +322,13 @@ const triggerFileInput = (id: string) => {
       </div>
     </div>
   </div>
+
+  <Teleport to="body">
+    <div class="type-select-dropdown" v-if="activeSelectIndex !== null" :style="dropdownStyle">
+      <div class="type-select-option" @click="selectType('text')">Text</div>
+      <div class="type-select-option" @click="selectType('file')">File</div>
+    </div>
+  </Teleport>
 </template>
 
 <style scoped lang="scss">

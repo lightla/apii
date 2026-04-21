@@ -2,7 +2,7 @@
 import cors_anywhere from 'cors-anywhere';
 
 const host = 'localhost';
-const port = 8080;
+const port = 8081;
 
 cors_anywhere.createServer({
     originWhitelist: [], // Cho phép tất cả các nguồn trong môi trường dev
