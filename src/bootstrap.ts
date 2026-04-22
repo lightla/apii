@@ -66,6 +66,24 @@ export function createVueApp(options: {
     })
     // app.use(mdiVue, {icons: mdijs})
 
+    app.directive('click-outside', {
+        mounted(el: any, binding) {
+            el.clickOutsideEvent = (event: Event) => {
+                // Kiểm tra xem click có nằm ngoài element và các con của nó không
+                if (!(el === event.target || el.contains(event.target as Node))) {
+                    binding.value(event);
+                }
+            };
+            // Sử dụng setTimeout để tránh bắt sự kiện click hiện tại vừa mở dropdown
+            setTimeout(() => {
+                document.addEventListener('click', el.clickOutsideEvent);
+            }, 0);
+        },
+        unmounted(el: any) {
+            document.removeEventListener('click', el.clickOutsideEvent);
+        },
+    });
+
     installFontAwesome(app)
     app.mount(mountId)
 

@@ -10,22 +10,32 @@ import {
   Eraser,
   Trash2,
   Lock,
+  Plus,
+  ChevronDown
 } from "lucide-vue-next";
 import { IconSquareRoundedPlus } from "@tabler/icons-vue";
 import { useRequestParamsStorage } from '@/storages/payload.ts'
 import { usePresetStorage } from '@/storages/presets.ts'
 
-const props = defineProps<{
-  route: RouteInfo
-}>()
-
+const props = defineProps<{ route: RouteInfo }>()
 const store = useRequestParamsStorage()
 const presetStore = usePresetStorage()
 
-const onPresetChange = (e: Event) => {
-  const target = e.target as HTMLSelectElement;
-  store.selectedQueryPresetId = target.value === 'preset-none' ? null : target.value;
-  store.syncManagedQueryParams();
+const showPresetDropdown = ref(false)
+
+const activePresets = computed(() => {
+  return presetStore.queryPresets.filter(p => store.selectedQueryPresetIds.includes(p.id))
+})
+
+const togglePreset = (id: string) => {
+  const current = [...store.selectedQueryPresetIds]
+  const idx = current.indexOf(id)
+  if (idx === -1) current.push(id)
+  else current.splice(idx, 1)
+  
+  store.selectedQueryPresetIds = current
+  store.syncManagedQueryParams()
+  store.saveToStorage(props.route.id || props.route.route)
 }
 
 // Logic cho Master Toggle ở Header
@@ -80,7 +90,7 @@ function onDeleteClick(index: number) {
     <div class="query-param-toolbar">
       <div class="d-flex align-items-center w-100">
         <span class="query-param-toolbar-title">Query Parameters</span>
-        <IconSquareRoundedPlus @click="store.addQueryParam()" stroke-width="1" class="icon-button-add-row ms-2"/>
+        <IconSquareRoundedPlus @click="store.addQueryParam()" :stroke-width="1" class="icon-button-add-row ms-2" title="Add query parameter"/>
         
         <!-- Icon X nằm sát nút dấu + -->
         <div @click="onTrashClick" title="Delete all query parameters" class="d-flex align-items-center cursor-pointer ms-1">
@@ -88,20 +98,36 @@ function onDeleteClick(index: number) {
           <SquareX v-else stroke-width="1" class="icon-button icon-button-trash-x" />
         </div>
 
-        <!-- Query Preset Selection -->
-        <div class="ms-auto d-flex align-items-center flex-shrink-0">
-          <span class="preset-label me-2">PRESETS:</span>
-          <select 
-            class="preset-select" 
-            :value="store.selectedQueryPresetId || 'preset-none'"
-            @change="onPresetChange"
-            :title="presetStore.queryPresets.find(p => p.id === store.selectedQueryPresetId)?.name || 'None'"
-          >
-            <option value="preset-none">-- No Preset --</option>
-            <option v-for="p in presetStore.queryPresets" :key="p.id" :value="p.id">
-              {{ p.name.length > 20 ? p.name.slice(0, 20) + '...' : p.name }}
-            </option>
-          </select>
+        <!-- Active Presets with Inline Selector -->
+        <div class="ms-auto d-flex align-items-center flex-shrink-0 gap-1 overflow-visible position-relative" style="max-width: 400px;">
+          <span v-if="activePresets.length" class="preset-label">ACTIVE:</span>
+          <div v-for="p in activePresets" :key="p.id" class="active-preset-tag" :title="p.name">
+            {{ p.name }}
+          </div>
+          
+          <div class="preset-selector-wrap ms-1" v-click-outside="() => showPresetDropdown = false">
+            <button class="btn-add-preset" @click.stop="showPresetDropdown = !showPresetDropdown" title="Toggle Presets">
+              <Plus :size="14" stroke-width="3" />
+              <ChevronDown :size="10" stroke-width="2" class="ms-1" />
+            </button>
+            
+            <div v-if="showPresetDropdown" class="preset-dropdown-menu">
+              <div class="dropdown-header">Select Presets</div>
+              <div class="dropdown-list">
+                <div 
+                  v-for="p in presetStore.queryPresets" 
+                  :key="p.id" 
+                  class="dropdown-item" 
+                  @click="togglePreset(p.id)"
+                >
+                  <SquareCheck v-if="store.selectedQueryPresetIds.includes(p.id)" :size="16" class="text-primary me-2" />
+                  <Square v-else :size="16" class="text-muted me-2" />
+                  <span class="item-name">{{ p.name }}</span>
+                </div>
+                <div v-if="!presetStore.queryPresets.length" class="dropdown-empty">No presets found</div>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -132,11 +158,11 @@ function onDeleteClick(index: number) {
           </tr>
         </thead>
         <tbody>
-          <tr v-for="(param, index) in store.queryParams" :key="param.id" :class="{ 'is-managed': param.isManaged }">
+          <tr v-for="(param, index) in store.queryParams" :key="param.id" :class="{ 'is-preset': param.isPreset }">
             <td>
-              <div class="cell-icon-action" @click="!param.isManaged && store.toggleQueryParam(index)">
-                <template v-if="param.isManaged">
-                   <SquareCheck stroke-width="1" class="icon-button-checkbox is-disabled"/>
+              <div class="cell-icon-action" @click="store.toggleQueryParam(index)">
+                <template v-if="false">
+                   <!-- Removed special disabled state -->
                 </template>
                 <template v-else>
                    <SquareCheck v-if="param.enabled" stroke-width="1" class="icon-button-checkbox"/>
@@ -150,7 +176,6 @@ function onDeleteClick(index: number) {
                   :route="props.route"
                   :value="param.key"
                   :enabled-env-variable="true"
-                  :readonly="!!param.isManaged"
                   @text-change="val => param.key = val"
                 />
               </div>
@@ -161,23 +186,15 @@ function onDeleteClick(index: number) {
                   :route="props.route"
                   :value="param.value"
                   :enabled-env-variable="true"
-                  :readonly="!!param.isManaged"
                   @text-change="val => param.value = val"
                 />
               </div>
             </td>
             <td>
-              <div class="cell-icon-action">
-                <template v-if="param.isManaged">
-                   <Lock size="16" stroke-width="1.5" class="text-muted" />
-                </template>
-                <template v-else>
-                  <div class="w-100 h-100 d-flex align-items-center justify-content-center" @click="onDeleteClick(index)">
-                    <ShieldAlert v-if="confirmDeleteIndex === index"
-                                 stroke-width="1" class="icon-button icon-button-row-action" />
-                    <SquareX v-else stroke-width="1" class="icon-button icon-button-row-action" />
-                  </div>
-                </template>
+              <div class="cell-icon-action" @click="onDeleteClick(index)">
+                <ShieldAlert v-if="confirmDeleteIndex === index"
+                             stroke-width="1" class="icon-button icon-button-row-action" />
+                <SquareX v-else stroke-width="1" class="icon-button icon-button-row-action" />
               </div>
             </td>
           </tr>
@@ -223,34 +240,97 @@ function onDeleteClick(index: number) {
   white-space: nowrap;
 }
 
-.preset-label {
-  font-size: 11px;
-  text-transform: uppercase;
-  color: #555;
+.active-preset-tag {
+  background-color: #f0f7ff;
+  border: 1px solid #007bff;
+  color: #007bff;
+  font-size: 10px;
   font-weight: 600;
-}
-
-.preset-select {
-  background-color: #dddddd;
-  border: 1px solid #888888;
-  font-size: 12px;
-  font-family: inherit;
-  padding: 2px 4px;
-  outline: none;
-  cursor: pointer;
-  height: 26px;
-  color: #333;
-  width: 160px;
-  text-align: center;
-  text-align-last: center;
-  text-overflow: ellipsis;
+  padding: 2px 6px;
+  border-radius: 2px;
   white-space: nowrap;
   overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 120px;
+}
+
+.preset-label-none {
+  font-size: 11px;
+  color: #aaa;
+  font-weight: 500;
+}
+
+.preset-selector-wrap {
+  position: relative;
+}
+
+.btn-add-preset {
+  background: #eee;
+  border: 1px solid #888;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  padding: 0 6px;
+  cursor: pointer;
+  border-radius: 2px;
+  color: #333;
+  &:hover { background: #ddd; }
+}
+
+.preset-dropdown-menu {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  width: 220px;
+  background: white;
+  border: 1px solid #888;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+  z-index: 1000;
+  margin-top: 4px;
+  display: flex;
+  flex-direction: column;
+}
+
+.dropdown-header {
+  padding: 6px 10px;
+  background: #f4f4f4;
+  border-bottom: 1px solid #ddd;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: #666;
+}
+
+.dropdown-list {
+  max-height: 300px;
+  overflow-y: auto;
+  padding: 4px 0;
+}
+
+.dropdown-item {
+  display: flex;
+  align-items: center;
+  padding: 6px 12px;
+  cursor: pointer;
+  font-size: 13px;
+  &:hover { background: #f0f7ff; }
   
-  &:hover {
-    background-color: #cccccc;
+  .item-name {
+    flex: 1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 }
+
+.dropdown-empty {
+  padding: 10px;
+  text-align: center;
+  font-size: 12px;
+  color: #999;
+}
+
+.text-primary { color: #007bff; }
 
 .query-table-scroll-wrapper {
   min-height: 0;
@@ -296,8 +376,8 @@ function onDeleteClick(index: number) {
     background-color: rgba(0, 0, 0, 0.02);
   }
 
-  tr.is-managed {
-    background-color: rgba(0, 0, 0, 0.02);
+  tr.is-preset, tr.is-managed {
+    background-color: #f0f7ff;
   }
 
   th:first-child, td:first-child,

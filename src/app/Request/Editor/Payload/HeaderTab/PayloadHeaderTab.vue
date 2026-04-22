@@ -2,8 +2,17 @@
 import { ref, computed } from 'vue'
 import type { RouteInfo } from '@/types'
 import TrackedVariableInput from '@/app/Generals/TrackedVariableInput.vue'
-import { SquareCheck, Square, SquareX, ShieldAlert, Eraser, Lock } from 'lucide-vue-next'
-import { IconSquareRoundedPlus } from "@tabler/icons-vue"
+import { 
+  SquareCheck, 
+  Square, 
+  SquareX, 
+  ShieldAlert, 
+  Eraser, 
+  Lock,
+  Plus,
+  ChevronDown 
+} from "lucide-vue-next";
+import { IconSquareRoundedPlus } from "@tabler/icons-vue";
 import { useRequestParamsStorage } from '@/storages/payload.ts'
 import { usePresetStorage } from '@/storages/presets.ts'
 
@@ -11,10 +20,21 @@ const props = defineProps<{ route: RouteInfo }>()
 const store = useRequestParamsStorage()
 const presetStore = usePresetStorage()
 
-const onPresetChange = (e: Event) => {
-  const target = e.target as HTMLSelectElement;
-  store.selectedHeaderPresetId = target.value === 'preset-none' ? null : target.value;
-  store.syncManagedHeaders();
+const showPresetDropdown = ref(false)
+
+const activePresets = computed(() => {
+  return presetStore.headerPresets.filter(p => store.selectedHeaderPresetIds.includes(p.id))
+})
+
+const togglePreset = (id: string) => {
+  const current = [...store.selectedHeaderPresetIds]
+  const idx = current.indexOf(id)
+  if (idx === -1) current.push(id)
+  else current.splice(idx, 1)
+  
+  store.selectedHeaderPresetIds = current
+  store.syncManagedHeaders()
+  store.saveToStorage(props.route.id || props.route.route)
 }
 
 // Logic cho Master Toggle ở Header
@@ -51,7 +71,7 @@ let confirmTimer: ReturnType<typeof setTimeout> | undefined
 
 function onDeleteClick(index: number) {
   const header = store.headers[index];
-  if (header?.isManaged) return; // Bảo vệ managed header
+  if (header?.isManaged) return; 
 
   if (confirmDeleteIndex.value === index) {
     store.removeHeader(index)
@@ -72,7 +92,7 @@ function onDeleteClick(index: number) {
     <div class="header-toolbar">
       <div class="d-flex align-items-center w-100">
         <span class="header-toolbar-title">Headers</span>
-        <IconSquareRoundedPlus @click="store.addHeader()" stroke-width="1" class="icon-button-add-row ms-2"/>
+        <IconSquareRoundedPlus @click="store.addHeader()" :stroke-width="1" class="icon-button-add-row ms-2" title="Add header"/>
         
         <!-- Icon X (Delete All) nằm sát nút + -->
         <div @click="onTrashClick" title="Delete all headers" class="d-flex align-items-center cursor-pointer ms-1">
@@ -80,20 +100,36 @@ function onDeleteClick(index: number) {
           <SquareX v-else stroke-width="1" class="icon-button icon-button-trash-x" />
         </div>
 
-        <!-- Header Preset Selection -->
-        <div class="ms-auto d-flex align-items-center flex-shrink-0">
-          <span class="preset-label me-2">PRESETS:</span>
-          <select 
-            class="preset-select" 
-            :value="store.selectedHeaderPresetId || 'preset-none'"
-            @change="onPresetChange"
-            :title="presetStore.headerPresets.find(p => p.id === store.selectedHeaderPresetId)?.name || 'None'"
-          >
-            <option value="preset-none">-- No Preset --</option>
-            <option v-for="p in presetStore.headerPresets" :key="p.id" :value="p.id">
-              {{ p.name.length > 20 ? p.name.slice(0, 20) + '...' : p.name }}
-            </option>
-          </select>
+        <!-- Active Presets with Inline Selector -->
+        <div class="ms-auto d-flex align-items-center flex-shrink-0 gap-1 overflow-visible position-relative" style="max-width: 400px;">
+          <span v-if="activePresets.length" class="preset-label">ACTIVE:</span>
+          <div v-for="p in activePresets" :key="p.id" class="active-preset-tag" :title="p.name">
+            {{ p.name }}
+          </div>
+          
+          <div class="preset-selector-wrap ms-1" v-click-outside="() => showPresetDropdown = false">
+            <button class="btn-add-preset" @click.stop="showPresetDropdown = !showPresetDropdown" title="Toggle Presets">
+              <Plus :size="14" stroke-width="3" />
+              <ChevronDown :size="10" stroke-width="2" class="ms-1" />
+            </button>
+            
+            <div v-if="showPresetDropdown" class="preset-dropdown-menu" v-click-outside="() => showPresetDropdown = false">
+              <div class="dropdown-header">Select Presets</div>
+              <div class="dropdown-list">
+                <div 
+                  v-for="p in presetStore.headerPresets" 
+                  :key="p.id" 
+                  class="dropdown-item" 
+                  @click="togglePreset(p.id)"
+                >
+                  <SquareCheck v-if="store.selectedHeaderPresetIds.includes(p.id)" :size="16" class="text-primary me-2" />
+                  <Square v-else :size="16" class="text-muted me-2" />
+                  <span class="item-name">{{ p.name }}</span>
+                </div>
+                <div v-if="!presetStore.headerPresets.length" class="dropdown-empty">No presets found</div>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -126,7 +162,7 @@ function onDeleteClick(index: number) {
           </tr>
         </thead>
         <tbody>
-          <tr v-for="(header, index) in store.headers" :key="header.id" :class="{ 'is-managed': header.isManaged }">
+          <tr v-for="(header, index) in store.headers" :key="header.id" :class="{ 'is-preset': header.isPreset }">
             <td>
               <div class="cell-icon-action" @click="!header.isManaged && store.toggleHeader(index)">
                 <template v-if="header.isManaged">
@@ -140,69 +176,42 @@ function onDeleteClick(index: number) {
             </td>
             <td>
               <div class="param-input-wrap">
-                <template v-if="header.isManaged">
-                  <TrackedVariableInput
-                    :route="props.route"
-                    :value="header.key"
-                    :enabled-env-variable="true"
-                    :readonly="true"
-                  />
-                </template>
-                <template v-else>
-                  <TrackedVariableInput
-                    :route="props.route"
-                    :value="header.key"
-                    :enabled-env-variable="true"
-                    @text-change="val => header.key = val"
-                  />
-                </template>
+                <TrackedVariableInput
+                  :route="props.route"
+                  :value="header.key"
+                  :enabled-env-variable="true"
+                  :readonly="header.isManaged"
+                  @text-change="val => header.key = val"
+                />
               </div>
             </td>
             <td>
               <div class="param-input-wrap">
-                <template v-if="header.isManaged">
-                  <TrackedVariableInput
-                    :route="props.route"
-                    :value="header.value"
-                    :enabled-env-variable="true"
-                    :readonly="true"
-                  />
-                </template>
-                <template v-else>
-                  <TrackedVariableInput
-                    :route="props.route"
-                    :value="header.value"
-                    :enabled-env-variable="true"
-                    @text-change="val => header.value = val"
-                  />
-                </template>
+                <TrackedVariableInput
+                  :route="props.route"
+                  :value="header.value"
+                  :enabled-env-variable="true"
+                  :readonly="header.isManaged"
+                  @text-change="val => header.value = val"
+                />
               </div>
             </td>
             <td>
               <div class="param-input-wrap">
-                <template v-if="header.isManaged">
-                  <TrackedVariableInput
-                    :route="props.route"
-                    :value="header.description"
-                    :enabled-env-variable="false"
-                    :readonly="true"
-                    class="managed-desc"
-                  />
-                </template>
-                <template v-else>
-                  <TrackedVariableInput
-                    :route="props.route"
-                    :value="header.description"
-                    :enabled-env-variable="false"
-                    @text-change="val => header.description = val"
-                  />
-                </template>
+                <TrackedVariableInput
+                  :route="props.route"
+                  :value="header.description"
+                  :enabled-env-variable="false"
+                  :readonly="header.isManaged"
+                  :class="{ 'managed-desc': header.isPreset || header.isManaged }"
+                  @text-change="val => header.description = val"
+                />
               </div>
             </td>
             <td>
               <div class="cell-icon-action">
                 <template v-if="header.isManaged">
-                  <Lock size="16" stroke-width="1.5" class="text-muted" />
+                   <Lock size="16" stroke-width="1.5" class="text-muted" />
                 </template>
                 <template v-else>
                   <div class="w-100 h-100 d-flex align-items-center justify-content-center" @click="onDeleteClick(index)">
@@ -300,8 +309,8 @@ function onDeleteClick(index: number) {
     background-color: rgba(0, 0, 0, 0.02);
   }
 
-  tr.is-managed {
-    background-color: rgba(0, 0, 0, 0.02);
+  tr.is-preset, tr.is-managed {
+    background-color: #f0f7ff; // Soft blue for preset/managed rows
   }
 
   th:first-child, td:first-child,
@@ -381,34 +390,97 @@ function onDeleteClick(index: number) {
   }
 }
 
-.preset-label {
-  font-size: 11px;
-  text-transform: uppercase;
-  color: #555;
+.active-preset-tag {
+  background-color: #f0f7ff;
+  border: 1px solid #007bff;
+  color: #007bff;
+  font-size: 10px;
   font-weight: 600;
-}
-
-.preset-select {
-  background-color: #dddddd;
-  border: 1px solid #888888;
-  font-size: 12px;
-  font-family: inherit;
-  padding: 2px 4px;
-  outline: none;
-  cursor: pointer;
-  height: 26px;
-  color: #333;
-  width: 160px;
-  text-align: center;
-  text-align-last: center;
-  text-overflow: ellipsis;
+  padding: 2px 6px;
+  border-radius: 2px;
   white-space: nowrap;
   overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 120px;
+}
+
+.preset-label-none {
+  font-size: 11px;
+  color: #aaa;
+  font-weight: 500;
+}
+
+.preset-selector-wrap {
+  position: relative;
+}
+
+.btn-add-preset {
+  background: #eee;
+  border: 1px solid #888;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  padding: 0 6px;
+  cursor: pointer;
+  border-radius: 2px;
+  color: #333;
+  &:hover { background: #ddd; }
+}
+
+.preset-dropdown-menu {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  width: 220px;
+  background: white;
+  border: 1px solid #888;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+  z-index: 1000;
+  margin-top: 4px;
+  display: flex;
+  flex-direction: column;
+}
+
+.dropdown-header {
+  padding: 6px 10px;
+  background: #f4f4f4;
+  border-bottom: 1px solid #ddd;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: #666;
+}
+
+.dropdown-list {
+  max-height: 300px;
+  overflow-y: auto;
+  padding: 4px 0;
+}
+
+.dropdown-item {
+  display: flex;
+  align-items: center;
+  padding: 6px 12px;
+  cursor: pointer;
+  font-size: 13px;
+  &:hover { background: #f0f7ff; }
   
-  &:hover {
-    background-color: #cccccc;
+  .item-name {
+    flex: 1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 }
+
+.dropdown-empty {
+  padding: 10px;
+  text-align: center;
+  font-size: 12px;
+  color: #999;
+}
+
+.text-primary { color: #007bff; }
 
 .btn-preset-settings {
   padding: 4px;

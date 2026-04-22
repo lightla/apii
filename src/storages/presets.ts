@@ -50,18 +50,15 @@ export const usePresetStorage = defineStore('presets', () => {
         }));
     };
 
-    const addPreset = (preset: Omit<HeaderPreset | QueryPreset | BodyPreset, 'id'>) => {
+    const addPreset = (preset: any) => {
         const id = 'preset-' + Math.random().toString(36).substr(2, 9);
-        const newPreset = { ...preset, id } as any;
+        const newPreset = { ...preset, id };
         
-        const cat = (preset as any).category || (('type' in preset) ? 'body' : 'headers'); // Simple heuristic
-        // In a real app we'd pass category explicitly, but let's adjust based on use case
-        if ('category' in (preset as any)) {
-            const c = (preset as any).category;
-            if (c === 'headers') headerPresets.value.push(newPreset);
-            else if (c === 'query') queryPresets.value.push(newPreset);
-            else if (c === 'body') bodyPresets.value.push(newPreset);
-        }
+        const c = preset.category;
+        if (c === 'headers') headerPresets.value.push(newPreset);
+        else if (c === 'query') queryPresets.value.push(newPreset);
+        else if (c === 'body') bodyPresets.value.push(newPreset);
+        
         persist();
     };
 
@@ -71,7 +68,7 @@ export const usePresetStorage = defineStore('presets', () => {
         
         const qIdx = queryPresets.value.findIndex(p => p.id === id);
         if (qIdx !== -1) queryPresets.value[qIdx] = { ...queryPresets.value[qIdx], ...data };
-        
+
         const bIdx = bodyPresets.value.findIndex(p => p.id === id);
         if (bIdx !== -1) bodyPresets.value[bIdx] = { ...bodyPresets.value[bIdx], ...data };
         
@@ -88,15 +85,13 @@ export const usePresetStorage = defineStore('presets', () => {
     const getPresetsByCategory = (category: 'headers' | 'query' | 'body') => {
         if (category === 'headers') return headerPresets.value;
         if (category === 'query') return queryPresets.value;
-        if (category === 'body') return bodyPresets.value;
-        return [];
+        return bodyPresets.value;
     };
     
     return { 
         headerPresets, 
         queryPresets, 
-        bodyPresets, 
-        persist,
+        bodyPresets,
         addPreset,
         updatePreset,
         deletePreset,

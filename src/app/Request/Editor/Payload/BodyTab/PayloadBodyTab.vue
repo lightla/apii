@@ -15,7 +15,9 @@ import {
   Box,
   Binary,
   Eraser,
-  Lock
+  Lock,
+  Plus,
+  ChevronDown
 } from "lucide-vue-next";
 import { IconSquareRoundedPlus } from "@tabler/icons-vue";
 
@@ -24,30 +26,33 @@ const store = useRequestParamsStorage()
 const presetStore = usePresetStorage()
 const theme = ref('one-dark')
 
-const selectedBodyPresetName = computed(() => {
-  return presetStore.bodyPresets.find(p => p.id === store.selectedBodyPresetId)?.name || 'None'
-})
+const showPresetDropdown = ref(false)
 
-const selectedBodyPresetValue = computed(() => {
-  return presetStore.bodyPresets.find(p => p.id === store.selectedBodyPresetId)?.value || ''
-})
-
-const filteredBodyPresets = computed(() => {
+// Active presets for display (filtered by current body type)
+const activePresets = computed(() => {
   return presetStore.bodyPresets.filter(p => {
-    // Handle both 'json' and 'body-json' etc.
+    if (!store.selectedBodyPresetIds.includes(p.id)) return false;
     const normalizedType = p.type?.replace('body-', '');
     return normalizedType === store.bodyType;
   })
 })
 
-const onPresetChange = (e: Event) => {
-  const target = e.target as HTMLSelectElement
-  store.selectedBodyPresetId = target.value === 'preset-none' ? null : target.value
-  store.syncManagedBody()
-}
+const filteredBodyPresets = computed(() => {
+  return presetStore.bodyPresets.filter(p => {
+    const normalizedType = p.type?.replace('body-', '');
+    return normalizedType === store.bodyType;
+  })
+})
 
-const onThemeUpdate = (t: string) => {
-  theme.value = t
+const togglePreset = (id: string) => {
+  const current = [...store.selectedBodyPresetIds]
+  const idx = current.indexOf(id)
+  if (idx === -1) current.push(id)
+  else current.splice(idx, 1)
+  
+  store.selectedBodyPresetIds = current
+  store.syncManagedBody()
+  store.saveToStorage(props.route.id || props.route.route)
 }
 
 const bodyTypes = [
@@ -205,20 +210,36 @@ const triggerFileInput = (id: string) => {
         {{ type.label }}
       </div>
 
-      <!-- Body Preset Selection -->
-      <div class="ms-auto d-flex align-items-center flex-shrink-0 pe-2" v-if="store.bodyType !== 'none'">
-        <span class="preset-label me-2">PRESETS:</span>
-        <select 
-          class="preset-select" 
-          :value="store.selectedBodyPresetId || 'preset-none'"
-          @change="onPresetChange"
-          :title="selectedBodyPresetName"
-        >
-          <option value="preset-none">-- No Preset --</option>
-          <option v-for="p in filteredBodyPresets" :key="p.id" :value="p.id">
-            {{ p.name.length > 20 ? p.name.slice(0, 20) + '...' : p.name }}
-          </option>
-        </select>
+      <!-- Active Presets with Inline Selector -->
+      <div class="ms-auto d-flex align-items-center flex-shrink-0 gap-1 overflow-visible position-relative pe-2" v-if="store.bodyType !== 'none'">
+        <span v-if="activePresets.length" class="preset-label">ACTIVE:</span>
+        <div v-for="p in activePresets" :key="p.id" class="active-preset-tag" :title="p.name">
+          {{ p.name }}
+        </div>
+        
+        <div class="preset-selector-wrap ms-1" v-click-outside="() => showPresetDropdown = false">
+          <button class="btn-add-preset" @click.stop="showPresetDropdown = !showPresetDropdown" title="Toggle Presets">
+            <Plus :size="14" stroke-width="3" />
+            <ChevronDown :size="10" stroke-width="2" class="ms-1" />
+          </button>
+          
+          <div v-if="showPresetDropdown" class="preset-dropdown-menu">
+            <div class="dropdown-header">Select {{ store.bodyType }} Presets</div>
+            <div class="dropdown-list">
+              <div 
+                v-for="p in filteredBodyPresets" 
+                :key="p.id" 
+                class="dropdown-item" 
+                @click="togglePreset(p.id)"
+              >
+                <SquareCheck v-if="store.selectedBodyPresetIds.includes(p.id)" :size="16" class="text-primary me-2" />
+                <Square v-else :size="16" class="text-muted me-2" />
+                <span class="item-name">{{ p.name }}</span>
+              </div>
+              <div v-if="!filteredBodyPresets.length" class="dropdown-empty">No {{ store.bodyType }} presets</div>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -284,16 +305,16 @@ const triggerFileInput = (id: string) => {
               </tr>
             </thead>
             <tbody>
-              <tr v-for="(item, index) in store.formData" :key="item.id" :class="{ 'is-managed': item.isManaged }">
+              <tr v-for="(item, index) in store.formData" :key="item.id" :class="{ 'is-preset': item.isPreset }">
                 <td>
-                  <div class="cell-icon-action" @click="!item.isManaged && (item.enabled = !item.enabled)">
-                    <div v-if="item.isManaged">
-                       <SquareCheck :stroke-width="1" class="icon-button-checkbox is-disabled"/>
-                    </div>
-                    <div v-else>
+                  <div class="cell-icon-action" @click="item.enabled = !item.enabled">
+                    <template v-if="false">
+                       <!-- Removed special disabled state -->
+                    </template>
+                    <template v-else>
                        <SquareCheck v-if="item.enabled" :stroke-width="1" class="icon-button-checkbox" />
                        <Square v-else :stroke-width="1" class="icon-button-checkbox" />
-                    </div>
+                    </template>
                   </div>
                 </td>
                 <td>
@@ -302,14 +323,13 @@ const triggerFileInput = (id: string) => {
                       :route="props.route"
                       :value="item.key"
                       :enabled-env-variable="true"
-                      :readonly="!!item.isManaged"
                       @text-change="val => item.key = val"
                     />
                   </div>
                 </td>
                 <td>
                   <div class="custom-type-select" :class="{ 'is-active': activeSelectIndex === index }">
-                    <div class="type-select-trigger" :class="{ 'is-disabled': item.isManaged }" @click="!item.isManaged && toggleSelect(index, item, $event)">
+                    <div class="type-select-trigger" @click="toggleSelect(index, item, $event)">
                       <span>{{ item.type === 'text' ? 'Text' : 'File' }}</span>
                       <span class="dropdown-arrow">▼</span>
                     </div>
@@ -322,13 +342,12 @@ const triggerFileInput = (id: string) => {
                         :route="props.route"
                         :value="item.value"
                         :enabled-env-variable="true"
-                        :readonly="!!item.isManaged"
                         @text-change="val => item.value = val"
                       />
                     </div>
                     <div v-else>
                       <div class="file-input-wrap">
-                        <button class="btn-select-file" :disabled="!!item.isManaged" @click="triggerFileInput('fd-file-' + index)">
+                        <button class="btn-select-file" @click="triggerFileInput('fd-file-' + index)">
                           {{ item.file ? item.file.name : 'Select File' }}
                         </button>
                         <input 
@@ -342,16 +361,9 @@ const triggerFileInput = (id: string) => {
                   </div>
                 </td>
                 <td>
-                  <div class="cell-icon-action">
-                    <div v-if="item.isManaged">
-                       <Lock :size="16" :stroke-width="1.5" class="text-muted" />
-                    </div>
-                    <div v-else>
-                      <div class="w-100 h-100 d-flex align-items-center justify-content-center" @click="onDeleteClick(index)">
-                        <ShieldAlert v-if="confirmDeleteIndex === index" :stroke-width="1" class="icon-button icon-button-row-action" />
-                        <SquareX v-else :stroke-width="1" class="icon-button icon-button-row-action" />
-                      </div>
-                    </div>
+                  <div class="cell-icon-action" @click="onDeleteClick(index)">
+                    <ShieldAlert v-if="confirmDeleteIndex === index" :stroke-width="1" class="icon-button icon-button-row-action" />
+                    <SquareX v-else :stroke-width="1" class="icon-button icon-button-row-action" />
                   </div>
                 </td>
               </tr>
@@ -371,9 +383,9 @@ const triggerFileInput = (id: string) => {
             <div class="file-name">{{ store.binaryFile.name }}</div>
             <div class="file-size text-muted small">{{ (store.binaryFile.size / 1024).toFixed(2) }} KB</div>
           </div>
-          <div v-else-if="store.selectedBodyPresetId && selectedBodyPresetValue" class="file-info">
-            <div class="file-name">{{ selectedBodyPresetValue.split(' (')[0] }}</div>
-            <div class="file-size text-muted small">{{ selectedBodyPresetValue.split(' (')[1]?.replace(')', '') }}</div>
+          <div v-else-if="activePresets.length > 0 && activePresets[0].value" class="file-info">
+            <div class="file-name">{{ activePresets[0].value.split(' (')[0] }}</div>
+            <div class="file-size text-muted small">{{ activePresets[0].value.split(' (')[1]?.replace(')', '') }}</div>
           </div>
           <div v-else class="text-muted">
             Click to select binary file
@@ -674,38 +686,101 @@ const triggerFileInput = (id: string) => {
   cursor: pointer; border-radius: 8px; &:hover { border-color: #888; background-color: rgba(0,0,0,0.02); }
 }
 
-.preset-label {
-  font-size: 11px;
-  text-transform: uppercase;
-  color: #555;
+.active-preset-tag {
+  background-color: #f0f7ff;
+  border: 1px solid #007bff;
+  color: #007bff;
+  font-size: 10px;
   font-weight: 600;
-}
-
-.preset-select {
-  background-color: #dddddd;
-  border: 1px solid #888888;
-  font-size: 12px;
-  font-family: inherit;
-  padding: 2px 4px;
-  outline: none;
-  cursor: pointer;
-  height: 26px;
-  color: #333;
-  width: 160px;
-  text-align: center;
-  text-align-last: center;
-  text-overflow: ellipsis;
+  padding: 2px 6px;
+  border-radius: 2px;
   white-space: nowrap;
   overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 120px;
+}
+
+.preset-label-none {
+  font-size: 11px;
+  color: #aaa;
+  font-weight: 500;
+}
+
+.preset-selector-wrap {
+  position: relative;
+}
+
+.btn-add-preset {
+  background: #eee;
+  border: 1px solid #888;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  padding: 0 6px;
+  cursor: pointer;
+  border-radius: 2px;
+  color: #333;
+  &:hover { background: #ddd; }
+}
+
+.preset-dropdown-menu {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  width: 220px;
+  background: white;
+  border: 1px solid #888;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+  z-index: 1000;
+  margin-top: 4px;
+  display: flex;
+  flex-direction: column;
+}
+
+.dropdown-header {
+  padding: 6px 10px;
+  background: #f4f4f4;
+  border-bottom: 1px solid #ddd;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: #666;
+}
+
+.dropdown-list {
+  max-height: 300px;
+  overflow-y: auto;
+  padding: 4px 0;
+}
+
+.dropdown-item {
+  display: flex;
+  align-items: center;
+  padding: 6px 12px;
+  cursor: pointer;
+  font-size: 13px;
+  &:hover { background: #f0f7ff; }
   
-  &:hover {
-    background-color: #cccccc;
+  .item-name {
+    flex: 1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 }
 
+.dropdown-empty {
+  padding: 10px;
+  text-align: center;
+  font-size: 12px;
+  color: #999;
+}
+
+.text-primary { color: #007bff; }
+
 .form-data-table {
-  tr.is-managed {
-    background-color: rgba(0, 0, 0, 0.02);
+  tr.is-preset, tr.is-managed {
+    background-color: #f0f7ff;
   }
 }
 .no-body-wrapper {

@@ -1,9 +1,15 @@
 <script setup lang="ts">
-import { ref } from 'vue';
-import { Plus, Trash2, Edit2, Save, X, FileUp } from 'lucide-vue-next';
+import { ref, computed } from 'vue';
+import { Save, FileUp, SquareCheck, Square, SquareX, ShieldAlert, Eraser, Edit2, Trash2, X } from 'lucide-vue-next';
+import { IconSquareRoundedPlus } from "@tabler/icons-vue"
+import type { RouteInfo } from '@/types'
 import { usePresetStorage } from '@/storages/presets';
+import { useRequestParamsStorage } from '@/storages/payload';
 import CodeMirrorContainer2 from '@/app/Generals/CodeEditor/CodeMirrorContainer2.vue';
+import TrackedVariableInput from '@/app/Generals/TrackedVariableInput.vue';
 
+const props = defineProps<{ route: RouteInfo }>()
+const store = useRequestParamsStorage();
 const presetStore = usePresetStorage();
 const activeCategory = ref<'headers' | 'query' | 'body'>('headers');
 const theme = ref('eclipse'); 
@@ -12,7 +18,7 @@ const theme = ref('eclipse');
 const editingPresetId = ref<string | null>(null);
 const editName = ref('');
 const editType = ref<'json' | 'form-data' | 'binary'>('json');
-const editItems = ref<{ key: string; value: string; description: string }[]>([]);
+const editItems = ref<{ key: string; value: string; description: string; enabled: boolean }[]>([]);
 const editJson = ref('');
 const editBinaryInfo = ref('');
 const fileInput = ref<HTMLInputElement | null>(null);
@@ -30,14 +36,18 @@ const startEdit = (category: 'headers' | 'query' | 'body', preset?: any) => {
             editType.value = (preset.type as any) || 'json';
             if (editType.value === 'json') editJson.value = preset.json || preset.value || '';
             else if (editType.value === 'binary') editBinaryInfo.value = preset.value || '';
-            else if (editType.value === 'form-data') editItems.value = JSON.parse(JSON.stringify(preset.formData || preset.items || []));
+            else if (editType.value === 'form-data') editItems.value = JSON.parse(JSON.stringify(preset.formData || preset.items || [])).map((i: any) => ({ ...i, enabled: i.enabled ?? true }));
         } else {
-            editItems.value = JSON.parse(JSON.stringify(preset.items || []));
+            editItems.value = JSON.parse(JSON.stringify(preset.items || [])).map((i: any) => ({ ...i, enabled: i.enabled ?? true }));
         }
     } else {
         editingPresetId.value = 'new';
         editName.value = '';
-        editItems.value = [{ key: '', value: '', description: '' }];
+        editItems.value = [
+            { key: '', value: '', description: '', enabled: true },
+            { key: '', value: '', description: '', enabled: true },
+            { key: '', value: '', description: '', enabled: true }
+        ];
         editJson.value = '';
         editBinaryInfo.value = '';
         if (category === 'body') editType.value = 'json';
@@ -64,11 +74,11 @@ const saveEdit = () => {
         } else if (editType.value === 'binary') {
             presetData.value = editBinaryInfo.value;
         } else {
-            presetData.formData = editItems.value.filter(i => i.key.trim());
+            presetData.formData = editItems.value.filter(i => i.key.trim() || i.value.trim());
             presetData.items = presetData.formData;
         }
     } else {
-        presetData.items = editItems.value.filter(i => i.key.trim());
+        presetData.items = editItems.value.filter(i => i.key.trim() || i.value.trim());
     }
 
     if (editingPresetId.value === 'new') {
@@ -81,7 +91,7 @@ const saveEdit = () => {
 };
 
 const addItem = () => {
-    editItems.value.push({ key: '', value: '', description: '' });
+    editItems.value.push({ key: '', value: '', description: '', enabled: true });
 };
 
 const removeItem = (idx: number) => {
@@ -94,373 +104,442 @@ const handleFileChange = (e: any) => {
         editBinaryInfo.value = file.name + ' (' + (file.size / 1024).toFixed(1) + ' KB)';
     }
 };
+
+// Row delete confirm logic (Copy from HeaderTab)
+const confirmDeleteIndex = ref<number | null>(null);
+let confirmTimer: ReturnType<typeof setTimeout> | undefined;
+
+function onDeleteClick(index: number) {
+  if (confirmDeleteIndex.value === index) {
+    removeItem(index)
+    confirmDeleteIndex.value = null
+    clearTimeout(confirmTimer)
+  } else {
+    confirmDeleteIndex.value = index
+    clearTimeout(confirmTimer)
+    confirmTimer = setTimeout(() => {
+      confirmDeleteIndex.value = null
+    }, 3000)
+  }
+}
+
+function onMasterDeleteClick() {
+  editItems.value = editItems.value.filter(i => i.key.trim() !== '' || i.value.trim() !== '')
+}
+
+function toggleAll() {
+  const isAnyEnabled = editItems.value.some(i => i.enabled)
+  const target = !isAnyEnabled
+  editItems.value.forEach(i => i.enabled = target)
+}
+
+const isAnyItemEnabled = computed(() => {
+  return editItems.value.length > 0 && editItems.value.some(h => h.enabled)
+})
+
+const isConfirmingDeleteAll = ref(false)
+let confirmAllTimer: ReturnType<typeof setTimeout> | undefined
+
+function onTrashClick() {
+  if (isConfirmingDeleteAll.value) {
+    editItems.value = []
+    isConfirmingDeleteAll.value = false
+    clearTimeout(confirmAllTimer)
+  } else {
+    isConfirmingDeleteAll.value = true
+    clearTimeout(confirmAllTimer)
+    confirmAllTimer = setTimeout(() => {
+      isConfirmingDeleteAll.value = false
+    }, 3000)
+  }
+}
 </script>
 
 <template>
-  <div class="preset-tab p-3">
-    <!-- List Section -->
-    <div v-if="!editingPresetId">
-      <!-- Category Tabs -->
-      <div class="category-tabs d-flex gap-2 mb-4">
-        <button 
-          v-for="cat in ['headers', 'query', 'body']" 
-          :key="cat"
-          class="cat-btn"
-          :class="{ active: activeCategory === cat }"
-          @click="activeCategory = cat as any"
-        >
-          {{ cat.toUpperCase() }}
-        </button>
-      </div>
-
-      <div class="preset-header mb-3 d-flex justify-content-between align-items-center">
-        <h3 class="m-0 fs-6 text-uppercase fw-bold text-muted">Manage {{ activeCategory }} Presets</h3>
-        <button class="btn-app-sm" @click="startEdit(activeCategory)">
-          <Plus size="14" class="me-1" /> New Preset
-        </button>
-      </div>
-
-      <div class="preset-grid">
-        <div v-for="p in presetStore.getPresetsByCategory(activeCategory)" :key="p.id" class="preset-card">
-          <div class="p-info">
-            <div class="p-name">{{ p.name }}</div>
-            <div class="p-meta">{{ p.type || activeCategory }}</div>
-          </div>
-          <div class="p-actions">
-            <button class="btn-icon" @click="startEdit(activeCategory, p)"><Edit2 size="14" /></button>
-            <button class="btn-icon text-danger" @click="presetStore.deletePreset(p.id)"><Trash2 size="14" /></button>
-          </div>
+  <div class="preset-tab">
+    <!-- Toolbar (Cloned from HeaderTab) -->
+    <div class="header-toolbar">
+      <div v-if="!editingPresetId" class="d-flex align-items-center w-100">
+        <div class="d-flex me-auto">
+          <button 
+            v-for="cat in ['headers', 'query', 'body']" 
+            :key="cat"
+            class="header-toolbar-title text-uppercase px-3 me-1"
+            :class="{ active: activeCategory === cat }"
+            @click="activeCategory = cat as any"
+          >
+            {{ cat }}
+          </button>
         </div>
+        <IconSquareRoundedPlus @click="startEdit(activeCategory)" stroke-width="1" class="icon-button-add-row ms-2" title="New Preset"/>
+      </div>
+      
+      <div v-else class="d-flex align-items-center w-100">
+        <span class="header-toolbar-title me-2 text-uppercase">Preset Name</span>
+        <input v-model="editName" class="preset-name-input flex-1 me-2" placeholder="Enter preset name..." />
         
-        <div v-if="!presetStore.getPresetsByCategory(activeCategory).length" class="empty-state">
-          No presets found for this category.
+        <IconSquareRoundedPlus @click="addItem" stroke-width="1" class="icon-button-add-row me-1"/>
+        
+        <div @click="onTrashClick" title="Delete all items" class="d-flex align-items-center cursor-pointer me-3">
+          <ShieldAlert v-if="isConfirmingDeleteAll" stroke-width="1" class="icon-button icon-button-trash-x" />
+          <SquareX v-else stroke-width="1" class="icon-button icon-button-trash-x" />
+        </div>
+
+        <div class="d-flex gap-2 ms-auto">
+           <button class="btn-cancel" @click="cancelEdit">CANCEL</button>
+           <button class="btn-save d-flex align-items-center" @click="saveEdit">
+             <Save size="14" class="me-1" /> SAVE
+           </button>
         </div>
       </div>
     </div>
 
-    <!-- Editor Section -->
-    <div v-else class="preset-editor">
-      <div class="editor-header d-flex justify-content-between align-items-center mb-4">
-        <div>
-           <label class="label-sm">Preset Name</label>
-           <input v-model="editName" class="name-input" placeholder="Enter preset name..." />
-        </div>
-        <div class="d-flex gap-2">
-           <button class="btn-app-secondary" @click="cancelEdit">Cancel</button>
-           <button class="btn-app-primary" @click="saveEdit">
-             <Save size="16" class="me-1" /> Save Preset
-           </button>
+    <!-- Content Area -->
+    <div class="preset-content mt-2">
+      <!-- List View -->
+      <div v-if="!editingPresetId">
+        <div class="preset-grid">
+          <div v-for="p in presetStore.getPresetsByCategory(activeCategory)" :key="p.id" class="preset-card">
+            <div class="p-info" @click="startEdit(activeCategory, p)">
+              <div class="p-name">{{ p.name }}</div>
+              <div class="p-meta">{{ p.type || activeCategory }}</div>
+            </div>
+            <div class="p-actions">
+              <button class="btn-icon" @click.stop="startEdit(activeCategory, p)"><Edit2 size="14" /></button>
+              <button class="btn-icon text-danger" @click.stop="presetStore.deletePreset(p.id)"><Trash2 size="14" /></button>
+            </div>
+          </div>
+          <div v-if="!presetStore.getPresetsByCategory(activeCategory).length" class="empty-state">
+            No presets found for this category.
+          </div>
         </div>
       </div>
 
-      <div class="editor-body">
-         <!-- Tabs for Body Type if Editing Body -->
-         <div v-if="activeCategory === 'body'" class="d-flex gap-2 mb-3">
+      <!-- Editor View -->
+      <div v-else class="preset-editor">
+         <div v-if="activeCategory === 'body'" class="d-flex gap-1 mb-2">
             <button class="type-btn" :class="{ active: editType === 'json' }" @click="editType = 'json'">JSON</button>
-            <button class="type-btn" :class="{ active: editType === 'form-data' }" @click="editType = 'form-data'">Form Data</button>
-            <button class="type-btn" :class="{ active: editType === 'binary' }" @click="editType = 'binary'">Binary</button>
+            <button class="type-btn" :class="{ active: editType === 'form-data' }" @click="editType = 'form-data'">FORM DATA</button>
+            <button class="type-btn" :class="{ active: editType === 'binary' }" @click="editType = 'binary'">BINARY</button>
          </div>
 
-         <!-- JSON Editor -->
-         <div v-if="editType === 'json'" class="json-wrap">
-            <div class="editor-container-styled">
-               <CodeMirrorContainer2 
-                 v-model="editJson" 
-                 :theme="theme" 
-                 :show-beautify="true"
-                 @update:theme="onThemeUpdate"
-               />
+         <!-- Table Editor (EXACT CLONE OF HeaderTab) -->
+         <div v-if="activeCategory !== 'body' || editType === 'form-data'" class="table-outer-wrap">
+            <div class="header-table-scroll-wrapper">
+               <table class="header-param-table">
+                  <colgroup>
+                    <col style="width: 40px;">
+                    <col style="width: 25%;">
+                    <col style="width: 25%;">
+                    <col style="width: auto;">
+                    <col style="width: 40px;">
+                  </colgroup>
+                  <thead>
+                    <tr>
+                      <th>
+                        <div class="cell-icon-action" @click="toggleAll">
+                          <SquareCheck v-if="isAnyItemEnabled" stroke-width="1" class="icon-button-checkbox"/>
+                          <Square v-else stroke-width="1" class="icon-button-checkbox"/>
+                        </div>
+                      </th>
+                      <th class="text-center">Key</th>
+                      <th class="text-center">Value</th>
+                      <th class="text-center">Description</th>
+                      <th>
+                        <div class="cell-icon-action" @click="onMasterDeleteClick" title="Clear empty rows">
+                          <Eraser stroke-width="1" class="icon-button-eraser" />
+                        </div>
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr v-for="(item, idx) in editItems" :key="idx">
+                      <td>
+                        <div class="cell-icon-action" @click="item.enabled = !item.enabled">
+                          <SquareCheck v-if="item.enabled" stroke-width="1" class="icon-button-checkbox"/>
+                          <Square v-else stroke-width="1" class="icon-button-checkbox"/>
+                        </div>
+                      </td>
+                      <td>
+                        <div class="param-input-wrap">
+                          <TrackedVariableInput
+                            :value="item.key"
+                            :enabled-env-variable="true"
+                            @text-change="val => item.key = val"
+                          />
+                        </div>
+                      </td>
+                      <td>
+                        <div class="param-input-wrap">
+                          <TrackedVariableInput
+                            :value="item.value"
+                            :enabled-env-variable="true"
+                            @text-change="val => item.value = val"
+                          />
+                        </div>
+                      </td>
+                      <td>
+                        <div class="param-input-wrap">
+                          <TrackedVariableInput
+                            :value="item.description"
+                            :enabled-env-variable="false"
+                            @text-change="val => item.description = val"
+                          />
+                        </div>
+                      </td>
+                      <td>
+                        <div class="cell-icon-action" @click="onDeleteClick(idx)">
+                           <ShieldAlert v-if="confirmDeleteIndex === idx" stroke-width="1" class="icon-button-row-action" />
+                           <SquareX v-else stroke-width="1" class="icon-button-row-action" />
+                        </div>
+                      </td>
+                    </tr>
+                    <tr v-if="editItems.length === 0">
+                      <td colspan="5" class="empty-row">No items</td>
+                    </tr>
+                  </tbody>
+               </table>
             </div>
          </div>
 
+         <!-- JSON Editor -->
+         <div v-else-if="activeCategory === 'body' && editType === 'json'" class="json-wrap">
+            <CodeMirrorContainer2 
+              v-model="editJson" 
+              :theme="theme" 
+              :show-beautify="true"
+              @update:theme="onThemeUpdate"
+            />
+         </div>
+
          <!-- Binary Editor -->
-         <div v-else-if="editType === 'binary'" class="binary-wrap">
+         <div v-else-if="activeCategory === 'body' && editType === 'binary'" class="binary-wrap">
             <div class="binary-uploader" @click="fileInput?.click()">
                <FileUp :size="40" :stroke-width="1" class="mb-3 text-muted" />
                <div v-if="editBinaryInfo" class="file-info text-center">
                   <div class="file-name fw-bold">{{ editBinaryInfo.split(' (')[0] }}</div>
                   <div class="file-size text-muted small">{{ editBinaryInfo.split(' (')[1]?.replace(')', '') }}</div>
                </div>
-               <div v-else class="text-muted">
-                  Click to select default file
-               </div>
+               <div v-else class="text-muted">Click to select default file</div>
                <input type="file" ref="fileInput" class="d-none" @change="handleFileChange" />
             </div>
-            
-            <div class="help-text mt-3 text-center w-100">Note: Browser security prevents storing actual content. Metadata helps identification.</div>
-            
-            <button v-if="editBinaryInfo" class="btn-icon text-danger mt-2 mx-auto" @click.stop="editBinaryInfo = ''" title="Clear selection">
-               <Trash2 size="16" class="me-1" /> Clear selection
-            </button>
          </div>
-
-         <!-- Table Editor for others (Headers, Query, Form Data) -->
-         <div v-else class="table-wrap">
-            <table class="config-table mb-2">
-               <thead>
-                 <tr>
-                   <th style="width: 30%">Key</th>
-                   <th style="width: 35%">Value</th>
-                   <th style="width: 30%">Description</th>
-                   <th style="width: 5%"></th>
-                 </tr>
-               </thead>
-               <tbody>
-                 <tr v-for="(item, idx) in editItems" :key="idx">
-                   <td><input v-model="item.key" class="cell-input" placeholder="key"/></td>
-                   <td><input v-model="item.value" class="cell-input" placeholder="value"/></td>
-                   <td><input v-model="item.description" class="cell-input" placeholder="desc"/></td>
-                   <td class="text-center">
-                     <button class="btn-icon text-danger" @click="removeItem(idx)"><X size="14"/></button>
-                   </td>
-                 </tr>
-               </tbody>
-            </table>
-            <button class="add-row-btn mb-4" @click="addItem">
-               <Plus size="14" class="me-1"/> Add Field
-            </button>
-            <div class="help-text">These fields will be injected/merged into your request.</div>
-         </div>
+         <div class="help-text mt-2 text-muted">These fields will be injected/merged into your request.</div>
       </div>
     </div>
   </div>
 </template>
 
 <style scoped lang="scss">
+@use "@/assets/styles/elements";
+
 .preset-tab {
-  height: 100%;
-  overflow-y: auto;
-  background-color: #f4f4f4;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  height: auto;
+  padding: 8px;
 }
 
-.cat-btn {
-  background: #e0e0e0;
-  border: 1px solid #ccc;
-  padding: 6px 16px;
-  font-size: 12px;
+.header-toolbar {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  width: 100%;
+  flex-shrink: 0;
+  margin-bottom: 2px;
+  height: 32px;
+}
+
+.header-toolbar-title {
+  padding: 0 8px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  background-color: rgba(221, 221, 221, 0.65);
+  border: 1px solid #888888;
+  font-size: 13px;
   font-weight: 500;
+  white-space: nowrap;
   cursor: pointer;
-  color: #666;
-  &:hover { background: #d8d8d8; }
   &.active {
-    background: #cccccc; 
-    color: #333;
-    border-color: #bbb;
+    background-color: #bbbbbb;
+    border-color: #666;
   }
+}
+
+.preset-name-input {
+  background-color: rgba(221, 221, 221, 0.65);
+  border: 1px solid #888888;
+  height: 28px;
+  padding: 0 8px;
+  font-size: 13px;
+  outline: none;
+  &:focus { background: #fff; }
+}
+
+.header-table-scroll-wrapper {
+  min-height: 0;
+  height: fit-content;
+  max-height: 400px; 
+  overflow-y: auto;
+  @include elements.scrollbar-hidden;
+}
+
+.header-param-table {
+  table-layout: fixed;
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  border-right: var(--table-border);
+
+  th {
+    height: 36px;
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    background-color: var(--table-header-bg-color);
+    border-top: var(--table-border);
+    border-left: var(--table-border);
+    border-bottom: var(--table-border);
+    font-size: 15px;
+    font-weight: 500;
+    padding: 0;
+    text-align: center !important;
+    vertical-align: middle !important;
+  }
+
+  td {
+    height: 40px;
+    border-left: var(--table-border);
+    border-bottom: var(--table-border);
+    padding: 0 8px;
+    vertical-align: middle;
+  }
+
+  tr:hover td {
+    background-color: rgba(0, 0, 0, 0.02);
+  }
+
+  th:first-child, td:first-child,
+  th:last-child, td:last-child {
+    width: 40px;
+    padding: 4px;
+    text-align: center;
+  }
+}
+
+.cell-icon-action {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+  height: 100%;
+  cursor: pointer;
+}
+
+.icon-button-add-row {
+  width: 30px !important;
+  height: 30px;
+  cursor: pointer;
+  &:hover { fill: #cccccc; }
+}
+
+.icon-button {
+  cursor: pointer;
+  fill: var(--icon-bg-color);
+  transition: fill 0.2s ease;
+  &:hover { fill: var(--icon-bg-color-active); }
+}
+
+.icon-button-trash-x {
+  width: 30px;
+  height: 30px;
+}
+
+.icon-button-checkbox, .icon-button-eraser, .icon-button-row-action {
+  width: 26px;
+  height: 26px;
+  cursor: pointer;
+  display: block;
+  margin: 0 auto;
+  fill: var(--icon-bg-color);
+  transition: fill 0.2s ease;
+  &:hover { fill: var(--icon-bg-color-active); }
+}
+
+.param-input-wrap {
+  padding: 2px 0;
+}
+
+.empty-row {
+  text-align: center;
+  color: #aaa;
+  font-size: 15px;
+  height: 40px;
+  vertical-align: middle;
+}
+
+.btn-save {
+  background: #007bff;
+  color: white;
+  border: 1px solid #0056b3;
+  padding: 0 12px;
+  height: 28px;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  &:hover { background: #0069d9; }
+}
+
+.btn-cancel {
+  background: #fff;
+  border: 1px solid #ccc;
+  padding: 0 12px;
+  height: 28px;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  &:hover { background: #f8f8f8; }
 }
 
 .preset-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-  gap: 12px;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 8px;
 }
 
 .preset-card {
-  background: #f0f0f0;
+  background: #f8f8f8;
   border: 1px solid #ddd;
-  padding: 12px;
   display: flex;
-  justify-content: space-between;
   align-items: center;
-  &:hover { border-color: #bbb; background: #e8e8e8; }
-  
-  .p-info {
-    flex: 1;
-    min-width: 0;
-  }
-  .p-name { font-weight: 400; font-size: 14px; color: #333; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .p-meta { font-size: 11px; color: #777; margin-top: 2px; text-transform: uppercase; }
-  
-  .p-actions {
-    display: flex;
-    gap: 4px;
-  }
+  transition: all 0.2s ease;
+  &:hover { border-color: #bbb; background: #f0f0f0; }
+  .p-info { flex: 1; padding: 8px 12px; cursor: pointer; min-width: 0; }
+  .p-name { font-weight: 500; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .p-meta { font-size: 10px; color: #888; text-transform: uppercase; }
+  .p-actions { display: flex; padding-right: 4px; align-items: center; }
 }
 
-.empty-state {
-  grid-column: 1 / -1;
-  text-align: center;
-  padding: 40px;
-  color: #999;
-  font-style: italic;
-  font-size: 13px;
-}
+.text-primary { color: #007bff; }
 
-.preset-editor {
-  background: #f0f0f0;
-  border: 1px solid #ddd;
-  padding: 20px;
-}
-
-.editor-container-styled {
-    border: 1px solid #ccc;
-    background: #fff;
-    height: 300px;
-    overflow: hidden;
-}
-
-.binary-wrap {
-    padding: 20px;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    background: #fcfcfc;
-    border-radius: 8px;
-}
-
-.binary-uploader {
-    width: 100%;
-    max-width: 400px;
-    height: 160px;
-    border: 2px dashed #ccc;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    align-items: center;
-    cursor: pointer;
-    border-radius: 8px;
-    transition: all 0.2s;
-    background: #fff;
-    &:hover {
-        border-color: #888;
-        background-color: rgba(0, 0, 0, 0.02);
-    }
-}
-
-.file-info {
-    .file-name {
-        font-size: 14px;
-        color: #333;
-        margin-bottom: 2px;
-    }
-    .file-size {
-        font-size: 12px;
-        color: #777;
-    }
-}
-
-.label-sm {
-  font-size: 11px;
-  text-transform: uppercase;
-  color: #666;
-  font-weight: 700;
-  display: block;
-  margin-bottom: 4px;
-}
-
-.name-input {
-  width: 300px;
-  padding: 6px 10px;
-  border: 1px solid #ccc;
-  background: #fcfcfc;
-  font-size: 14px;
-  outline: none;
-  &:focus { border-color: #bbb; }
-}
+.btn-icon { background: none; border: none; padding: 4px; color: #888; cursor: pointer; &:hover { color: #333; } }
 
 .type-btn {
-  background: #ddd;
-  border: 1px solid #bbb;
-  padding: 4px 12px;
-  font-size: 11px;
-  font-weight: bold;
+  background: rgba(221, 221, 221, 0.4);
+  border: 1px solid #888888;
+  padding: 0 8px;
+  height: 24px;
+  font-size: 10px;
+  font-weight: 600;
   cursor: pointer;
-  &.active { background: #999; color: #222; border-color: #888; }
+  &.active { background: #666; color: white; border-color: #333; }
 }
 
-.btn-icon {
-  background: none;
-  border: none;
-  cursor: pointer;
-  padding: 4px;
-  color: #666;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  &:hover { color: #000; }
-  &.text-danger { color: #dc3545; }
-  &.text-danger:hover { color: #bd2130; }
-}
+.json-wrap { border: 1px solid #ddd; height: 350px; overflow: hidden; }
+.binary-wrap { padding: 30px; background: #fcfcfc; border: 1px solid #ddd; }
+.binary-uploader { width: 100%; height: 120px; border: 2px dashed #ccc; display: flex; flex-direction: column; justify-content: center; align-items: center; cursor: pointer; &:hover { border-color: #999; } }
 
-.config-table {
-  width: 100%;
-  border-collapse: collapse;
-  background: #fcfcfc;
-  th {
-    background: #e8e8e8;
-    border: 1px solid #ddd;
-    padding: 6px;
-    font-size: 12px;
-    color: #444;
-  }
-  td {
-    border: 1px solid #ddd;
-    padding: 0;
-  }
-}
-
-.cell-input {
-  width: 100%;
-  border: none;
-  padding: 8px;
-  font-size: 13px;
-  background: transparent;
-  outline: none;
-  &:focus { background: #f0f8ff; }
-}
-
-.add-row-btn {
-  width: 100%;
-  background: #f8f8f8;
-  border: 1px solid #ccc;
-  padding: 6px;
-  cursor: pointer;
-  font-size: 12px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  &:hover { background: #eee; }
-}
-
-.help-text {
-  font-size: 11px;
-  color: #777;
-  margin-top: 4px;
-}
-
-.btn-app-primary {
-  background: #007bff;
-  color: white;
-  border: 1px solid #0056b3;
-  padding: 6px 16px;
-  font-size: 13px;
-  font-weight: 500;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  &:hover { background: #0069d9; }
-}
-
-.btn-app-secondary {
-  background: #ffffff;
-  border: 1px solid #ccc;
-  padding: 6px 16px;
-  font-size: 13px;
-  cursor: pointer;
-  color: #333;
-  &:hover { background: #f8f8f8; }
-}
-
-.btn-app-sm {
-  background: #ffffff;
-  border: 1px solid #ccc;
-  padding: 4px 10px;
-  font-size: 12px;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  color: #333;
-  &:hover { background: #f8f8f8; }
-}
+.help-text { font-size: 11px; }
 </style>

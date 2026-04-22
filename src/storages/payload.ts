@@ -3,17 +3,29 @@ import { nanoid } from 'nanoid'
 import { useEnvStorage } from '@/storages/env-variables-tmp.ts'
 import { usePresetStorage } from '@/storages/presets.ts'
 
+export interface Header {
+  id: string
+  key: string
+  value: string
+  enabled: boolean
+  description: string
+  isPreset?: boolean
+  isManaged?: boolean
+  presetId?: string
+}
+
 export interface QueryParam {
   id: string
   key: string
   value: string
   enabled: boolean
   description: string
-  isManaged?: boolean
+  isPreset?: boolean
+  presetId?: string
 }
 
 export interface UriParameter {
-  name: string
+  key: string
   value: string
 }
 
@@ -25,16 +37,17 @@ export interface FormDataParam {
   enabled: boolean
   description: string
   file?: File | null
-  isManaged?: boolean
+  isPreset?: boolean
+  presetId?: string
 }
 
 export type BodyType = 'none' | 'json' | 'form-data' | 'binary'
 
 const GLOBAL_SETTINGS_KEY = 'api_global_settings'
 
-export const useRequestParamsStorage = defineStore('requestParams', {
+export const useRequestParamsStorage = defineStore('request-params', {
   state: () => {
-    // 1. Nạp Global Settings (Proxy)
+    // Load Global Settings (Proxy)
     const savedGlobal = localStorage.getItem(GLOBAL_SETTINGS_KEY)
     let globalSettings = { useProxy: false, proxyUrl: 'http://localhost:8080/' }
     if (savedGlobal) {
@@ -47,20 +60,26 @@ export const useRequestParamsStorage = defineStore('requestParams', {
     }
 
     return {
+      headers: [] as Header[],
       queryParams: [] as QueryParam[],
       uriParameters: [] as UriParameter[],
       baseUrl: '',
       method: 'GET',
-      headers: [] as { id: string; key: string; value: string; enabled: boolean; description: string; isManaged?: boolean }[],
       body: '',
       bodyType: 'json' as BodyType,
       formData: [] as FormDataParam[],
       binaryFile: null as File | null,
       requestName: '',
-      selectedHeaderPresetId: null as string | null,
-      selectedQueryPresetId: null as string | null,
-      selectedBodyPresetId: null as string | null,
-      // CORS Proxy (Khởi tạo từ localStorage)
+      
+      // Selection (Multiple)
+      selectedHeaderPresetIds: [] as string[],
+      selectedQueryPresetIds: [] as string[],
+      selectedBodyPresetIds: [] as string[],
+      
+      authType: 'none' as 'none' | 'bearer' | 'preset',
+      authToken: '',
+      
+      // CORS Proxy
       useProxy: globalSettings.useProxy,
       proxyUrl: globalSettings.proxyUrl,
     }
@@ -80,11 +99,11 @@ export const useRequestParamsStorage = defineStore('requestParams', {
         return result
       }
       let url = resolveEnvVariables(this.baseUrl)
-      this.uriParameters.forEach(variable => {
-        const val = variable.value.trim()
+      this.uriParameters.forEach(param => {
+        const val = param.value.trim()
         if (val) {
           const resolvedVal = resolveEnvVariables(val)
-          url = url.replace(`{${variable.name}}`, resolvedVal)
+          url = url.replace(`{${param.key}}`, resolvedVal)
         }
       })
       const enabledQueries = this.queryParams
@@ -105,7 +124,6 @@ export const useRequestParamsStorage = defineStore('requestParams', {
   },
 
   actions: {
-    // Luôn gọi hàm này khi thay đổi useProxy hoặc proxyUrl
     persistGlobalSettings() {
       const data = {
         useProxy: this.useProxy,
@@ -117,87 +135,120 @@ export const useRequestParamsStorage = defineStore('requestParams', {
     syncManagedHeaders() {
       const presetStorage = usePresetStorage();
       
-      // 1. Lọc lấy ra các header do user tự gõ (không phải managed)
-      const userHeaders = this.headers.filter(h => !h.isManaged);
-      const managedHeaders = [];
-
-      // 2. Thêm Content-Type (Managed by Body)
+      // 1. Handle Content-Type (Managed)
       let contentType = '';
-      if (this.bodyType === 'json') {
-        contentType = 'application/json';
-      } else if (this.bodyType === 'form-data') {
-        contentType = 'multipart/form-data';
-      }
+      if (this.bodyType === 'json') contentType = 'application/json';
+      else if (this.bodyType === 'form-data') contentType = 'multipart/form-data';
 
       if (contentType) {
-        managedHeaders.push({
-          id: 'managed-content-type',
+        const ctIndex = this.headers.findIndex(h => h.key.toLowerCase() === 'content-type' && h.isManaged);
+        let existingCT: any = null;
+        if (ctIndex !== -1) {
+          existingCT = this.headers.splice(ctIndex, 1)[0];
+          existingCT.value = contentType;
+          existingCT.isManaged = true;
+        }
+        this.headers.unshift(existingCT || {
+          id: nanoid(),
           key: 'Content-Type',
           value: contentType,
           enabled: true,
           description: 'Managed by Body settings',
           isManaged: true
         });
+      } else {
+        // Remove Content-Type if no longer needed
+        this.headers = this.headers.filter(h => !(h.key.toLowerCase() === 'content-type' && h.isManaged));
       }
 
-      // 3. Thêm Preset Headers
-      if (this.selectedHeaderPresetId) {
-        const preset = presetStorage.headerPresets.find((p: any) => p.id === this.selectedHeaderPresetId);
+      // 2. Remove rows from presets that are no longer selected
+      this.headers = this.headers.filter(h => !h.presetId || this.selectedHeaderPresetIds.includes(h.presetId));
+
+      // 3. Apply Selected Preset Headers
+      this.selectedHeaderPresetIds.forEach(presetId => {
+        const preset = presetStorage.headerPresets.find((p: any) => p.id === presetId);
         if (preset) {
-           preset.items.forEach((h: any, idx: number) => {
-             managedHeaders.push({
-               id: `managed-preset-${this.selectedHeaderPresetId}-${idx}`,
-               key: h.key,
-               value: h.value,
-               enabled: true,
-               description: h.description || 'From Preset',
-               isManaged: true
-             });
-           });
+          preset.items.forEach((h: any) => {
+            const existing = this.headers.find(row => 
+              row.key.toLowerCase() === h.key.toLowerCase() && row.presetId === presetId
+            );
+            if (existing) {
+              existing.value = h.value;
+              existing.description = h.description || existing.description;
+            } else {
+              this.headers.push({
+                id: nanoid(),
+                key: h.key,
+                value: h.value,
+                enabled: true,
+                description: h.description || 'From Preset',
+                isPreset: true,
+                presetId: presetId
+              });
+            }
+          });
         }
-      }
+      });
 
-      // 4. Hợp nhất: Managed lên đầu, User Headers theo sau
-      this.headers = [...managedHeaders, ...userHeaders];
+      // 4. ENFORCE ORDER: Managed > Preset > Manual
+      this.headers.sort((a, b) => {
+        const scoreA = a.isManaged ? 0 : (a.isPreset ? 1 : 2);
+        const scoreB = b.isManaged ? 0 : (b.isPreset ? 1 : 2);
+        return scoreA - scoreB;
+      });
     },
 
     syncManagedQueryParams() {
       const presetStorage = usePresetStorage();
-      const userParams = this.queryParams.filter(p => !p.isManaged);
-      const managedParams: QueryParam[] = [];
+      
+      // 1. Remove rows from presets that are no longer selected
+      this.queryParams = this.queryParams.filter(q => !q.presetId || this.selectedQueryPresetIds.includes(q.presetId));
 
-      if (this.selectedQueryPresetId) {
-        const preset = presetStorage.queryPresets.find((p: any) => p.id === this.selectedQueryPresetId);
+      // 2. Apply Selected Preset Query Params
+      this.selectedQueryPresetIds.forEach(presetId => {
+        const preset = presetStorage.queryPresets.find((p: any) => p.id === presetId);
         if (preset) {
-          preset.items.forEach((item: any, idx: number) => {
-            managedParams.push({
-              id: `managed-query-${this.selectedQueryPresetId}-${idx}`,
-              key: item.key,
-              value: item.value,
-              enabled: true,
-              description: item.description || 'From Preset',
-              isManaged: true
-            });
+          preset.items.forEach((item: any) => {
+            const existing = this.queryParams.find(row => 
+              row.key.toLowerCase() === item.key.toLowerCase() && row.presetId === presetId
+            );
+            if (existing) {
+              existing.value = item.value;
+              existing.description = item.description || existing.description;
+            } else {
+              this.queryParams.push({
+                id: nanoid(),
+                key: item.key,
+                value: item.value,
+                enabled: true,
+                description: item.description || 'From Preset',
+                isPreset: true,
+                presetId: presetId
+              });
+            }
           });
         }
-      }
-      this.queryParams = [...managedParams, ...userParams];
+      });
+
+      // ENFORCE ORDER: Preset > Manual
+      this.queryParams.sort((a, b) => {
+        const scoreA = a.isPreset ? 0 : 1;
+        const scoreB = b.isPreset ? 0 : 1;
+        return scoreA - scoreB;
+      });
     },
 
     syncManagedBody() {
       const presetStorage = usePresetStorage();
-      
-      // 1. Luôn lấy lại dữ liệu sạch của user (loại bỏ tất cả dòng managed cũ)
-      const userFormData = this.formData.filter(f => !f.isManaged);
-      let managedFormData: FormDataParam[] = [];
 
-      // 2. Nếu có preset được chọn, mới bắt đầu tính toán managedFormData mới
-      if (this.selectedBodyPresetId && this.selectedBodyPresetId !== 'preset-none') {
-        const preset = presetStorage.bodyPresets.find((p: any) => p.id === this.selectedBodyPresetId);
-        
+      // 1. Remove rows from presets that are no longer selected
+      this.formData = this.formData.filter(f => !f.presetId || this.selectedBodyPresetIds.includes(f.presetId));
+
+      // 2. Apply Selected Body Presets
+      this.selectedBodyPresetIds.forEach(presetId => {
+        const preset = presetStorage.bodyPresets.find((p: any) => p.id === presetId);
         if (preset && (preset.type === this.bodyType || preset.type === 'body-' + this.bodyType)) {
            if (this.bodyType === 'json') {
-             // Logic merge JSON
              const newJson = preset.json || '';
              if (this.body.trim() === '') {
                this.body = newJson;
@@ -207,35 +258,42 @@ export const useRequestParamsStorage = defineStore('requestParams', {
                  const presetObj = JSON.parse(newJson);
                  if (typeof currentObj === 'object' && typeof presetObj === 'object') {
                    this.body = JSON.stringify({ ...presetObj, ...currentObj }, null, 2);
-                 } else {
-                   this.body = newJson + '\n' + this.body;
                  }
-               } catch (e) {
-                 this.body = newJson + '\n' + this.body;
-               }
+               } catch (e) {}
              }
            } else if (this.bodyType === 'form-data') {
-             managedFormData = preset.formData?.map((item: any, idx: number) => ({
-                id: `managed-body-${this.selectedBodyPresetId}-${idx}`,
-                key: item.key,
-                value: item.value,
-                type: (item.type as any) || 'text',
-                enabled: true,
-                description: item.description || 'From Preset',
-                isManaged: true
-             })) || [];
-           } else if (this.bodyType === 'binary') {
-             this.binaryFile = null; // Clear manual file when preset is selected
+             (preset.formData || []).forEach((item: any) => {
+                const existing = this.formData.find(row => 
+                  row.key.toLowerCase() === item.key.toLowerCase() && row.presetId === presetId
+                );
+                if (existing) {
+                  existing.value = item.value;
+                  existing.description = item.description || existing.description;
+                } else {
+                  this.formData.push({
+                    id: nanoid(),
+                    key: item.key,
+                    value: item.value,
+                    type: (item.type as any) || 'text',
+                    enabled: true,
+                    description: item.description || 'From Preset',
+                    isPreset: true,
+                    presetId: presetId
+                  });
+                }
+             });
            }
-        } else {
-          // Nếu preset không tồn tại hoặc không khớp type, reset ID về null
-          this.selectedBodyPresetId = null;
         }
-      }
+      });
 
-      // 3. Cập nhật lại mảng formData: Managed mới (nếu có) + User Data
-      this.formData = [...managedFormData, ...userFormData];
-      this.syncManagedHeaders(); // Content-Type might change
+      // ENFORCE ORDER: Preset > Manual
+      this.formData.sort((a, b) => {
+        const scoreA = a.isPreset ? 0 : 1;
+        const scoreB = b.isPreset ? 0 : 1;
+        return scoreA - scoreB;
+      });
+
+      this.syncManagedHeaders();
     },
 
     setBodyType(type: BodyType) {
@@ -254,20 +312,22 @@ export const useRequestParamsStorage = defineStore('requestParams', {
       this.queryParams = []
     },
     toggleQueryParam(index: number) {
-      this.queryParams[index].enabled = !this.queryParams[index].enabled
+      if (this.queryParams[index]) {
+        this.queryParams[index].enabled = !this.queryParams[index].enabled
+      }
     },
     toggleAllQueryParams() {
       const isAnyEnabled = this.queryParams.some(p => p.enabled)
       const targetState = !isAnyEnabled
       this.queryParams.forEach(p => p.enabled = targetState)
     },
-    updateUriParameter(name: string, value: string) {
+    updateUriParameter(key: string, value: string) {
       const trimmed = value.trim()
-      const index = this.uriParameters.findIndex(v => v.name === name)
+      const index = this.uriParameters.findIndex(v => v.key === key)
       if (index !== -1) {
         this.uriParameters[index].value = trimmed
       } else {
-        this.uriParameters.push({ name, value: trimmed })
+        this.uriParameters.push({ key, value: trimmed })
       }
     },
     addHeader() {
@@ -275,11 +335,16 @@ export const useRequestParamsStorage = defineStore('requestParams', {
     },
     removeHeader(index: number) {
       const header = this.headers[index];
-      if (header?.isManaged) return; // Không cho xóa managed header
+      // PROTECT MANAGED HEADERS
+      if (header && header.isManaged) {
+        return;
+      }
       this.headers.splice(index, 1)
     },
     toggleHeader(index: number) {
-      this.headers[index].enabled = !this.headers[index].enabled
+      if (this.headers[index]) {
+        this.headers[index].enabled = !this.headers[index].enabled
+      }
     },
     toggleAllHeaders() {
       const isAnyEnabled = this.headers.some(h => h.enabled)
@@ -287,15 +352,14 @@ export const useRequestParamsStorage = defineStore('requestParams', {
       this.headers.forEach(h => h.enabled = targetState)
     },
     removeAllHeaders() {
-      // Giữ lại managed headers
-      this.headers = this.headers.filter(h => h.isManaged);
+      // Keep managed headers
+      this.headers = this.headers.filter(h => h.isManaged)
     },
+    
     addFormData() {
       this.formData.push({ id: nanoid(), key: '', value: '', type: 'text', enabled: true, description: '' })
     },
     removeFormData(index: number) {
-      const item = this.formData[index];
-      if (item?.isManaged) return; // Bảo vệ managed item
       this.formData.splice(index, 1)
     },
     setBaseUrl(url: string) {
@@ -303,10 +367,6 @@ export const useRequestParamsStorage = defineStore('requestParams', {
     },
     setMethod(method: string) {
       this.method = method
-      // Một số method không có body (GET, HEAD)
-      if (['GET', 'HEAD'].includes(method)) {
-        // Có thể set bodyType = none nếu muốn
-      }
     },
     resetAll() {
       this.queryParams = []
@@ -319,6 +379,9 @@ export const useRequestParamsStorage = defineStore('requestParams', {
       this.formData = []
       this.binaryFile = null
       this.requestName = ''
+      this.selectedHeaderPresetIds = []
+      this.selectedQueryPresetIds = []
+      this.selectedBodyPresetIds = []
       this.syncManagedHeaders();
     },
     saveToStorage(routeId: string) {
@@ -331,8 +394,10 @@ export const useRequestParamsStorage = defineStore('requestParams', {
         headers: this.headers,
         body: this.body,
         bodyType: this.bodyType,
-        formData: this.formData.map(fd => ({...fd, file: null})), 
-        selectedHeaderPresetId: this.selectedHeaderPresetId,
+        formData: this.formData.map(fd => ({...fd, file: null})),
+        selectedHeaderPresetIds: this.selectedHeaderPresetIds,
+        selectedQueryPresetIds: this.selectedQueryPresetIds,
+        selectedBodyPresetIds: this.selectedBodyPresetIds,
       }
       localStorage.setItem(`api_request_data_${routeId}`, JSON.stringify(data))
     },
@@ -350,23 +415,15 @@ export const useRequestParamsStorage = defineStore('requestParams', {
           this.body = data.body || ''
           this.bodyType = data.bodyType || 'json'
           this.formData = data.formData || []
-          this.selectedHeaderPresetId = data.selectedHeaderPresetId || null;
+          this.selectedHeaderPresetIds = data.selectedHeaderPresetIds || []
+          this.selectedQueryPresetIds = data.selectedQueryPresetIds || []
+          this.selectedBodyPresetIds = data.selectedBodyPresetIds || []
           this.syncManagedHeaders();
         } catch (e) {
           console.error('Failed to parse saved request data', e)
         }
       } else {
         this.resetAll()
-        
-        // Mặc định cho ví dụ upload file nếu là new request cho URL này
-        if (this.baseUrl.includes('api.escuelajs.co/api/v1/files/upload')) {
-          this.method = 'POST'
-          this.bodyType = 'form-data'
-          this.formData = [
-            { id: nanoid(), key: 'file', value: '', type: 'file', enabled: true, description: 'The file to upload' }
-          ]
-          this.syncManagedHeaders()
-        }
       }
     },
     applyParsedCurl(parsed: { method: string, url: string, headers: Record<string, string>, body: string, params: Record<string, string> }) {

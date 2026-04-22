@@ -143,6 +143,7 @@ const sendRequest = async (_event?: any) => {
     }
   });
 
+
   // 2. Build Body dựa trên bodyType
   const hasBody = ['POST', 'PUT', 'PATCH', 'DELETE'].includes(method)
   
