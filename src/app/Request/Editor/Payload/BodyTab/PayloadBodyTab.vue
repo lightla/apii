@@ -28,8 +28,16 @@ const selectedBodyPresetName = computed(() => {
   return presetStore.bodyPresets.find(p => p.id === store.selectedBodyPresetId)?.name || 'None'
 })
 
+const selectedBodyPresetValue = computed(() => {
+  return presetStore.bodyPresets.find(p => p.id === store.selectedBodyPresetId)?.value || ''
+})
+
 const filteredBodyPresets = computed(() => {
-  return presetStore.bodyPresets.filter(p => p.type === store.bodyType)
+  return presetStore.bodyPresets.filter(p => {
+    // Handle both 'json' and 'body-json' etc.
+    const normalizedType = p.type?.replace('body-', '');
+    return normalizedType === store.bodyType;
+  })
 })
 
 const onPresetChange = (e: Event) => {
@@ -165,6 +173,7 @@ const onFileChange = (event: Event) => {
   const target = event.target as HTMLInputElement
   if (target.files && target.files.length > 0) {
     store.binaryFile = target.files[0]
+    store.selectedBodyPresetId = null
   }
 }
 
@@ -197,7 +206,7 @@ const triggerFileInput = (id: string) => {
       </div>
 
       <!-- Body Preset Selection -->
-      <div class="ms-auto d-flex align-items-center flex-shrink-0 pe-2">
+      <div class="ms-auto d-flex align-items-center flex-shrink-0 pe-2" v-if="store.bodyType !== 'none'">
         <span class="preset-label me-2">PRESETS:</span>
         <select 
           class="preset-select" 
@@ -215,8 +224,15 @@ const triggerFileInput = (id: string) => {
 
     <!-- Body Content Area -->
     <div class="body-content-area">
+      <!-- None -->
+      <div v-if="store.bodyType === 'none'" class="no-body-wrapper">
+        <div class="no-body-content">
+          <p class="mb-0 text-muted">This request does not have a body</p>
+        </div>
+      </div>
+      
       <!-- JSON Editor -->
-      <div v-if="store.bodyType === 'json'" class="json-editor-wrap">
+      <div v-else-if="store.bodyType === 'json'" class="json-editor-wrap">
         <CodeMirrorContainer2
           v-model="store.body"
           :theme="theme"
@@ -354,6 +370,10 @@ const triggerFileInput = (id: string) => {
           <div v-if="store.binaryFile" class="file-info">
             <div class="file-name">{{ store.binaryFile.name }}</div>
             <div class="file-size text-muted small">{{ (store.binaryFile.size / 1024).toFixed(2) }} KB</div>
+          </div>
+          <div v-else-if="store.selectedBodyPresetId && selectedBodyPresetValue" class="file-info">
+            <div class="file-name">{{ selectedBodyPresetValue.split(' (')[0] }}</div>
+            <div class="file-size text-muted small">{{ selectedBodyPresetValue.split(' (')[1]?.replace(')', '') }}</div>
           </div>
           <div v-else class="text-muted">
             Click to select binary file
@@ -548,7 +568,7 @@ const triggerFileInput = (id: string) => {
 
 .type-select-dropdown {
   position: fixed; /* Chuyển từ absolute sang fixed */
-  background-color: #f0f0f0;
+  background-color: #f4f4f4;
   border: 1px solid #888888;
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
   z-index: 100000; /* Nâng z-index lên mức cao nhất */
@@ -684,5 +704,24 @@ const triggerFileInput = (id: string) => {
   tr.is-managed {
     background-color: rgba(0, 0, 0, 0.02);
   }
+}
+.no-body-wrapper {
+  padding: 16px;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.no-body-content {
+  width: 100%;
+  min-height: 200px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: #f4f4f4;
+  border: 2px dashed #f0f0f0;
+  border-radius: 6px;
+  font-size: 14px;
 }
 </style>

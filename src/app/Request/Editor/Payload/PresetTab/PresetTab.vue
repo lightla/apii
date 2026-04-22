@@ -1,49 +1,46 @@
 <script setup lang="ts">
-import { ref } from 'vue'
-import { ChevronDown, ChevronRight, SquareX, ShieldAlert, Lock, Trash2, Edit2, Plus, Save, X } from 'lucide-vue-next'
-import { IconPlus, IconDeviceFloppy, IconTrash } from "@tabler/icons-vue"
-import { usePresetStorage } from '@/storages/presets.ts'
-import type { RouteInfo } from '@/types'
+import { ref } from 'vue';
+import { Plus, Trash2, Edit2, Save, X, FileUp } from 'lucide-vue-next';
+import { usePresetStorage } from '@/storages/presets';
+import CodeMirrorContainer2 from '@/app/Generals/CodeEditor/CodeMirrorContainer2.vue';
 
-const props = defineProps<{ route: RouteInfo }>()
-const presetStore = usePresetStorage()
+const presetStore = usePresetStorage();
+const activeCategory = ref<'headers' | 'query' | 'body'>('headers');
+const theme = ref('eclipse'); 
 
-const activeCategory = ref<'headers' | 'query' | 'body'>('headers')
+// Editor State
+const editingPresetId = ref<string | null>(null);
+const editName = ref('');
+const editType = ref<'json' | 'form-data' | 'binary'>('json');
+const editItems = ref<{ key: string; value: string; description: string }[]>([]);
+const editJson = ref('');
+const editBinaryInfo = ref('');
+const fileInput = ref<HTMLInputElement | null>(null);
 
-// --- Editing State ---
-const editingPresetId = ref<string | null>(null)
-const editName = ref('')
-const editItems = ref<any[]>([])
-const editType = ref<'headers' | 'query' | 'body-json' | 'body-form'>('headers')
-const editJson = ref('')
+const onThemeUpdate = (t: string) => {
+  theme.value = t;
+};
 
-const startEdit = (category: string, preset?: any) => {
+const startEdit = (category: 'headers' | 'query' | 'body', preset?: any) => {
+    activeCategory.value = category;
     if (preset) {
         editingPresetId.value = preset.id;
         editName.value = preset.name;
-        if (category === 'body' && preset.type === 'json') {
-            editType.value = 'body-json';
-            editJson.value = preset.json || '';
-        } else if (category === 'body' && preset.type === 'form-data') {
-            editType.value = 'body-form';
-            editItems.value = preset.formData.map((i: any) => ({ ...i }));
+        if (category === 'body') {
+            editType.value = (preset.type as any) || 'json';
+            if (editType.value === 'json') editJson.value = preset.json || preset.value || '';
+            else if (editType.value === 'binary') editBinaryInfo.value = preset.value || '';
+            else if (editType.value === 'form-data') editItems.value = JSON.parse(JSON.stringify(preset.formData || preset.items || []));
         } else {
-            editType.value = category as any;
-            editItems.value = (preset.items || []).map((i: any) => ({ ...i }));
+            editItems.value = JSON.parse(JSON.stringify(preset.items || []));
         }
     } else {
         editingPresetId.value = 'new';
-        editName.value = 'New Preset';
-        if (category === 'headers') {
-            editType.value = 'headers';
-            editItems.value = [{ key: '', value: '', description: '' }];
-        } else if (category === 'query') {
-            editType.value = 'query';
-            editItems.value = [{ key: '', value: '', description: '' }];
-        } else if (category === 'body') {
-            editType.value = 'body-json';
-            editJson.value = '{\n  "key": "value"\n}';
-        }
+        editName.value = '';
+        editItems.value = [{ key: '', value: '', description: '' }];
+        editJson.value = '';
+        editBinaryInfo.value = '';
+        if (category === 'body') editType.value = 'json';
     }
 };
 
@@ -53,51 +50,34 @@ const cancelEdit = () => {
 
 const saveEdit = () => {
     if (!editName.value.trim()) return;
-    
-    if (editType.value === 'headers') {
-        const items = editItems.value.filter(i => i.key.trim());
-        if (editingPresetId.value === 'new') {
-            presetStore.headerPresets.push({ id: 'h-' + Date.now(), name: editName.value, items });
-        } else {
-            const p = presetStore.headerPresets.find(p => p.id === editingPresetId.value);
-            if (p) { p.name = editName.value; p.items = items; }
-        }
-    } else if (editType.value === 'query') {
-        const items = editItems.value.filter(i => i.key.trim());
-        if (editingPresetId.value === 'new') {
-            presetStore.queryPresets.push({ id: 'q-' + Date.now(), name: editName.value, items });
-        } else {
-            const p = presetStore.queryPresets.find(p => p.id === editingPresetId.value);
-            if (p) { p.name = editName.value; p.items = items; }
-        }
-    } else if (editType.value === 'body-json') {
-        if (editingPresetId.value === 'new') {
-            presetStore.bodyPresets.push({ id: 'bj-' + Date.now(), name: editName.value, type: 'json', json: editJson.value });
-        } else {
-            const p = presetStore.bodyPresets.find(p => p.id === editingPresetId.value);
-            if (p) { p.name = editName.value; p.json = editJson.value; p.type = 'json'; }
-        }
-    } else if (editType.value === 'body-form') {
-        const items = editItems.value.filter(i => i.key.trim());
-        if (editingPresetId.value === 'new') {
-            presetStore.bodyPresets.push({ id: 'bf-' + Date.now(), name: editName.value, type: 'form-data', formData: items });
-        } else {
-            const p = presetStore.bodyPresets.find(p => p.id === editingPresetId.value);
-            if (p) { p.name = editName.value; p.formData = items; p.type = 'form-data'; }
-        }
-    }
-    
-    presetStore.persist();
-    editingPresetId.value = null;
-};
 
-const deletePreset = (category: string, id: string) => {
-    if (confirm('Delete this preset?')) {
-        if (category === 'headers') presetStore.headerPresets = presetStore.headerPresets.filter(p => p.id !== id);
-        if (category === 'query') presetStore.queryPresets = presetStore.queryPresets.filter(p => p.id !== id);
-        if (category === 'body') presetStore.bodyPresets = presetStore.bodyPresets.filter(p => p.id !== id);
-        presetStore.persist();
+    const presetData: any = {
+        name: editName.value,
+        category: activeCategory.value,
+    };
+
+    if (activeCategory.value === 'body') {
+        presetData.type = editType.value;
+        if (editType.value === 'json') {
+            presetData.json = editJson.value;
+            presetData.value = editJson.value;
+        } else if (editType.value === 'binary') {
+            presetData.value = editBinaryInfo.value;
+        } else {
+            presetData.formData = editItems.value.filter(i => i.key.trim());
+            presetData.items = presetData.formData;
+        }
+    } else {
+        presetData.items = editItems.value.filter(i => i.key.trim());
     }
+
+    if (editingPresetId.value === 'new') {
+        presetStore.addPreset(presetData);
+    } else if (editingPresetId.value) {
+        presetStore.updatePreset(editingPresetId.value, presetData);
+    }
+
+    editingPresetId.value = null;
 };
 
 const addItem = () => {
@@ -106,6 +86,13 @@ const addItem = () => {
 
 const removeItem = (idx: number) => {
     editItems.value.splice(idx, 1);
+};
+
+const handleFileChange = (e: any) => {
+    const file = e.target.files[0];
+    if (file) {
+        editBinaryInfo.value = file.name + ' (' + (file.size / 1024).toFixed(1) + ' KB)';
+    }
 };
 </script>
 
@@ -134,49 +121,18 @@ const removeItem = (idx: number) => {
       </div>
 
       <div class="preset-grid">
-        <template v-if="activeCategory === 'headers'">
-          <div v-for="p in presetStore.headerPresets" :key="p.id" class="preset-card">
-            <div class="p-info">
-              <div class="p-name">{{ p.name }}</div>
-              <div class="p-meta">{{ p.items?.length || 0 }} headers</div>
-            </div>
-            <div class="p-actions">
-              <button class="btn-icon" @click="startEdit('headers', p)"><Edit2 size="14" /></button>
-              <button class="btn-icon text-danger" @click="deletePreset('headers', p.id)"><Trash2 size="14" /></button>
-            </div>
+        <div v-for="p in presetStore.getPresetsByCategory(activeCategory)" :key="p.id" class="preset-card">
+          <div class="p-info">
+            <div class="p-name">{{ p.name }}</div>
+            <div class="p-meta">{{ p.type || activeCategory }}</div>
           </div>
-        </template>
-
-        <template v-if="activeCategory === 'query'">
-          <div v-for="p in presetStore.queryPresets" :key="p.id" class="preset-card">
-            <div class="p-info">
-              <div class="p-name">{{ p.name }}</div>
-              <div class="p-meta">{{ p.items?.length || 0 }} params</div>
-            </div>
-            <div class="p-actions">
-              <button class="btn-icon" @click="startEdit('query', p)"><Edit2 size="14" /></button>
-              <button class="btn-icon text-danger" @click="deletePreset('query', p.id)"><Trash2 size="14" /></button>
-            </div>
+          <div class="p-actions">
+            <button class="btn-icon" @click="startEdit(activeCategory, p)"><Edit2 size="14" /></button>
+            <button class="btn-icon text-danger" @click="presetStore.deletePreset(p.id)"><Trash2 size="14" /></button>
           </div>
-        </template>
-
-        <template v-if="activeCategory === 'body'">
-          <div v-for="p in presetStore.bodyPresets" :key="p.id" class="preset-card">
-            <div class="p-info">
-              <div class="p-name">{{ p.name }}</div>
-              <div class="p-meta text-uppercase">{{ p.type }}</div>
-            </div>
-            <div class="p-actions">
-              <button class="btn-icon" @click="startEdit('body', p)"><Edit2 size="14" /></button>
-              <button class="btn-icon text-danger" @click="deletePreset('body', p.id)"><Trash2 size="14" /></button>
-            </div>
-          </div>
-        </template>
-
-        <div v-if="(activeCategory === 'headers' && !presetStore.headerPresets?.length) || 
-                   (activeCategory === 'query' && !presetStore.queryPresets?.length) ||
-                   (activeCategory === 'body' && !presetStore.bodyPresets?.length)" 
-             class="empty-state">
+        </div>
+        
+        <div v-if="!presetStore.getPresetsByCategory(activeCategory).length" class="empty-state">
           No presets found for this category.
         </div>
       </div>
@@ -200,17 +156,45 @@ const removeItem = (idx: number) => {
       <div class="editor-body">
          <!-- Tabs for Body Type if Editing Body -->
          <div v-if="activeCategory === 'body'" class="d-flex gap-2 mb-3">
-            <button class="type-btn" :class="{ active: editType === 'body-json' }" @click="editType = 'body-json'">JSON</button>
-            <button class="type-btn" :class="{ active: editType === 'body-form' }" @click="editType = 'body-form'">Form Data</button>
+            <button class="type-btn" :class="{ active: editType === 'json' }" @click="editType = 'json'">JSON</button>
+            <button class="type-btn" :class="{ active: editType === 'form-data' }" @click="editType = 'form-data'">Form Data</button>
+            <button class="type-btn" :class="{ active: editType === 'binary' }" @click="editType = 'binary'">Binary</button>
          </div>
 
          <!-- JSON Editor -->
-         <div v-if="editType === 'body-json'" class="json-wrap">
-            <textarea v-model="editJson" class="json-area" placeholder='{ "key": "value" }'></textarea>
-            <div class="help-text">JSON supports environment variables like {{variable}}</div>
+         <div v-if="editType === 'json'" class="json-wrap">
+            <div class="editor-container-styled">
+               <CodeMirrorContainer2 
+                 v-model="editJson" 
+                 :theme="theme" 
+                 :show-beautify="true"
+                 @update:theme="onThemeUpdate"
+               />
+            </div>
          </div>
 
-         <!-- Table Editor for others -->
+         <!-- Binary Editor -->
+         <div v-else-if="editType === 'binary'" class="binary-wrap">
+            <div class="binary-uploader" @click="fileInput?.click()">
+               <FileUp :size="40" :stroke-width="1" class="mb-3 text-muted" />
+               <div v-if="editBinaryInfo" class="file-info text-center">
+                  <div class="file-name fw-bold">{{ editBinaryInfo.split(' (')[0] }}</div>
+                  <div class="file-size text-muted small">{{ editBinaryInfo.split(' (')[1]?.replace(')', '') }}</div>
+               </div>
+               <div v-else class="text-muted">
+                  Click to select default file
+               </div>
+               <input type="file" ref="fileInput" class="d-none" @change="handleFileChange" />
+            </div>
+            
+            <div class="help-text mt-3 text-center w-100">Note: Browser security prevents storing actual content. Metadata helps identification.</div>
+            
+            <button v-if="editBinaryInfo" class="btn-icon text-danger mt-2 mx-auto" @click.stop="editBinaryInfo = ''" title="Clear selection">
+               <Trash2 size="16" class="me-1" /> Clear selection
+            </button>
+         </div>
+
+         <!-- Table Editor for others (Headers, Query, Form Data) -->
          <div v-else class="table-wrap">
             <table class="config-table mb-2">
                <thead>
@@ -285,7 +269,7 @@ const removeItem = (idx: number) => {
     min-width: 0;
   }
   .p-name { font-weight: 400; font-size: 14px; color: #333; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .p-meta { font-size: 11px; color: #777; margin-top: 2px; }
+  .p-meta { font-size: 11px; color: #777; margin-top: 2px; text-transform: uppercase; }
   
   .p-actions {
     display: flex;
@@ -306,6 +290,54 @@ const removeItem = (idx: number) => {
   background: #f0f0f0;
   border: 1px solid #ddd;
   padding: 20px;
+}
+
+.editor-container-styled {
+    border: 1px solid #ccc;
+    background: #fff;
+    height: 300px;
+    overflow: hidden;
+}
+
+.binary-wrap {
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background: #fcfcfc;
+    border-radius: 8px;
+}
+
+.binary-uploader {
+    width: 100%;
+    max-width: 400px;
+    height: 160px;
+    border: 2px dashed #ccc;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    cursor: pointer;
+    border-radius: 8px;
+    transition: all 0.2s;
+    background: #fff;
+    &:hover {
+        border-color: #888;
+        background-color: rgba(0, 0, 0, 0.02);
+    }
+}
+
+.file-info {
+    .file-name {
+        font-size: 14px;
+        color: #333;
+        margin-bottom: 2px;
+    }
+    .file-size {
+        font-size: 12px;
+        color: #777;
+    }
 }
 
 .label-sm {
@@ -366,18 +398,6 @@ const removeItem = (idx: number) => {
     border: 1px solid #ddd;
     padding: 0;
   }
-}
-
-.json-area {
-  width: 100%;
-  height: 300px;
-  font-family: 'Fira Code', monospace;
-  font-size: 13px;
-  padding: 12px;
-  border: 1px solid #ddd;
-  background: #fcfcfc;
-  outline: none;
-  resize: vertical;
 }
 
 .cell-input {

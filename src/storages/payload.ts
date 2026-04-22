@@ -195,7 +195,7 @@ export const useRequestParamsStorage = defineStore('requestParams', {
       if (this.selectedBodyPresetId && this.selectedBodyPresetId !== 'preset-none') {
         const preset = presetStorage.bodyPresets.find((p: any) => p.id === this.selectedBodyPresetId);
         
-        if (preset && preset.type === this.bodyType) {
+        if (preset && (preset.type === this.bodyType || preset.type === 'body-' + this.bodyType)) {
            if (this.bodyType === 'json') {
              // Logic merge JSON
              const newJson = preset.json || '';
@@ -219,11 +219,13 @@ export const useRequestParamsStorage = defineStore('requestParams', {
                 id: `managed-body-${this.selectedBodyPresetId}-${idx}`,
                 key: item.key,
                 value: item.value,
-                type: 'text' as const,
+                type: (item.type as any) || 'text',
                 enabled: true,
                 description: item.description || 'From Preset',
                 isManaged: true
              })) || [];
+           } else if (this.bodyType === 'binary') {
+             this.binaryFile = null; // Clear manual file when preset is selected
            }
         } else {
           // Nếu preset không tồn tại hoặc không khớp type, reset ID về null
