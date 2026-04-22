@@ -438,15 +438,17 @@ const triggerFileInput = (id: string) => {
 
 .body-content-area {
   flex: 1;
-  min-height: 0;
-  display: flex;
-  flex-direction: column;
+  overflow: auto;
+  position: relative;
+  background-color: #f4f4f4; /* Changed from #ffffff */
 }
 
 .json-editor-wrap {
   flex: 1;
+  display: flex;
+  flex-direction: column;
   min-height: 0;
-  height: 100%;
+  background-color: #f4f4f4;
 }
 
 .form-data-wrap {
@@ -706,7 +708,7 @@ const triggerFileInput = (id: string) => {
   }
 }
 .no-body-wrapper {
-  padding: 16px;
+  padding: 20px;
   height: 100%;
   display: flex;
   align-items: center;
@@ -715,13 +717,14 @@ const triggerFileInput = (id: string) => {
 
 .no-body-content {
   width: 100%;
-  min-height: 200px;
+  max-width: 400px;
+  min-height: 160px;
   display: flex;
   align-items: center;
   justify-content: center;
-  background-color: #f4f4f4;
-  border: 2px dashed #f0f0f0;
-  border-radius: 6px;
-  font-size: 14px;
+  background-color: #eeeeee;
+  border: 2px dashed #cccccc;
+  border-radius: 8px;
+  font-size: 13px;
 }
 </style>
