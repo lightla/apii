@@ -438,9 +438,10 @@ const triggerFileInput = (id: string) => {
 
 .body-content-area {
   flex: 1;
-  overflow: auto;
-  position: relative;
-  background-color: #f4f4f4; /* Changed from #ffffff */
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  background-color: #f4f4f4;
 }
 
 .json-editor-wrap {
