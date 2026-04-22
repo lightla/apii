@@ -111,6 +111,7 @@ const removeItem = (idx: number) => {
 
 <template>
   <div class="preset-tab p-3">
+    <!-- List Section -->
     <div v-if="!editingPresetId">
       <!-- Category Tabs -->
       <div class="category-tabs d-flex gap-2 mb-4">
@@ -125,7 +126,6 @@ const removeItem = (idx: number) => {
         </button>
       </div>
 
-      <!-- List Section -->
       <div class="preset-header mb-3 d-flex justify-content-between align-items-center">
         <h3 class="m-0 fs-6 text-uppercase fw-bold text-muted">Manage {{ activeCategory }} Presets</h3>
         <button class="btn-app-sm" @click="startEdit(activeCategory)">
@@ -172,17 +172,17 @@ const removeItem = (idx: number) => {
             </div>
           </div>
         </template>
-        
-        <div v-if="(activeCategory === 'headers' && (presetStore.headerPresets?.length === 0)) || 
-                   (activeCategory === 'query' && (presetStore.queryPresets?.length === 0)) || 
-                   (activeCategory === 'body' && (presetStore.bodyPresets?.length === 0))"
+
+        <div v-if="(activeCategory === 'headers' && !presetStore.headerPresets?.length) || 
+                   (activeCategory === 'query' && !presetStore.queryPresets?.length) ||
+                   (activeCategory === 'body' && !presetStore.bodyPresets?.length)" 
              class="empty-state">
-           No presets found for this category.
+          No presets found for this category.
         </div>
       </div>
     </div>
 
-    <!-- Edit Form -->
+    <!-- Editor Section -->
     <div v-else class="preset-editor">
       <div class="editor-header d-flex justify-content-between align-items-center mb-4">
         <div>
@@ -212,13 +212,13 @@ const removeItem = (idx: number) => {
 
          <!-- Table Editor for others -->
          <div v-else class="table-wrap">
-            <table class="config-table">
+            <table class="config-table mb-2">
                <thead>
                  <tr>
-                   <th>Key</th>
-                   <th>Value</th>
-                   <th>Description</th>
-                   <th style="width: 40px;"></th>
+                   <th style="width: 30%">Key</th>
+                   <th style="width: 35%">Value</th>
+                   <th style="width: 30%">Description</th>
+                   <th style="width: 5%"></th>
                  </tr>
                </thead>
                <tbody>
@@ -230,15 +230,12 @@ const removeItem = (idx: number) => {
                      <button class="btn-icon text-danger" @click="removeItem(idx)"><X size="14"/></button>
                    </td>
                  </tr>
-                 <tr>
-                   <td colspan="4" class="p-0">
-                     <button class="add-row-btn" @click="addItem">
-                        <Plus size="14" class="me-1"/> Add Row
-                     </button>
-                   </td>
-                 </tr>
                </tbody>
             </table>
+            <button class="add-row-btn mb-4" @click="addItem">
+               <Plus size="14" class="me-1"/> Add Field
+            </button>
+            <div class="help-text">These fields will be injected/merged into your request.</div>
          </div>
       </div>
     </div>
@@ -252,54 +249,48 @@ const removeItem = (idx: number) => {
   background-color: #f4f4f4;
 }
 
-.category-tabs {
-  border-bottom: 2px solid #ddd;
-  padding-bottom: 8px;
-}
-
 .cat-btn {
-  background: #e8e8e8;
+  background: #e0e0e0;
   border: 1px solid #ccc;
   padding: 6px 16px;
   font-size: 12px;
-  font-weight: 700;
+  font-weight: 500;
   cursor: pointer;
   color: #666;
-  &:hover { background: #dfdfdf; }
+  &:hover { background: #d8d8d8; }
   &.active {
-    background: #555;
-    color: white;
-    border-color: #444;
+    background: #cccccc; 
+    color: #333;
+    border-color: #bbb;
   }
 }
 
 .preset-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
   gap: 12px;
 }
 
 .preset-card {
-  background: #fdfdfd;
-  border: 1px solid #ccc;
+  background: #f0f0f0;
+  border: 1px solid #ddd;
   padding: 12px;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  &:hover { border-color: #999; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+  &:hover { border-color: #bbb; background: #e8e8e8; }
   
-  .p-name { font-weight: 600; font-size: 14px; color: #333; }
-  .p-meta { font-size: 11px; color: #888; margin-top: 2px; }
-}
-
-.btn-icon {
-  background: none;
-  border: none;
-  cursor: pointer;
-  padding: 4px;
-  color: #666;
-  &:hover { color: #000; }
-  &.text-danger:hover { color: #dc3545; }
+  .p-info {
+    flex: 1;
+    min-width: 0;
+  }
+  .p-name { font-weight: 400; font-size: 14px; color: #333; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .p-meta { font-size: 11px; color: #777; margin-top: 2px; }
+  
+  .p-actions {
+    display: flex;
+    gap: 4px;
+  }
 }
 
 .empty-state {
@@ -312,8 +303,8 @@ const removeItem = (idx: number) => {
 }
 
 .preset-editor {
-  background: #ebebeb;
-  border: 1px solid #ccc;
+  background: #f0f0f0;
+  border: 1px solid #ddd;
   padding: 20px;
 }
 
@@ -330,9 +321,10 @@ const removeItem = (idx: number) => {
   width: 300px;
   padding: 6px 10px;
   border: 1px solid #ccc;
+  background: #fcfcfc;
   font-size: 14px;
   outline: none;
-  &:focus { border-color: #007bff; }
+  &:focus { border-color: #bbb; }
 }
 
 .type-btn {
@@ -342,7 +334,38 @@ const removeItem = (idx: number) => {
   font-size: 11px;
   font-weight: bold;
   cursor: pointer;
-  &.active { background: #555; color: white; border-color: #444; }
+  &.active { background: #999; color: #222; border-color: #888; }
+}
+
+.btn-icon {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 4px;
+  color: #666;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  &:hover { color: #000; }
+  &.text-danger { color: #dc3545; }
+  &.text-danger:hover { color: #bd2130; }
+}
+
+.config-table {
+  width: 100%;
+  border-collapse: collapse;
+  background: #fcfcfc;
+  th {
+    background: #e8e8e8;
+    border: 1px solid #ddd;
+    padding: 6px;
+    font-size: 12px;
+    color: #444;
+  }
+  td {
+    border: 1px solid #ddd;
+    padding: 0;
+  }
 }
 
 .json-area {
@@ -351,33 +374,10 @@ const removeItem = (idx: number) => {
   font-family: 'Fira Code', monospace;
   font-size: 13px;
   padding: 12px;
-  border: 1px solid #ccc;
-  background: #fdfdfd;
+  border: 1px solid #ddd;
+  background: #fcfcfc;
   outline: none;
   resize: vertical;
-  &:focus { border-color: #007bff; }
-}
-
-.help-text {
-  font-size: 11px;
-  color: #777;
-  margin-top: 4px;
-}
-
-.config-table {
-  width: 100%;
-  border-collapse: collapse;
-  background: #fff;
-  th {
-    background: #e0e0e0;
-    border: 1px solid #ccc;
-    padding: 6px;
-    font-size: 12px;
-  }
-  td {
-    border: 1px solid #ccc;
-    padding: 0;
-  }
 }
 
 .cell-input {
@@ -403,6 +403,12 @@ const removeItem = (idx: number) => {
   &:hover { background: #eee; }
 }
 
+.help-text {
+  font-size: 11px;
+  color: #777;
+  margin-top: 4px;
+}
+
 .btn-app-primary {
   background: #007bff;
   color: white;
@@ -417,22 +423,24 @@ const removeItem = (idx: number) => {
 }
 
 .btn-app-secondary {
-  background: #fff;
+  background: #ffffff;
   border: 1px solid #ccc;
   padding: 6px 16px;
   font-size: 13px;
   cursor: pointer;
-  &:hover { background: #f0f0f0; }
+  color: #333;
+  &:hover { background: #f8f8f8; }
 }
 
 .btn-app-sm {
-  background: #fff;
+  background: #ffffff;
   border: 1px solid #ccc;
   padding: 4px 10px;
   font-size: 12px;
   cursor: pointer;
   display: flex;
   align-items: center;
-  &:hover { background: #f0f0f0; }
+  color: #333;
+  &:hover { background: #f8f8f8; }
 }
 </style>
