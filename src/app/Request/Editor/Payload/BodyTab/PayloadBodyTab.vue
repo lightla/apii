@@ -723,8 +723,8 @@ const triggerFileInput = (id: string) => {
   display: flex;
   align-items: center;
   justify-content: center;
-  background-color: #eeeeee;
-  border: 2px dashed #cccccc;
+  background-color: transparent;
+  border: var(--table-border);
   border-radius: 8px;
   font-size: 13px;
 }
