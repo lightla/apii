@@ -9,15 +9,24 @@ import {
   ShieldAlert,
   Eraser,
   Trash2,
+  Lock,
 } from "lucide-vue-next";
 import { IconSquareRoundedPlus } from "@tabler/icons-vue";
 import { useRequestParamsStorage } from '@/storages/payload.ts'
+import { usePresetStorage } from '@/storages/presets.ts'
 
 const props = defineProps<{
   route: RouteInfo
 }>()
 
 const store = useRequestParamsStorage()
+const presetStore = usePresetStorage()
+
+const onPresetChange = (e: Event) => {
+  const target = e.target as HTMLSelectElement;
+  store.selectedQueryPresetId = target.value === 'preset-none' ? null : target.value;
+  store.syncManagedQueryParams();
+}
 
 // Logic cho Master Toggle ở Header
 const isAnyParamEnabled = computed(() => {
@@ -69,7 +78,7 @@ function onDeleteClick(index: number) {
 <template>
   <div class="query-param">
     <div class="query-param-toolbar">
-      <div class="d-flex align-items-center">
+      <div class="d-flex align-items-center w-100">
         <span class="query-param-toolbar-title">Query Parameters</span>
         <IconSquareRoundedPlus @click="store.addQueryParam()" stroke-width="1" class="icon-button-add-row ms-2"/>
         
@@ -77,6 +86,22 @@ function onDeleteClick(index: number) {
         <div @click="onTrashClick" title="Delete all query parameters" class="d-flex align-items-center cursor-pointer ms-1">
           <ShieldAlert v-if="isConfirmingDeleteAll" stroke-width="1" class="icon-button icon-button-trash-x" />
           <SquareX v-else stroke-width="1" class="icon-button icon-button-trash-x" />
+        </div>
+
+        <!-- Query Preset Selection -->
+        <div class="ms-auto d-flex align-items-center flex-shrink-0">
+          <span class="preset-label me-2">PRESETS:</span>
+          <select 
+            class="preset-select" 
+            :value="store.selectedQueryPresetId || 'preset-none'"
+            @change="onPresetChange"
+            :title="presetStore.queryPresets.find(p => p.id === store.selectedQueryPresetId)?.name || 'None'"
+          >
+            <option value="preset-none">-- No Preset --</option>
+            <option v-for="p in presetStore.queryPresets" :key="p.id" :value="p.id">
+              {{ p.name.length > 20 ? p.name.slice(0, 20) + '...' : p.name }}
+            </option>
+          </select>
         </div>
       </div>
     </div>
@@ -107,11 +132,16 @@ function onDeleteClick(index: number) {
           </tr>
         </thead>
         <tbody>
-          <tr v-for="(param, index) in store.queryParams" :key="param.id">
+          <tr v-for="(param, index) in store.queryParams" :key="param.id" :class="{ 'is-managed': param.isManaged }">
             <td>
-              <div class="cell-icon-action" @click="store.toggleQueryParam(index)">
-                <SquareCheck v-if="param.enabled" stroke-width="1" class="icon-button-checkbox"/>
-                <Square v-else stroke-width="1" class="icon-button-checkbox"/>
+              <div class="cell-icon-action" @click="!param.isManaged && store.toggleQueryParam(index)">
+                <template v-if="param.isManaged">
+                   <SquareCheck stroke-width="1" class="icon-button-checkbox is-disabled"/>
+                </template>
+                <template v-else>
+                   <SquareCheck v-if="param.enabled" stroke-width="1" class="icon-button-checkbox"/>
+                   <Square v-else stroke-width="1" class="icon-button-checkbox"/>
+                </template>
               </div>
             </td>
             <td>
@@ -120,6 +150,7 @@ function onDeleteClick(index: number) {
                   :route="props.route"
                   :value="param.key"
                   :enabled-env-variable="true"
+                  :readonly="!!param.isManaged"
                   @text-change="val => param.key = val"
                 />
               </div>
@@ -130,15 +161,23 @@ function onDeleteClick(index: number) {
                   :route="props.route"
                   :value="param.value"
                   :enabled-env-variable="true"
+                  :readonly="!!param.isManaged"
                   @text-change="val => param.value = val"
                 />
               </div>
             </td>
             <td>
-              <div class="cell-icon-action" @click="onDeleteClick(index)">
-                <ShieldAlert v-if="confirmDeleteIndex === index"
-                             stroke-width="1" class="icon-button icon-button-row-action" />
-                <SquareX v-else stroke-width="1" class="icon-button icon-button-row-action" />
+              <div class="cell-icon-action">
+                <template v-if="param.isManaged">
+                   <Lock size="16" stroke-width="1.5" class="text-muted" />
+                </template>
+                <template v-else>
+                  <div class="w-100 h-100 d-flex align-items-center justify-content-center" @click="onDeleteClick(index)">
+                    <ShieldAlert v-if="confirmDeleteIndex === index"
+                                 stroke-width="1" class="icon-button icon-button-row-action" />
+                    <SquareX v-else stroke-width="1" class="icon-button icon-button-row-action" />
+                  </div>
+                </template>
               </div>
             </td>
           </tr>
@@ -169,14 +208,48 @@ function onDeleteClick(index: number) {
   width: 100%;
   flex-shrink: 0;
   margin-bottom: 2px;
+  height: 32px;
 }
 
 .query-param-toolbar-title {
-  padding: 5px;
+  padding: 0 8px;
+  height: 28px;
+  display: flex;
+  align-items: center;
   background-color: rgba(221, 221, 221, 0.65);
   border: 1px solid #888888;
   font-size: 13px;
   font-weight: 500;
+  white-space: nowrap;
+}
+
+.preset-label {
+  font-size: 11px;
+  text-transform: uppercase;
+  color: #555;
+  font-weight: 600;
+}
+
+.preset-select {
+  background-color: #dddddd;
+  border: 1px solid #888888;
+  font-size: 12px;
+  font-family: inherit;
+  padding: 2px 4px;
+  outline: none;
+  cursor: pointer;
+  height: 26px;
+  color: #333;
+  width: 160px;
+  text-align: center;
+  text-align-last: center;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  overflow: hidden;
+  
+  &:hover {
+    background-color: #cccccc;
+  }
 }
 
 .query-table-scroll-wrapper {
@@ -220,6 +293,10 @@ function onDeleteClick(index: number) {
   }
 
   tr:hover td {
+    background-color: rgba(0, 0, 0, 0.02);
+  }
+
+  tr.is-managed {
     background-color: rgba(0, 0, 0, 0.02);
   }
 

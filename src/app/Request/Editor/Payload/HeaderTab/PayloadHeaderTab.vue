@@ -3,11 +3,19 @@ import { ref, computed } from 'vue'
 import type { RouteInfo } from '@/types'
 import TrackedVariableInput from '@/app/Generals/TrackedVariableInput.vue'
 import { SquareCheck, Square, SquareX, ShieldAlert, Eraser, Lock } from 'lucide-vue-next'
-import { IconSquareRoundedPlus } from "@tabler/icons-vue";
+import { IconSquareRoundedPlus } from "@tabler/icons-vue"
 import { useRequestParamsStorage } from '@/storages/payload.ts'
+import { usePresetStorage } from '@/storages/presets.ts'
 
 const props = defineProps<{ route: RouteInfo }>()
 const store = useRequestParamsStorage()
+const presetStore = usePresetStorage()
+
+const onPresetChange = (e: Event) => {
+  const target = e.target as HTMLSelectElement;
+  store.selectedHeaderPresetId = target.value === 'preset-none' ? null : target.value;
+  store.syncManagedHeaders();
+}
 
 // Logic cho Master Toggle ở Header
 const isAnyHeaderEnabled = computed(() => {
@@ -62,7 +70,7 @@ function onDeleteClick(index: number) {
 <template>
   <div class="header-tab">
     <div class="header-toolbar">
-      <div class="d-flex align-items-center">
+      <div class="d-flex align-items-center w-100">
         <span class="header-toolbar-title">Headers</span>
         <IconSquareRoundedPlus @click="store.addHeader()" stroke-width="1" class="icon-button-add-row ms-2"/>
         
@@ -70,6 +78,22 @@ function onDeleteClick(index: number) {
         <div @click="onTrashClick" title="Delete all headers" class="d-flex align-items-center cursor-pointer ms-1">
           <ShieldAlert v-if="isConfirmingDeleteAll" stroke-width="1" class="icon-button icon-button-trash-x" />
           <SquareX v-else stroke-width="1" class="icon-button icon-button-trash-x" />
+        </div>
+
+        <!-- Header Preset Selection -->
+        <div class="ms-auto d-flex align-items-center flex-shrink-0">
+          <span class="preset-label me-2">PRESETS:</span>
+          <select 
+            class="preset-select" 
+            :value="store.selectedHeaderPresetId || 'preset-none'"
+            @change="onPresetChange"
+            :title="presetStore.headerPresets.find(p => p.id === store.selectedHeaderPresetId)?.name || 'None'"
+          >
+            <option value="preset-none">-- No Preset --</option>
+            <option v-for="p in presetStore.headerPresets" :key="p.id" :value="p.id">
+              {{ p.name.length > 20 ? p.name.slice(0, 20) + '...' : p.name }}
+            </option>
+          </select>
         </div>
       </div>
     </div>
@@ -117,7 +141,12 @@ function onDeleteClick(index: number) {
             <td>
               <div class="param-input-wrap">
                 <template v-if="header.isManaged">
-                  <div class="readonly-input">{{ header.key }}</div>
+                  <TrackedVariableInput
+                    :route="props.route"
+                    :value="header.key"
+                    :enabled-env-variable="true"
+                    :readonly="true"
+                  />
                 </template>
                 <template v-else>
                   <TrackedVariableInput
@@ -132,7 +161,12 @@ function onDeleteClick(index: number) {
             <td>
               <div class="param-input-wrap">
                 <template v-if="header.isManaged">
-                  <div class="readonly-input">{{ header.value }}</div>
+                  <TrackedVariableInput
+                    :route="props.route"
+                    :value="header.value"
+                    :enabled-env-variable="true"
+                    :readonly="true"
+                  />
                 </template>
                 <template v-else>
                   <TrackedVariableInput
@@ -147,7 +181,13 @@ function onDeleteClick(index: number) {
             <td>
               <div class="param-input-wrap">
                 <template v-if="header.isManaged">
-                  <div class="readonly-input managed-desc">{{ header.description }}</div>
+                  <TrackedVariableInput
+                    :route="props.route"
+                    :value="header.description"
+                    :enabled-env-variable="false"
+                    :readonly="true"
+                    class="managed-desc"
+                  />
                 </template>
                 <template v-else>
                   <TrackedVariableInput
@@ -201,14 +241,19 @@ function onDeleteClick(index: number) {
   width: 100%;
   flex-shrink: 0;
   margin-bottom: 2px;
+  height: 32px; /* Cố định chiều cao toolbar */
 }
 
 .header-toolbar-title {
-  padding: 5px;
+  padding: 0 8px;
+  height: 28px;
+  display: flex;
+  align-items: center;
   background-color: rgba(221, 221, 221, 0.65);
   border: 1px solid #888888;
   font-size: 13px;
   font-weight: 500;
+  white-space: nowrap;
 }
 
 .header-table-scroll-wrapper {
@@ -271,6 +316,12 @@ function onDeleteClick(index: number) {
   }
 }
 
+.managed-desc :deep(.var-input-content) {
+  font-style: italic;
+  font-size: 12px;
+  color: #777;
+}
+
 .readonly-input {
   font-size: 13px;
   color: #555;
@@ -330,6 +381,180 @@ function onDeleteClick(index: number) {
   }
 }
 
+.preset-label {
+  font-size: 11px;
+  text-transform: uppercase;
+  color: #555;
+  font-weight: 600;
+}
+
+.preset-select {
+  background-color: #dddddd;
+  border: 1px solid #888888;
+  font-size: 12px;
+  font-family: inherit;
+  padding: 2px 4px;
+  outline: none;
+  cursor: pointer;
+  height: 26px;
+  color: #333;
+  width: 160px;
+  text-align: center;
+  text-align-last: center;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  overflow: hidden;
+  
+  &:hover {
+    background-color: #cccccc;
+  }
+}
+
+.btn-preset-settings {
+  padding: 4px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 26px;
+  width: 26px;
+  color: #333;
+  
+  &:hover {
+    color: #000;
+    opacity: 0.7;
+  }
+}
+
+.header-presets-config {
+  border-top: 1px solid #ccc;
+  padding-top: 8px;
+}
+
+.config-toggle {
+  cursor: pointer;
+  user-select: none;
+  font-size: 11px;
+  text-transform: uppercase;
+  color: #666;
+  font-weight: 700;
+  padding: 4px 8px;
+  background: #eee;
+  width: fit-content;
+  border: 1px solid #ccc;
+  
+  &:hover {
+    background: #e5e5e5;
+  }
+}
+
+.config-content {
+  background: #e8e8e8; /* Giảm nhẹ từ #eee */
+  border: 1px solid #ccc;
+}
+
+.config-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: #444;
+}
+
+.preset-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 10px;
+}
+
+.preset-config-card {
+  background: #f0f0f0; /* Giảm nhẹ từ #f7f7f7 */
+  border: 1px solid #ccc;
+  padding: 10px;
+  border-radius: 2px;
+  
+  .p-name { font-weight: 600; font-size: 13px; color: #333; }
+  .p-count { font-size: 11px; color: #777; }
+}
+
+.label-sm {
+  font-size: 11px;
+  text-transform: uppercase;
+  color: #666;
+  font-weight: 600;
+  display: block;
+}
+
+.config-input {
+  width: 100%;
+  background: #f8f8f8;
+  border: 1px solid #ccc;
+  padding: 4px 8px;
+  font-size: 13px;
+  outline: none;
+  height: 28px;
+  color: #333;
+  &:focus { background: #fff; border-color: #007bff; }
+}
+
+.config-cell-input {
+  width: 100%;
+  background: transparent;
+  border: none;
+  outline: none;
+  font-size: 13px;
+  font-family: inherit;
+  padding: 4px 0;
+  &:focus { background: rgba(0,0,0,0.02); }
+}
+
+.config-table {
+  background: #f0f0f0;
+  th { font-size: 12px !important; height: 30px !important; background-color: #dfdfdf !important; }
+  td { height: 32px !important; border-bottom: 1px solid #ddd; }
+}
+
+.btn-app-sm {
+  background: #e8e8e8;
+  border: 1px solid #ccc;
+  font-size: 11px;
+  padding: 3px 8px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  &:hover { background: #f0f0f0; }
+}
+
+.btn-app-primary {
+  background: #007bff;
+  color: white;
+  border: 1px solid #0056b3;
+  padding: 4px 12px;
+  font-size: 12px;
+  cursor: pointer;
+  &:hover { background: #0069d9; }
+}
+
+.btn-app-secondary {
+  background: #e8e8e8;
+  border: 1px solid #ccc;
+  padding: 4px 12px;
+  font-size: 12px;
+  cursor: pointer;
+  color: #333;
+  &:hover { background: #dfdfdf; }
+}
+
+.btn-icon-text {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 11px;
+  padding: 0;
+  text-decoration: underline;
+  color: #007bff;
+  &.text-danger { color: #dc3545; }
+  &:hover { opacity: 0.8; }
+}
+
 .param-input-wrap {
   padding: 2px 0;
 }
@@ -342,4 +567,6 @@ function onDeleteClick(index: number) {
   padding: 0 !important;
   vertical-align: middle;
 }
+
+.flex-1 { flex: 1; }
 </style>

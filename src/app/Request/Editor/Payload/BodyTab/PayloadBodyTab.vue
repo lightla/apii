@@ -4,6 +4,7 @@ import type { RouteInfo } from '@/types'
 import CodeMirrorContainer2 from '@/app/Generals/CodeEditor/CodeMirrorContainer2.vue'
 import TrackedVariableInput from "@/app/Generals/TrackedVariableInput.vue";
 import { useRequestParamsStorage } from '@/storages/payload.ts'
+import { usePresetStorage } from '@/storages/presets.ts'
 import { 
   SquareCheck, 
   Square, 
@@ -13,13 +14,33 @@ import {
   FileCode,
   Box,
   Binary,
-  Eraser
+  Eraser,
+  Lock
 } from "lucide-vue-next";
 import { IconSquareRoundedPlus } from "@tabler/icons-vue";
 
 const props = defineProps<{ route: RouteInfo }>()
 const store = useRequestParamsStorage()
+const presetStore = usePresetStorage()
 const theme = ref('one-dark')
+
+const selectedBodyPresetName = computed(() => {
+  return presetStore.bodyPresets.find(p => p.id === store.selectedBodyPresetId)?.name || 'None'
+})
+
+const filteredBodyPresets = computed(() => {
+  return presetStore.bodyPresets.filter(p => p.type === store.bodyType)
+})
+
+const onPresetChange = (e: Event) => {
+  const target = e.target as HTMLSelectElement
+  store.selectedBodyPresetId = target.value === 'preset-none' ? null : target.value
+  store.syncManagedBody()
+}
+
+const onThemeUpdate = (t: string) => {
+  theme.value = t
+}
 
 const bodyTypes = [
   { label: 'JSON', value: 'json', icon: FileCode },
@@ -171,8 +192,24 @@ const triggerFileInput = (id: string) => {
         :class="{ 'active': store.bodyType === type.value }"
         @click="store.setBodyType(type.value as any)"
       >
-        <component :is="type.icon" size="20" class="me-2" stroke-width="1.5" />
+        <component :is="type.icon" :size="20" class="me-2" :stroke-width="1.5" />
         {{ type.label }}
+      </div>
+
+      <!-- Body Preset Selection -->
+      <div class="ms-auto d-flex align-items-center flex-shrink-0 pe-2">
+        <span class="preset-label me-2">PRESETS:</span>
+        <select 
+          class="preset-select" 
+          :value="store.selectedBodyPresetId || 'preset-none'"
+          @change="onPresetChange"
+          :title="selectedBodyPresetName"
+        >
+          <option value="preset-none">-- No Preset --</option>
+          <option v-for="p in filteredBodyPresets" :key="p.id" :value="p.id">
+            {{ p.name.length > 20 ? p.name.slice(0, 20) + '...' : p.name }}
+          </option>
+        </select>
       </div>
     </div>
 
@@ -185,7 +222,7 @@ const triggerFileInput = (id: string) => {
           :theme="theme"
           :show-beautify="true"
           :show-copy="true"
-          @update:theme="t => theme = t"
+          @update:theme="onThemeUpdate"
         />
       </div>
 
@@ -194,11 +231,11 @@ const triggerFileInput = (id: string) => {
         <div class="form-data-toolbar">
           <div class="d-flex align-items-center">
             <span class="form-data-toolbar-title">Form Data Parameters</span>
-            <IconSquareRoundedPlus @click="store.addFormData()" stroke-width="1" class="icon-button-add-row ms-3"/>
+            <IconSquareRoundedPlus @click="store.addFormData()" :stroke-width="1" class="icon-button-add-row ms-3"/>
             
             <div @click="onTrashClick" title="Delete all form-data" class="d-flex align-items-center cursor-pointer ms-1">
-              <ShieldAlert v-if="isConfirmingDeleteAll" stroke-width="1" class="icon-button icon-button-trash-x" />
-              <SquareX v-else stroke-width="1" class="icon-button icon-button-trash-x" />
+              <ShieldAlert v-if="isConfirmingDeleteAll" :stroke-width="1" class="icon-button icon-button-trash-x" />
+              <SquareX v-else :stroke-width="1" class="icon-button icon-button-trash-x" />
             </div>
           </div>
         </div>
@@ -206,18 +243,18 @@ const triggerFileInput = (id: string) => {
         <div class="table-scroll-wrapper">
           <table class="form-data-table">
             <colgroup>
-              <col style="width: 40px;">
-              <col style="width: 30%;">
-              <col style="width: 100px;">
-              <col style="width: auto;">
-              <col style="width: 40px;">
+              <col style="width: 40px;" />
+              <col style="width: 30%;" />
+              <col style="width: 100px;" />
+              <col style="width: auto;" />
+              <col style="width: 40px;" />
             </colgroup>
             <thead>
               <tr>
                 <th>
                   <div class="cell-icon-action" @click="toggleAllFormData">
-                    <SquareCheck v-if="isAnyFormDataEnabled" stroke-width="1" class="icon-button-checkbox"/>
-                    <Square v-else stroke-width="1" class="icon-button-checkbox"/>
+                    <SquareCheck v-if="isAnyFormDataEnabled" :stroke-width="1" class="icon-button-checkbox"/>
+                    <Square v-else :stroke-width="1" class="icon-button-checkbox"/>
                   </div>
                 </th>
                 <th class="text-center">Key</th>
@@ -225,17 +262,22 @@ const triggerFileInput = (id: string) => {
                 <th class="text-center">Value</th>
                 <th>
                   <div class="cell-icon-action" @click="onMasterDeleteClick" title="Clear empty rows">
-                    <Eraser stroke-width="1" class="icon-button-eraser" />
+                    <Eraser :stroke-width="1" class="icon-button-eraser" />
                   </div>
                 </th>
               </tr>
             </thead>
             <tbody>
-              <tr v-for="(item, index) in store.formData" :key="item.id">
+              <tr v-for="(item, index) in store.formData" :key="item.id" :class="{ 'is-managed': item.isManaged }">
                 <td>
-                  <div class="cell-icon-action" @click="item.enabled = !item.enabled">
-                    <SquareCheck v-if="item.enabled" stroke-width="1" class="icon-button-checkbox" />
-                    <Square v-else stroke-width="1" class="icon-button-checkbox" />
+                  <div class="cell-icon-action" @click="!item.isManaged && (item.enabled = !item.enabled)">
+                    <div v-if="item.isManaged">
+                       <SquareCheck :stroke-width="1" class="icon-button-checkbox is-disabled"/>
+                    </div>
+                    <div v-else>
+                       <SquareCheck v-if="item.enabled" :stroke-width="1" class="icon-button-checkbox" />
+                       <Square v-else :stroke-width="1" class="icon-button-checkbox" />
+                    </div>
                   </div>
                 </td>
                 <td>
@@ -244,13 +286,14 @@ const triggerFileInput = (id: string) => {
                       :route="props.route"
                       :value="item.key"
                       :enabled-env-variable="true"
+                      :readonly="!!item.isManaged"
                       @text-change="val => item.key = val"
                     />
                   </div>
                 </td>
                 <td>
                   <div class="custom-type-select" :class="{ 'is-active': activeSelectIndex === index }">
-                    <div class="type-select-trigger" @click="toggleSelect(index, item, $event)">
+                    <div class="type-select-trigger" :class="{ 'is-disabled': item.isManaged }" @click="!item.isManaged && toggleSelect(index, item, $event)">
                       <span>{{ item.type === 'text' ? 'Text' : 'File' }}</span>
                       <span class="dropdown-arrow">▼</span>
                     </div>
@@ -258,17 +301,18 @@ const triggerFileInput = (id: string) => {
                 </td>
                 <td>
                   <div class="param-input-wrap">
-                    <template v-if="item.type === 'text'">
+                    <div v-if="item.type === 'text'">
                       <TrackedVariableInput
                         :route="props.route"
                         :value="item.value"
                         :enabled-env-variable="true"
+                        :readonly="!!item.isManaged"
                         @text-change="val => item.value = val"
                       />
-                    </template>
-                    <template v-else>
+                    </div>
+                    <div v-else>
                       <div class="file-input-wrap">
-                        <button class="btn-select-file" @click="triggerFileInput('fd-file-' + index)">
+                        <button class="btn-select-file" :disabled="!!item.isManaged" @click="triggerFileInput('fd-file-' + index)">
                           {{ item.file ? item.file.name : 'Select File' }}
                         </button>
                         <input 
@@ -278,13 +322,20 @@ const triggerFileInput = (id: string) => {
                           @change="onFormDataFileChange(index, $event)"
                         />
                       </div>
-                    </template>
+                    </div>
                   </div>
                 </td>
                 <td>
-                  <div class="cell-icon-action" @click="onDeleteClick(index)">
-                    <ShieldAlert v-if="confirmDeleteIndex === index" stroke-width="1" class="icon-button icon-button-row-action" />
-                    <SquareX v-else stroke-width="1" class="icon-button icon-button-row-action" />
+                  <div class="cell-icon-action">
+                    <div v-if="item.isManaged">
+                       <Lock :size="16" :stroke-width="1.5" class="text-muted" />
+                    </div>
+                    <div v-else>
+                      <div class="w-100 h-100 d-flex align-items-center justify-content-center" @click="onDeleteClick(index)">
+                        <ShieldAlert v-if="confirmDeleteIndex === index" :stroke-width="1" class="icon-button icon-button-row-action" />
+                        <SquareX v-else :stroke-width="1" class="icon-button icon-button-row-action" />
+                      </div>
+                    </div>
                   </div>
                 </td>
               </tr>
@@ -299,7 +350,7 @@ const triggerFileInput = (id: string) => {
       <!-- Binary File Upload -->
       <div v-else-if="store.bodyType === 'binary'" class="binary-wrap">
         <div class="binary-uploader" @click="triggerFileInput('binary-file-input')">
-          <FileUp size="40" stroke-width="1" class="mb-3 text-muted" />
+          <FileUp :size="40" :stroke-width="1" class="mb-3 text-muted" />
           <div v-if="store.binaryFile" class="file-info">
             <div class="file-name">{{ store.binaryFile.name }}</div>
             <div class="file-size text-muted small">{{ (store.binaryFile.size / 1024).toFixed(2) }} KB</div>
@@ -481,6 +532,13 @@ const triggerFileInput = (id: string) => {
   &:hover {
     background-color: #e2e2e2; /* Tăng độ đậm để thấy rõ hiệu ứng hover khi chưa chọn */
   }
+
+  &.is-disabled {
+    cursor: not-allowed;
+    background-color: transparent !important;
+    border-color: #aaa;
+    color: #666;
+  }
 }
 
 .dropdown-arrow {
@@ -556,9 +614,13 @@ const triggerFileInput = (id: string) => {
   cursor: pointer;
   display: block;
   margin: 0 auto;
-  fill: var(--icon-bg-color);
-  transition: fill 0.2s ease;
   &:hover { fill: var(--icon-bg-color-active); }
+  
+  &.is-disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    filter: grayscale(1);
+  }
 }
 
 .cell-icon-action {
@@ -589,10 +651,38 @@ const triggerFileInput = (id: string) => {
   cursor: pointer; border-radius: 8px; &:hover { border-color: #888; background-color: rgba(0,0,0,0.02); }
 }
 
-.none-wrap {
-    height: 100%;
-    display: flex;
-    justify-content: center;
-    align-items: center;
+.preset-label {
+  font-size: 11px;
+  text-transform: uppercase;
+  color: #555;
+  font-weight: 600;
+}
+
+.preset-select {
+  background-color: #dddddd;
+  border: 1px solid #888888;
+  font-size: 12px;
+  font-family: inherit;
+  padding: 2px 4px;
+  outline: none;
+  cursor: pointer;
+  height: 26px;
+  color: #333;
+  width: 160px;
+  text-align: center;
+  text-align-last: center;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  overflow: hidden;
+  
+  &:hover {
+    background-color: #cccccc;
+  }
+}
+
+.form-data-table {
+  tr.is-managed {
+    background-color: rgba(0, 0, 0, 0.02);
+  }
 }
 </style>

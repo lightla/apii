@@ -6,6 +6,7 @@ import type { RouteInfo } from '@/types'
 import PayloadParamTab from '@/app/Request/Editor/Payload/ParamTab/PayloadParamTab.vue'
 import PayloadHeaderTab from '@/app/Request/Editor/Payload/HeaderTab/PayloadHeaderTab.vue'
 import PayloadBodyTab from '@/app/Request/Editor/Payload/BodyTab/PayloadBodyTab.vue'
+import PayloadPresetTab from '@/app/Request/Editor/Payload/PresetTab/PresetTab.vue'
 import ToggleLeftIcon from '@/assets/svg/feathericons/toggle-left.svg'
 import ToggleRightIcon from '@/assets/svg/feathericons/toggle-right.svg'
 import ToggleMenuItemDetail from '@/app/Generals/ToggleMenu/ToggleMenuItemDetail.vue'
@@ -32,6 +33,7 @@ const tabs = [
   { id: 'params', name: 'Params', component: PayloadParamTab },
   { id: 'headers', name: 'Headers', component: PayloadHeaderTab },
   { id: 'body', name: 'Body', component: PayloadBodyTab },
+  { id: 'presets', name: 'Presets', component: PayloadPresetTab },
 ]
 </script>
 

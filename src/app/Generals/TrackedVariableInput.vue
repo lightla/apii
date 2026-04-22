@@ -21,12 +21,14 @@ const props = withDefaults(defineProps<{
   value?: string
   enabledUriParam?: boolean
   enabledEnvVariable?: boolean
+  readonly?: boolean
 }>(), {
   placeholder: '',
   value: '',
   width: '100%',
   enabledUriParam: false,
   enabledEnvVariable: false,
+  readonly: false,
 })
 
 const envStorage = useEnvStorage();
@@ -130,13 +132,13 @@ const onVariableInputChange = (event: Event): void => {
 </script>
 
 <template>
-  <div class="var-value-input" :style="{ '--var-input-width': props.width }">
+  <div class="var-value-input" :class="{ 'is-readonly': props.readonly }" :style="{ '--var-input-width': props.width }">
     <div
         ref="variableInputRef"
         :data-enabled-uri-param="props.enabledUriParam"
         :data-enabled-env-variable="props.enabledEnvVariable"
         class="var-input-content"
-        contenteditable="true"
+        :contenteditable="!props.readonly"
         :data-placeholder="props.placeholder"
         @input="onVariableInputChange"
         @keydown="onKeyDown"
@@ -180,6 +182,22 @@ div[data-enabled-uri-param="true"] :deep(.defined-uri-param) {
   &:focus-within {
     border-color: transparent;
     box-shadow: 0 0 0 1.3px #007bff;
+  }
+
+  &.is-readonly {
+    background-color: transparent;
+    border: none;
+    padding: 0;
+    height: auto;
+    
+    .var-input-content {
+      line-height: inherit;
+      cursor: default;
+    }
+    
+    &:focus-within {
+      box-shadow: none;
+    }
   }
 }
 
