@@ -79,6 +79,10 @@ const toggleSelected = (id: string) => {
   selectedItemIds.value = next
 }
 
+const toggleSelectedOnly = (id: string) => {
+  toggleSelected(id)
+}
+
 const onRemoveSelected = () => {
   const active = store.activeCollection
   if (!active) return
@@ -97,10 +101,25 @@ const onCopySelected = () => {
   selectedItemIds.value = new Set()
 }
 
-const onClickItem = (itemId: string, requestKey: string) => {
+const onClickItem = (e: MouseEvent, itemId: string, requestKey: string) => {
+  if (e.ctrlKey) {
+    toggleSelectedOnly(itemId)
+    return
+  }
   activeItemId.value = itemId
   const resolved = resolveRequest(requestKey)
   emit('select', resolved?.compositeKey ?? requestKey)
+}
+
+const onRenameItem = (itemId: string) => {
+  const active = store.activeCollection
+  if (!active) return
+  const item = active.items.find(i => i.id === itemId)
+  if (!item) return
+  const current = (item.label ?? '').trim()
+  const name = window.prompt('Request name (does not change URL):', current)
+  if (name == null) return
+  store.setItemsLabel(active.id, [itemId], name)
 }
 
 watch(requestMap, () => {
@@ -239,12 +258,13 @@ const groupedItems = computed(() => {
               :key="item.id"
               class="collection-item"
               :class="{ active: activeItemId === item.id }"
-              @click="onClickItem(item.id, item.requestKey)"
+              @click="onClickItem($event, item.id, item.requestKey)"
           >
             <input
                 class="item-checkbox"
                 type="checkbox"
                 :checked="selectedItemIds.has(item.id)"
+                title="Ctrl + Click"
                 @click.stop
                 @change="toggleSelected(item.id)"
             />
@@ -252,13 +272,17 @@ const groupedItems = computed(() => {
               <div class="item-title">
                 <span class="method">{{ resolveRequest(item.requestKey)?.request.method ?? '??' }}</span>
                 <span class="route" :title="resolveRequest(item.requestKey)?.request.route ?? item.requestKey">
-                  {{ resolveRequest(item.requestKey)?.request.route ?? item.requestKey }}
+                  {{
+                    (item.label && item.label.trim())
+                      ? item.label
+                      : (resolveRequest(item.requestKey)?.request.route ?? item.requestKey)
+                  }}
                 </span>
               </div>
-              <div class="item-subtitle">
-                {{ resolveRequest(item.requestKey)?.request.group ?? 'UNGROUPED' }}
-              </div>
             </div>
+            <button class="item-rename" title="Rename (does not change URL)" @click.stop="onRenameItem(item.id)">
+              <IconPencil />
+            </button>
           </div>
         </div>
       </template>
@@ -356,7 +380,7 @@ const groupedItems = computed(() => {
 .collection-item {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   padding: 8px 10px;
   cursor: pointer;
 }
@@ -364,8 +388,24 @@ const groupedItems = computed(() => {
 .collection-item.active { background: #e9ecef; border-left: 3px solid #007bff; padding-left: 7px; }
 .item-checkbox { flex-shrink: 0; }
 .item-text { min-width: 0; flex: 1; }
-.item-title { display: flex; gap: 8px; min-width: 0; }
+.item-title { display: flex; gap: 4px; min-width: 0; }
 .method { color: blue; flex-shrink: 0; }
 .route { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.item-subtitle { opacity: 0.75; font-size: 12px; margin-top: 2px; }
+
+.item-rename {
+  flex-shrink: 0;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #ccc;
+  background: #f8f9fa;
+  cursor: pointer;
+  opacity: 0.9;
+}
+.collection-item:hover .item-rename { opacity: 1; }
+.item-rename:hover { background: #e9ecef; }
+.item-rename :deep(svg) { width: 14px; height: 14px; color: #495057; }
 </style>

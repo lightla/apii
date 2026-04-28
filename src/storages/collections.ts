@@ -5,6 +5,7 @@ import { nanoid } from 'nanoid'
 export type CollectionItem = {
   id: string
   requestKey: string
+  label?: string
   group?: string
   addedAt: number
 }
@@ -117,6 +118,7 @@ export const useCollectionsStorage = defineStore('request-collections', () => {
     target.items.unshift({
       id: nanoid(),
       requestKey,
+      label: '',
       group: '',
       addedAt: Date.now(),
     })
@@ -136,10 +138,20 @@ export const useCollectionsStorage = defineStore('request-collections', () => {
     const cloned = toCopy.map(i => ({
       id: nanoid(),
       requestKey: i.requestKey,
+      label: i.label ?? '',
       group: i.group ?? '',
       addedAt: Date.now(),
     }))
     to.items = [...cloned, ...to.items]
+  }
+
+  const setItemsLabel = (collectionId: string, itemIds: string[], label: string) => {
+    const col = collections.value.find(c => c.id === collectionId)
+    if (!col) return
+    const normalized = label.trim()
+    for (const item of col.items) {
+      if (itemIds.includes(item.id)) item.label = normalized
+    }
   }
 
   const setItemsGroup = (collectionId: string, itemIds: string[], group: string) => {
@@ -165,6 +177,7 @@ export const useCollectionsStorage = defineStore('request-collections', () => {
     addRequestToActive,
     removeItem,
     copyItems,
+    setItemsLabel,
     setItemsGroup,
   }
 })
