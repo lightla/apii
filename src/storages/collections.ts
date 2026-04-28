@@ -303,7 +303,6 @@ export const useCollectionsStorage = defineStore('request-collections', () => {
     const moving = [...col.items]
       .sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0))
       .filter(item => ids.has(item.id))
-      .map(item => ({ ...item, group: normalized }))
     if (moving.length === 0) return
 
     const remaining = [...col.items]
@@ -325,6 +324,7 @@ export const useCollectionsStorage = defineStore('request-collections', () => {
     }
 
     remaining.forEach((item, index) => {
+      if (ids.has(item.id)) item.group = normalized
       item.sortOrder = (index + 1) * 1000
     })
     col.items = remaining

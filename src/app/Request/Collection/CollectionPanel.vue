@@ -60,6 +60,7 @@ const draggingGroup = ref<string | null>(null)
 const dragOverGroup = ref<string | null>(null)
 const dragOverItemId = ref<string | null>(null)
 const dragOverZone = ref<string | null>(null)
+const suppressNextClick = ref(false)
 
 watch(() => store.activeCollectionId, () => {
   selectedItemIds.value = new Set()
@@ -224,10 +225,16 @@ function isSelected(id: string) {
 }
 
 function onClickItem(e: MouseEvent, itemId: string, requestKey: string) {
+  if (suppressNextClick.value) {
+    suppressNextClick.value = false
+    return
+  }
+
   if (e.ctrlKey) {
     toggleSelected(itemId)
     return
   }
+  selectedItemIds.value = new Set()
   activeItemId.value = itemId
   const resolved = resolveRequest(requestKey)
   emit('select', resolved?.compositeKey ?? requestKey)
@@ -261,7 +268,10 @@ function copyItems(itemIds: string[]) {
 }
 
 function onItemDragStart(e: DragEvent, itemId: string) {
-  const ids = selectedItemIds.value.has(itemId) ? Array.from(selectedItemIds.value) : [itemId]
+  suppressNextClick.value = true
+  const ids = selectedItemIds.value.size > 0
+    ? Array.from(selectedItemIds.value)
+    : [itemId]
   draggingItemIds.value = ids
   e.dataTransfer?.setData('text/plain', JSON.stringify({ type: 'collection-items', ids }))
   if (e.dataTransfer) e.dataTransfer.effectAllowed = 'move'
@@ -280,10 +290,15 @@ function onItemDrop(e: DragEvent, group: string, beforeItemId?: string) {
   e.preventDefault()
   e.stopPropagation()
   const active = store.activeCollection
-  if (!active || !draggingItemIds.value.length) return
+  if (!active) return
+
+  const ids = selectedItemIds.value.size > 0
+    ? Array.from(selectedItemIds.value)
+    : [...draggingItemIds.value]
+  if (ids.length === 0) return
 
   const targetGroup = group === 'UNGROUPED' ? '' : group
-  store.moveItemsToPosition(active.id, draggingItemIds.value, targetGroup, beforeItemId)
+  store.moveItemsToPosition(active.id, ids, targetGroup, beforeItemId)
   selectedItemIds.value = new Set()
   draggingItemIds.value = []
   dragOverItemId.value = null
@@ -336,6 +351,9 @@ function onDragEnd() {
   dragOverGroup.value = null
   dragOverItemId.value = null
   dragOverZone.value = null
+  window.setTimeout(() => {
+    suppressNextClick.value = false
+  }, 0)
 }
 
 function itemLabel(item: { requestKey: string; label?: string }) {
@@ -527,6 +545,7 @@ function itemLabel(item: { requestKey: string; label?: string }) {
 .collection-select,
 .compact-select {
   height: 30px;
+  padding: 0 8px;
   border: 1px solid #888888;
   background: #f8f9fa;
   color: inherit;
@@ -662,7 +681,7 @@ function itemLabel(item: { requestKey: string; label?: string }) {
 }
 
 .empty-group {
-  padding: 2px 4px;
+  padding: 0;
   border-top: 2px solid transparent;
 }
 
@@ -672,10 +691,14 @@ function itemLabel(item: { requestKey: string; label?: string }) {
 
 .empty-add {
   width: 100%;
-  height: 22px;
+  min-height: 30px;
+  padding: 4px 5px 4px 8px;
   border: 1px dashed #bbbbbb;
   background: transparent;
   cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
 }
 
 .empty-add:hover {
@@ -704,7 +727,9 @@ function itemLabel(item: { requestKey: string; label?: string }) {
 }
 
 .collection-item.selected {
-  background: #d9ead3;
+  background: #e9ecef;
+  border-left: 3px solid #007bff;
+  padding-left: 5px;
 }
 
 .collection-item.drag-over-item {
@@ -719,7 +744,7 @@ function itemLabel(item: { requestKey: string; label?: string }) {
 }
 
 .collection-item.active.selected {
-  background: #d9ead3;
+  background: #e9ecef;
 }
 
 .drop-zone {
