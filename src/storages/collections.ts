@@ -4,6 +4,7 @@ import { nanoid } from 'nanoid'
 
 export type CollectionItem = {
   id: string
+  requestId?: string
   requestKey: string
   label?: string
   group?: string
@@ -70,6 +71,7 @@ function normalizeCollection(collection: RequestCollection) {
 
   collection.items.forEach((item, index) => {
     if (item.sortOrder == null) item.sortOrder = (index + 1) * 1000
+    if (!item.requestId) item.requestId = item.requestKey
     const group = (item.group ?? '').trim()
     if (group && !collection.groups!.some(g => g.name === group)) {
       collection.groups!.push({ id: nanoid(), name: group, sortOrder: nextSortOrder(collection.groups!) })
@@ -164,7 +166,7 @@ export const useCollectionsStorage = defineStore('request-collections', () => {
     activeCollectionId.value = id
   }
 
-  const addRequestToActive = (requestKey: string, group = '') => {
+  const addRequestToActive = (requestId: string, requestKey: string, group = '') => {
     const target = activeCollection.value
     if (!target) return
     normalizeCollection(target)
@@ -178,6 +180,7 @@ export const useCollectionsStorage = defineStore('request-collections', () => {
     }
     target.items.unshift({
       id: nanoid(),
+      requestId,
       requestKey,
       label: '',
       group: normalizedGroup,
@@ -202,6 +205,7 @@ export const useCollectionsStorage = defineStore('request-collections', () => {
     let sortOrder = nextSortOrder(to.items) - 1000
     const cloned = toCopy.map(i => ({
       id: nanoid(),
+      requestId: i.requestId ?? i.requestKey,
       requestKey: i.requestKey,
       label: i.label ?? '',
       group: i.group ?? '',

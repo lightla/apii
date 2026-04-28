@@ -19,7 +19,7 @@ const props = defineProps<{
 }>()
 
 const emit = defineEmits<{
-  (e: 'select', requestKey: string): void
+  (e: 'select', requestId: string): void
 }>()
 
 const store = useCollectionsStorage()
@@ -45,6 +45,12 @@ const resolveRequest = (requestKey: string) => {
   }
 
   return null
+}
+
+const resolveRequestById = (requestId: string) => {
+  const request = props.requests.find(r => (r as any).id === requestId)
+  if (request) return request
+  return resolveRequest(requestId)?.request ?? null
 }
 
 const selectedItemIds = ref<Set<string>>(new Set())
@@ -80,8 +86,8 @@ watch(requestMap, () => {
   const active = store.activeCollection
   if (!active) return
   for (const item of active.items) {
-    if (item.requestKey.includes('::')) continue
-    const byId = props.requests.find(r => (r as any).id === item.requestKey)
+    if (!item.requestId) item.requestId = item.requestKey
+    const byId = props.requests.find(r => (r as any).id === item.requestId)
     if (byId) item.requestKey = requestKeyOf(byId)
   }
 })
@@ -252,7 +258,7 @@ function closeAddRequest() {
 }
 
 function addRequestToGroup(route: RouteInfo) {
-  store.addRequestToActive(requestKeyOf(route), addTargetGroup.value ?? '')
+  store.addRequestToActive((route as any).id ?? requestKeyOf(route), requestKeyOf(route), addTargetGroup.value ?? '')
 }
 
 function toggleSelected(id: string) {
@@ -266,7 +272,7 @@ function isSelected(id: string) {
   return selectedItemIds.value.has(id) || (selectedItemIds.value.size > 0 && activeItemId.value === id)
 }
 
-function onClickItem(e: MouseEvent, itemId: string, requestKey: string) {
+function onClickItem(e: MouseEvent, itemId: string, requestId: string) {
   if (suppressNextClick.value) {
     suppressNextClick.value = false
     return
@@ -292,8 +298,8 @@ function onClickItem(e: MouseEvent, itemId: string, requestKey: string) {
   }
   selectedItemIds.value = new Set()
   activeItemId.value = itemId
-  const resolved = resolveRequest(requestKey)
-  emit('select', resolved?.compositeKey ?? requestKey)
+  const resolved = resolveRequestById(requestId)
+  emit('select', (resolved as any)?.id ?? requestId)
 }
 
 function onRenameItem(itemId: string) {
@@ -528,15 +534,15 @@ function itemLabel(item: { requestKey: string; label?: string }) {
             class="collection-item"
             :class="{ active: activeItemId === item.id, selected: isSelected(item.id), 'drag-over-item': dragOverItemId === item.id }"
             draggable="true"
-            @click="onClickItem($event, item.id, item.requestKey)"
+            @click="onClickItem($event, item.id, item.requestId ?? item.requestKey)"
             @dragstart="onItemDragStart($event, item.id)"
             @dragover="onItemDragOver($event, item.id)"
             @drop="onItemDrop($event, block.group, item.id)"
             @dragend="onDragEnd"
             @contextmenu.prevent.stop="menuItemId = item.id; menuGroup = null"
         >
-          <span class="method">{{ resolveRequest(item.requestKey)?.request.method ?? '??' }}</span>
-          <span class="route" :title="resolveRequest(item.requestKey)?.request.route ?? item.requestKey">
+          <span class="method">{{ resolveRequestById(item.requestId ?? item.requestKey)?.method ?? resolveRequest(item.requestKey)?.request.method ?? '??' }}</span>
+          <span class="route" :title="resolveRequestById(item.requestId ?? item.requestKey)?.route ?? resolveRequest(item.requestKey)?.request.route ?? item.requestKey">
             {{ itemLabel(item) }}
           </span>
           <button class="mini-icon item-menu-btn" title="Request menu" @click.stop="menuItemId = menuItemId === item.id ? null : item.id; menuGroup = null">
