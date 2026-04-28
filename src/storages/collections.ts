@@ -5,12 +5,14 @@ import { nanoid } from 'nanoid'
 export type CollectionItem = {
   id: string
   requestKey: string
+  group?: string
   addedAt: number
 }
 
 export type RequestCollection = {
   id: string
   name: string
+  isDefault?: boolean
   items: CollectionItem[]
   createdAt: number
 }
@@ -37,10 +39,19 @@ export const useCollectionsStorage = defineStore('request-collections', () => {
   })
 
   const ensureDefaultCollection = () => {
-    if (collections.value.length > 0) return
+    if (collections.value.length > 0) {
+      const hasDefault = collections.value.some(c => c.isDefault)
+      if (!hasDefault) {
+        // Backward compatibility: mark the first "Default" (or first item) as default
+        const maybeDefault = collections.value.find(c => c.name === 'Default') ?? collections.value[0]
+        if (maybeDefault) maybeDefault.isDefault = true
+      }
+      return
+    }
     const defaultCollection: RequestCollection = {
       id: nanoid(),
       name: 'Default',
+      isDefault: true,
       items: [],
       createdAt: Date.now(),
     }
@@ -69,6 +80,7 @@ export const useCollectionsStorage = defineStore('request-collections', () => {
     const newCollection: RequestCollection = {
       id: nanoid(),
       name: trimmed || `Collection ${collections.value.length + 1}`,
+      isDefault: false,
       items: [],
       createdAt: Date.now(),
     }
@@ -79,6 +91,7 @@ export const useCollectionsStorage = defineStore('request-collections', () => {
   const renameCollection = (id: string, name: string) => {
     const target = collections.value.find(c => c.id === id)
     if (!target) return
+    if (target.isDefault) return
     const trimmed = name.trim()
     if (!trimmed) return
     target.name = trimmed
@@ -87,6 +100,8 @@ export const useCollectionsStorage = defineStore('request-collections', () => {
   const deleteCollection = (id: string) => {
     if (collections.value.length <= 1) return
     const next = collections.value.filter(c => c.id !== id)
+    const toDelete = collections.value.find(c => c.id === id)
+    if (toDelete?.isDefault) return
     collections.value = next
     if (activeCollectionId.value === id) activeCollectionId.value = collections.value[0]?.id ?? null
   }
@@ -102,6 +117,7 @@ export const useCollectionsStorage = defineStore('request-collections', () => {
     target.items.unshift({
       id: nanoid(),
       requestKey,
+      group: '',
       addedAt: Date.now(),
     })
   }
@@ -117,8 +133,22 @@ export const useCollectionsStorage = defineStore('request-collections', () => {
     const to = collections.value.find(c => c.id === toCollectionId)
     if (!from || !to) return
     const toCopy = from.items.filter(i => itemIds.includes(i.id))
-    const cloned = toCopy.map(i => ({ id: nanoid(), requestKey: i.requestKey, addedAt: Date.now() }))
+    const cloned = toCopy.map(i => ({
+      id: nanoid(),
+      requestKey: i.requestKey,
+      group: i.group ?? '',
+      addedAt: Date.now(),
+    }))
     to.items = [...cloned, ...to.items]
+  }
+
+  const setItemsGroup = (collectionId: string, itemIds: string[], group: string) => {
+    const col = collections.value.find(c => c.id === collectionId)
+    if (!col) return
+    const normalized = group.trim()
+    for (const item of col.items) {
+      if (itemIds.includes(item.id)) item.group = normalized
+    }
   }
 
   watch([collections, activeCollectionId], persist, { deep: true })
@@ -135,6 +165,6 @@ export const useCollectionsStorage = defineStore('request-collections', () => {
     addRequestToActive,
     removeItem,
     copyItems,
+    setItemsGroup,
   }
 })
-

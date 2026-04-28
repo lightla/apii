@@ -2,7 +2,7 @@
 import { computed, onMounted, ref, watch } from 'vue'
 import type { RouteInfo } from '@/types'
 import { useCollectionsStorage } from '@/storages'
-import { IconCopy, IconFolderPlus, IconPencil, IconTrash } from '@tabler/icons-vue'
+import { IconCopy, IconFolderPlus, IconPencil, IconTrash, IconLayersSelected } from '@tabler/icons-vue'
 
 const props = defineProps<{
   requests: RouteInfo[]
@@ -39,6 +39,7 @@ const resolveRequest = (requestKey: string) => {
 }
 
 const selectedItemIds = ref<Set<string>>(new Set())
+const activeItemId = ref<string | null>(null)
 watch(() => store.activeCollectionId, () => selectedItemIds.value = new Set())
 
 const otherCollections = computed(() => store.collections.filter(c => c.id !== store.activeCollectionId))
@@ -57,6 +58,7 @@ const onCreateCollection = () => {
 const onRenameCollection = () => {
   const active = store.activeCollection
   if (!active) return
+  if (active.isDefault) return
   const name = window.prompt('Rename collection:', active.name)
   if (name == null) return
   store.renameCollection(active.id, name)
@@ -65,6 +67,7 @@ const onRenameCollection = () => {
 const onDeleteCollection = () => {
   const active = store.activeCollection
   if (!active) return
+  if (active.isDefault) return
   if (!window.confirm(`Delete collection "${active.name}"?`)) return
   store.deleteCollection(active.id)
 }
@@ -94,7 +97,8 @@ const onCopySelected = () => {
   selectedItemIds.value = new Set()
 }
 
-const onClickItem = (requestKey: string) => {
+const onClickItem = (itemId: string, requestKey: string) => {
+  activeItemId.value = itemId
   const resolved = resolveRequest(requestKey)
   emit('select', resolved?.compositeKey ?? requestKey)
 }
@@ -108,6 +112,61 @@ watch(requestMap, () => {
     const byId = props.requests.find(r => (r as any).id === item.requestKey)
     if (byId) item.requestKey = requestKeyOf(byId)
   }
+})
+
+const activeGroups = computed(() => {
+  const active = store.activeCollection
+  if (!active) return []
+  const groups = new Set<string>()
+  for (const item of active.items) {
+    const g = (item.group ?? '').trim()
+    if (g) groups.add(g)
+  }
+  return Array.from(groups).sort((a, b) => a.localeCompare(b))
+})
+
+const groupTarget = ref<string>('')
+watch(activeGroups, (groups) => {
+  if (groupTarget.value && groups.includes(groupTarget.value)) return
+  groupTarget.value = groups[0] ?? ''
+}, { immediate: true })
+
+const onCreateGroup = () => {
+  const name = window.prompt('Group name?')
+  if (name == null) return
+  const trimmed = name.trim()
+  if (!trimmed) return
+  groupTarget.value = trimmed
+  onApplyGroup()
+}
+
+const onApplyGroup = () => {
+  const active = store.activeCollection
+  if (!active) return
+  const ids = Array.from(selectedItemIds.value)
+  if (ids.length === 0) return
+  store.setItemsGroup(active.id, ids, groupTarget.value)
+  selectedItemIds.value = new Set()
+}
+
+const groupedItems = computed(() => {
+  const active = store.activeCollection
+  if (!active) return []
+
+  const byGroup = new Map<string, typeof active.items>()
+  for (const item of active.items) {
+    const group = (item.group ?? '').trim() || 'UNGROUPED'
+    if (!byGroup.has(group)) byGroup.set(group, [])
+    byGroup.get(group)!.push(item)
+  }
+
+  const orderedGroups = Array.from(byGroup.keys()).sort((a, b) => {
+    if (a === 'UNGROUPED') return 1
+    if (b === 'UNGROUPED') return -1
+    return a.localeCompare(b)
+  })
+
+  return orderedGroups.map(group => ({ group, items: byGroup.get(group)! }))
 })
 </script>
 
@@ -128,10 +187,10 @@ watch(requestMap, () => {
         <button class="icon-btn" title="New collection" @click="onCreateCollection">
           <IconFolderPlus />
         </button>
-        <button class="icon-btn" title="Rename collection" @click="onRenameCollection">
+        <button class="icon-btn" title="Rename collection" :disabled="!!store.activeCollection?.isDefault" @click="onRenameCollection">
           <IconPencil />
         </button>
-        <button class="icon-btn" title="Delete collection" @click="onDeleteCollection">
+        <button class="icon-btn" title="Delete collection" :disabled="!!store.activeCollection?.isDefault" @click="onDeleteCollection">
           <IconTrash />
         </button>
       </div>
@@ -141,6 +200,20 @@ watch(requestMap, () => {
       <button class="action-btn" :disabled="selectedItemIds.size === 0" @click="onRemoveSelected">
         Remove
       </button>
+
+      <div class="group-row">
+        <select class="group-select" v-model="groupTarget">
+          <option value="">(no group)</option>
+          <option v-for="g in activeGroups" :key="g" :value="g">{{ g }}</option>
+        </select>
+        <button class="action-btn" :disabled="selectedItemIds.size === 0" @click="onApplyGroup" title="Assign group to selected">
+          <IconLayersSelected />
+          Group
+        </button>
+        <button class="action-btn" :disabled="selectedItemIds.size === 0" @click="onCreateGroup" title="Create new group + assign selected">
+          + New
+        </button>
+      </div>
 
       <div class="copy-row">
         <select class="copy-select" v-model="copyTargetId" :disabled="otherCollections.length === 0">
@@ -158,32 +231,37 @@ watch(requestMap, () => {
         Empty collection. Use + on the request list to add items.
       </div>
 
-      <div
-          v-else
-          v-for="item in store.activeCollection.items"
-          :key="item.id"
-          class="collection-item"
-          @click="onClickItem(item.requestKey)"
-      >
-        <input
-            class="item-checkbox"
-            type="checkbox"
-            :checked="selectedItemIds.has(item.id)"
-            @click.stop
-            @change="toggleSelected(item.id)"
-        />
-        <div class="item-text">
-          <div class="item-title">
-            <span class="method">{{ resolveRequest(item.requestKey)?.request.method ?? '??' }}</span>
-            <span class="route" :title="resolveRequest(item.requestKey)?.request.route ?? item.requestKey">
-              {{ resolveRequest(item.requestKey)?.request.route ?? item.requestKey }}
-            </span>
-          </div>
-          <div class="item-subtitle">
-            {{ resolveRequest(item.requestKey)?.request.group ?? 'UNGROUPED' }}
+      <template v-else>
+        <div v-for="block in groupedItems" :key="block.group" class="group-block">
+          <div class="group-title">{{ block.group }}</div>
+          <div
+              v-for="item in block.items"
+              :key="item.id"
+              class="collection-item"
+              :class="{ active: activeItemId === item.id }"
+              @click="onClickItem(item.id, item.requestKey)"
+          >
+            <input
+                class="item-checkbox"
+                type="checkbox"
+                :checked="selectedItemIds.has(item.id)"
+                @click.stop
+                @change="toggleSelected(item.id)"
+            />
+            <div class="item-text">
+              <div class="item-title">
+                <span class="method">{{ resolveRequest(item.requestKey)?.request.method ?? '??' }}</span>
+                <span class="route" :title="resolveRequest(item.requestKey)?.request.route ?? item.requestKey">
+                  {{ resolveRequest(item.requestKey)?.request.route ?? item.requestKey }}
+                </span>
+              </div>
+              <div class="item-subtitle">
+                {{ resolveRequest(item.requestKey)?.request.group ?? 'UNGROUPED' }}
+              </div>
+            </div>
           </div>
         </div>
-      </div>
+      </template>
     </div>
   </div>
 </template>
@@ -229,12 +307,13 @@ watch(requestMap, () => {
   cursor: pointer;
 }
 .icon-btn:hover { background: #e9ecef; }
+.icon-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.icon-btn:hover:disabled { background: #f8f9fa; }
 .icon-btn :deep(svg) { width: 16px; height: 16px; }
 
 .collection-actions {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
+  flex-direction: column;
   gap: 8px;
 }
 .action-btn {
@@ -253,6 +332,14 @@ watch(requestMap, () => {
 .action-btn :deep(svg) { width: 16px; height: 16px; }
 
 .copy-row { display: flex; gap: 6px; align-items: center; }
+.group-row { display: flex; gap: 6px; align-items: center; }
+.group-select {
+  flex: 1;
+  height: 30px;
+  border: 1px solid #aaaaaa;
+  background: #f8f9fa;
+  color: inherit;
+}
 .copy-select {
   height: 30px;
   border: 1px solid #aaaaaa;
@@ -263,14 +350,18 @@ watch(requestMap, () => {
 .collection-list { flex: 1; overflow: auto; min-height: 0; border-top: 1px solid #eeeeee; padding-top: 8px; }
 .empty { padding: 12px; opacity: 0.8; }
 
+.group-block { margin-bottom: 10px; }
+.group-title { font-weight: bold; padding: 4px 6px; border-bottom: 1px solid #eee; margin-bottom: 4px; }
+
 .collection-item {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 6px 8px;
+  padding: 8px 10px;
   cursor: pointer;
 }
 .collection-item:hover { background: #e2e2e2; }
+.collection-item.active { background: #e9ecef; border-left: 3px solid #007bff; padding-left: 7px; }
 .item-checkbox { flex-shrink: 0; }
 .item-text { min-width: 0; flex: 1; }
 .item-title { display: flex; gap: 8px; min-width: 0; }
