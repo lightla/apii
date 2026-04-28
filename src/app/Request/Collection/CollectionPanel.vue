@@ -232,6 +232,12 @@ function onClickItem(e: MouseEvent, itemId: string, requestKey: string) {
 
   if (e.ctrlKey) {
     const next = new Set(selectedItemIds.value)
+    if (activeItemId.value === itemId) {
+      next.delete(itemId)
+      selectedItemIds.value = next
+      activeItemId.value = null
+      return
+    }
     if (activeItemId.value && activeItemId.value !== itemId && next.size === 0) {
       next.add(activeItemId.value)
     }
