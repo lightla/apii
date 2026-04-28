@@ -51,6 +51,7 @@ const selectedItemIds = ref<Set<string>>(new Set())
 const activeItemId = ref<string | null>(null)
 const requestSearch = ref('')
 const requestSearchInput = ref<HTMLInputElement | null>(null)
+const panelRef = ref<HTMLDivElement | null>(null)
 const addTargetGroup = ref<string | null>(null)
 const menuItemId = ref<string | null>(null)
 const menuGroup = ref<string | null>(null)
@@ -149,6 +150,46 @@ const selectedCount = computed(() => selectedItemIds.value.size)
 function closeMenus() {
   menuItemId.value = null
   menuGroup.value = null
+}
+
+function getItemById(itemId: string) {
+  const active = store.activeCollection
+  if (!active) return null
+  return active.items.find(item => item.id === itemId) ?? null
+}
+
+function getCurrentGroupName() {
+  const active = store.activeCollection
+  if (!active) return ''
+  const fromActive = activeItemId.value ? getItemById(activeItemId.value) : null
+  const fromSelected = Array.from(selectedItemIds.value).map(id => getItemById(id)).find(Boolean)
+  const source = fromActive ?? fromSelected
+  return (source?.group ?? '').trim()
+}
+
+function onPanelKeydown(e: KeyboardEvent) {
+  const target = e.target as HTMLElement | null
+  if (target?.closest('input, textarea, select, [contenteditable="true"]')) return
+  if (!e.ctrlKey || e.key.toLowerCase() !== 'a') return
+  const active = store.activeCollection
+  if (!active) return
+
+  e.preventDefault()
+  const targetGroup = getCurrentGroupName()
+  const ids = active.items
+    .filter(item => (item.group ?? '').trim() === targetGroup)
+    .map(item => item.id)
+
+  if (ids.length > 0) {
+    selectedItemIds.value = new Set(ids)
+    if (activeItemId.value && !ids.includes(activeItemId.value)) activeItemId.value = ids[0]
+  }
+}
+
+function onPanelMouseDown(e: MouseEvent) {
+  const target = e.target as HTMLElement | null
+  if (target?.closest('.request-popup')) return
+  panelRef.value?.focus()
 }
 
 function onCreateCollection() {
@@ -313,7 +354,6 @@ function onItemDrop(e: DragEvent, group: string, beforeItemId?: string) {
 
   const targetGroup = group === 'UNGROUPED' ? '' : group
   store.moveItemsToPosition(active.id, ids, targetGroup, beforeItemId)
-  selectedItemIds.value = new Set()
   draggingItemIds.value = []
   dragOverItemId.value = null
   dragOverGroup.value = null
@@ -365,9 +405,7 @@ function onDragEnd() {
   dragOverGroup.value = null
   dragOverItemId.value = null
   dragOverZone.value = null
-  window.setTimeout(() => {
-    suppressNextClick.value = false
-  }, 0)
+  suppressNextClick.value = false
 }
 
 function itemLabel(item: { requestKey: string; label?: string }) {
@@ -378,7 +416,7 @@ function itemLabel(item: { requestKey: string; label?: string }) {
 </script>
 
 <template>
-  <div class="collection-panel" @click="closeMenus">
+  <div ref="panelRef" class="collection-panel" tabindex="0" @click="closeMenus" @mousedown="onPanelMouseDown" @keydown="onPanelKeydown">
     <div class="collection-header">
       <select
           class="collection-select"
