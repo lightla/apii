@@ -221,7 +221,7 @@ function toggleSelected(id: string) {
 }
 
 function isSelected(id: string) {
-  return selectedItemIds.value.has(id)
+  return selectedItemIds.value.has(id) || (selectedItemIds.value.size > 0 && activeItemId.value === id)
 }
 
 function onClickItem(e: MouseEvent, itemId: string, requestKey: string) {
@@ -231,7 +231,15 @@ function onClickItem(e: MouseEvent, itemId: string, requestKey: string) {
   }
 
   if (e.ctrlKey) {
-    toggleSelected(itemId)
+    const next = new Set(selectedItemIds.value)
+    if (activeItemId.value && activeItemId.value !== itemId && next.size === 0) {
+      next.add(activeItemId.value)
+    }
+    if (next.has(itemId)) next.delete(itemId)
+    else next.add(itemId)
+    selectedItemIds.value = next
+    if (activeItemId.value === itemId && !next.has(itemId)) activeItemId.value = null
+    if (next.size === 0) activeItemId.value = null
     return
   }
   selectedItemIds.value = new Set()
