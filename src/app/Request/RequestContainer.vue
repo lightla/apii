@@ -7,7 +7,9 @@ import Resizer from '../Generals/Resizer.vue'
 import RequestEditor from '@/app/Request/RequestEditor.vue'
 import RequestInfo from "@/app/Request/RequestInfo.vue";
 import EditorEnv from "@/app/Request/Editor/EditorEnv.vue";
-import { IconSettings, IconCode, IconInfoCircle } from '@tabler/icons-vue'
+import { IconSettings, IconCode, IconInfoCircle, IconListDetails, IconFolder } from '@tabler/icons-vue'
+import CollectionPanel from '@/app/Request/Collection/CollectionPanel.vue'
+import { useCollectionsStorage } from '@/storages'
 
 import IconEditor from '@/assets/svg/feathericons/edit.svg'
 import IconInfo from '@/assets/svg/feathericons/info.svg'
@@ -18,15 +20,25 @@ const props = defineProps<{
 
 const STORAGE_KEY_LEFT_WIDTH = 'containerLeftWidth'
 const STORAGE_KEY_ACTIVE_TAB = 'activeRightTab'
+const STORAGE_KEY_LEFT_MODE = 'activeLeftMode'
+const STORAGE_KEY_LEFT_TOP_HEIGHT = 'containerLeftTopHeight'
 type RightTab = 'editor' | 'info' | 'settings'
+type LeftMode = 'request_list' | 'collection'
 
 const containerLeftWidth = ref(40)
+const containerLeftTopHeight = ref(50)
 const clickedRoute = ref<RouteInfo | null>(null)
 const activeRightTab = ref<RightTab>('editor')
+const activeLeftMode = ref<LeftMode>('request_list')
 const searchableFields = ref<string[]>(['route', 'group'])
+const collectionsStore = useCollectionsStorage()
 
 const updateLeftWidth = (newWidth: number) => {
   containerLeftWidth.value = newWidth
+}
+
+const updateLeftTopHeight = (newHeight: number) => {
+  containerLeftTopHeight.value = newHeight
 }
 
 const clickRoute = (route: RouteInfo) => {
@@ -63,25 +75,82 @@ onMounted(() => {
   if (savedLeftWidthStr) containerLeftWidth.value = Number(savedLeftWidthStr)
   const savedActiveTab = localStorage.getItem(STORAGE_KEY_ACTIVE_TAB)
   if (savedActiveTab) activeRightTab.value = savedActiveTab as RightTab
+  const savedLeftMode = localStorage.getItem(STORAGE_KEY_LEFT_MODE)
+  if (savedLeftMode) activeLeftMode.value = savedLeftMode as LeftMode
+  const savedLeftTopHeightStr = localStorage.getItem(STORAGE_KEY_LEFT_TOP_HEIGHT)
+  if (savedLeftTopHeightStr) containerLeftTopHeight.value = Number(savedLeftTopHeightStr)
+
+  collectionsStore.load()
 })
 
 watch(containerLeftWidth, (newVal) => localStorage.setItem(STORAGE_KEY_LEFT_WIDTH, String(newVal)))
 watch(activeRightTab, (newTab) => localStorage.setItem(STORAGE_KEY_ACTIVE_TAB, newTab))
+watch(activeLeftMode, (newMode) => localStorage.setItem(STORAGE_KEY_LEFT_MODE, newMode))
+watch(containerLeftTopHeight, (newVal) => localStorage.setItem(STORAGE_KEY_LEFT_TOP_HEIGHT, String(newVal)))
+
+const requestKeyOf = (route: RouteInfo) => `${route.method}::${route.route}`
+
+const addToCurrentCollection = (route: RouteInfo) => {
+  collectionsStore.addRequestToActive(requestKeyOf(route))
+}
+
+const selectFromCollection = (requestKey: string) => {
+  const found = localRequests.find(r => requestKeyOf(r) === requestKey)
+  if (found) {
+    clickedRoute.value = found
+    activeRightTab.value = 'editor'
+  }
+}
 
 </script>
 
 <template>
   <div class="container">
     <div class="container-left" :style="{ width: containerLeftWidth + '%' }">
-      <RequestManager :requests="localRequests" :search-fields="searchableFields" @click="clickRoute" />
+      <div v-if="activeLeftMode === 'request_list'" class="left-single">
+        <RequestManager :requests="localRequests" :search-fields="searchableFields" @click="clickRoute" />
+      </div>
+
+      <div v-else class="left-split">
+        <div class="left-top" :style="{ height: containerLeftTopHeight + '%' }">
+          <RequestManager
+              :requests="localRequests"
+              :search-fields="searchableFields"
+              :show-add-to-collection="true"
+              @click="clickRoute"
+              @add-to-collection="addToCurrentCollection"
+          />
+        </div>
+
+        <Resizer
+            class="resizer-vertical"
+            direction="vertical"
+            :initial-width="containerLeftTopHeight"
+            @resize="updateLeftTopHeight"
+        />
+
+        <div class="left-bottom">
+          <CollectionPanel :requests="localRequests" @select="selectFromCollection" />
+        </div>
+      </div>
     </div>
 
-    <Resizer class="resizer" @resize="updateLeftWidth" />
+    <Resizer class="resizer" :initial-width="containerLeftWidth" @resize="updateLeftWidth" />
 
     <div class="container-right">
-      <RequestEditor v-if="activeRightTab === 'editor'" :route="clickedRoute" />
-      <RequestInfo v-if="activeRightTab === 'info'" :route="clickedRoute" @route-tags-updated="updateTagsForRoute" />
-      <EditorEnv v-if="activeRightTab === 'settings'" :route="clickedRoute!" />
+      <div v-if="!clickedRoute" class="empty-right">Select a request</div>
+      <RequestEditor v-else-if="activeRightTab === 'editor'" :route="clickedRoute" />
+      <RequestInfo v-else-if="activeRightTab === 'info'" :route="clickedRoute" @route-tags-updated="updateTagsForRoute" />
+      <EditorEnv v-else :route="clickedRoute" />
+    </div>
+
+    <div class="left-tabs">
+      <div class="tab-icon" :class="{ active: activeLeftMode === 'request_list' }" @click="activeLeftMode = 'request_list'" title="Request List">
+        <IconListDetails />
+      </div>
+      <div class="tab-icon" :class="{ active: activeLeftMode === 'collection' }" @click="activeLeftMode = 'collection'" title="Collection">
+        <IconFolder />
+      </div>
     </div>
 
     <div class="right-tabs">
@@ -111,7 +180,14 @@ watch(activeRightTab, (newTab) => localStorage.setItem(STORAGE_KEY_ACTIVE_TAB, n
 <style scoped lang="scss">
 .container { display: flex; height: 96vh; width: 100%; border: 1px solid #aaaaaa; background-color: var(--app-bg-color); position: relative; }
 .resizer { padding: 0; }
-.container-left { padding: 10px; overflow: auto; max-width: 90%; min-width: 200px; }
+.container-left { padding: 10px; overflow: hidden; max-width: 90%; min-width: 200px; display: flex; }
+.left-single { width: 100%; height: 100%; overflow: auto; }
+.left-split { width: 100%; height: 100%; display: flex; flex-direction: column; min-height: 0; }
+.left-top { overflow: hidden; min-height: 0; display: flex; }
+.left-top > * { width: 100%; height: 100%; min-height: 0; }
+.resizer-vertical { padding: 0; }
+.left-bottom { flex: 1; min-height: 0; overflow: hidden; display: flex; }
+.left-bottom > * { width: 100%; height: 100%; min-height: 0; }
 .container-right {
   flex: 1;
   padding: 10px;
@@ -125,7 +201,9 @@ watch(activeRightTab, (newTab) => localStorage.setItem(STORAGE_KEY_ACTIVE_TAB, n
   height: 100%;
   min-height: 0;
 }
+.empty-right { width: 100%; height: 100%; border: 1px dashed #bbbbbb; display: flex; align-items: center; justify-content: center; opacity: 0.75; }
 .right-tabs { position: absolute; top: 15px; right: 0; transform: translateX(100%); padding-left: 8px; display: flex; flex-direction: column; gap: 8px; z-index: 100; }
+.left-tabs { position: absolute; top: 15px; left: 0; transform: translateX(-100%); padding-right: 8px; display: flex; flex-direction: column; gap: 8px; z-index: 100; }
 .tab-icon { width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; cursor: pointer; background-color: #f8f9fa; border: 1px solid #aaaaaa; border-radius: 0; box-shadow: 0 1px 2px rgba(0,0,0,0.05); }
 .tab-icon :deep(svg) { width: 18px; height: 18px; color: #495057; }
 .tab-icon:hover { background-color: #e9ecef; }

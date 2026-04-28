@@ -4,15 +4,20 @@ import { ref, watch, computed, toRaw } from 'vue'
 import type { RouteInfo } from '@/types'
 import SearchComponent from "@/app/Generals/Search/SearchComponent.vue";
 import RequestTagManager from "@/app/Generals/TagManager/RequestTagManager.vue";
+import { IconPlus } from '@tabler/icons-vue'
 
 interface SearchFieldConfig { id: number; key: string; value: string; searchable: boolean; }
 
 const props = defineProps<{
   requests: RouteInfo[],
-  searchFields: string[]
+  searchFields: string[],
+  showAddToCollection?: boolean
 }>()
 
-const emit = defineEmits(['click'])
+const emit = defineEmits<{
+  (e: 'click', item: RouteInfo): void
+  (e: 'add-to-collection', item: RouteInfo): void
+}>()
 
 // --- STATE ---
 const searchTitleValue = ref<string>("");
@@ -105,6 +110,10 @@ function handleClick(item: RouteInfo) {
   emit('click', item)
 }
 
+function handleAddToCollection(item: RouteInfo) {
+  emit('add-to-collection', item)
+}
+
 function formatRoute(route: string) {
   return route.replace(/{([^}]+)}/g, `<span class="defined-uri-param">{$1}</span>`)
 }
@@ -146,8 +155,18 @@ function formatRoute(route: string) {
             class="route-line"
             @click="handleClick(item)"
         >
-          <span style="color: blue">{{ item.method || 'POST' }} </span>
-          <span v-html="formatRoute(item.route)" :title="item.route"></span>
+          <div class="route-main">
+            <span style="color: blue">{{ item.method || 'POST' }} </span>
+            <span v-html="formatRoute(item.route)" :title="item.route"></span>
+          </div>
+          <button
+              v-if="props.showAddToCollection"
+              class="btn-add-to-collection"
+              title="Add to current collection"
+              @click.stop="handleAddToCollection(item)"
+          >
+            <IconPlus />
+          </button>
         </div>
       </template>
     </div>
@@ -162,6 +181,23 @@ function formatRoute(route: string) {
 .route-line { cursor: pointer; color: black; padding: 3px 6px; margin-bottom: 4px; line-height: 1.3; user-select: none; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: flex; flex-direction: row; gap: 3px; }
 .route-line:hover { background: #e2e2e2; }
 .no-results { padding: 20px; text-align: center; color: #6c757d; }
+
+.route-main { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; display: flex; gap: 3px; }
+
+.btn-add-to-collection {
+  flex-shrink: 0;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #ccc;
+  background: #f8f9fa;
+  cursor: pointer;
+}
+.btn-add-to-collection:hover { background: #e9ecef; }
+.btn-add-to-collection :deep(svg) { width: 14px; height: 14px; color: #495057; }
 
 :deep(.defined-uri-param) {
   color: var(--defined-uri-param);

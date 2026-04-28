@@ -1,19 +1,36 @@
 <script setup lang="ts">
 import { ref, onMounted, onBeforeUnmount } from 'vue'
 
-const props = defineProps<{ initialWidth: number }>()
+const props = defineProps<{
+  initialWidth?: number
+  direction?: 'horizontal' | 'vertical'
+}>()
 
 const emit = defineEmits(['resize'])
 
 const resizer = ref<HTMLElement | null>(null)
 const isResizing = ref(false)
 const startX = ref(0)
+const startY = ref(0)
 const startWidth = ref(0)
+const startHeight = ref(0)
 
 const containerWidth = ref(window.innerWidth)
+const containerHeight = ref(window.innerHeight)
+
+const getDirection = () => props.direction ?? 'horizontal'
 
 const onMouseMove = (e: MouseEvent) => {
   if (!isResizing.value) return
+
+  if (getDirection() === 'vertical') {
+    const dy = e.clientY - startY.value
+    const newHeightPx = startHeight.value + dy
+    const percent = (newHeightPx / containerHeight.value) * 100
+    const boundedHeight = Math.max(10, Math.min(percent, 90))
+    emit('resize', boundedHeight)
+    return
+  }
 
   const dx = e.clientX - startX.value
   const newWidthPx = startWidth.value + dx
@@ -32,7 +49,7 @@ const stopResize = () => {
 }
 
 const startResize = (e: MouseEvent) => {
-  document.body.style.cursor = 'ew-resize';
+  document.body.style.cursor = getDirection() === 'vertical' ? 'ns-resize' : 'ew-resize';
 
   console.log("startResize-props.initialWidth:" + props.initialWidth);
   console.log("startResize-containerWidth.value:" + containerWidth.value);
@@ -40,11 +57,20 @@ const startResize = (e: MouseEvent) => {
   e.preventDefault()
   isResizing.value = true
   startX.value = e.clientX
+  startY.value = e.clientY
 
-  if (props.initialWidth !== undefined) {
-    startWidth.value = (props.initialWidth / 100) * containerWidth.value
+  if (getDirection() === 'vertical') {
+    if (props.initialWidth !== undefined) {
+      startHeight.value = (props.initialWidth / 100) * containerHeight.value
+    } else {
+      startHeight.value = 0.5 * containerHeight.value
+    }
   } else {
-    startWidth.value = 0.4 * containerWidth.value
+    if (props.initialWidth !== undefined) {
+      startWidth.value = (props.initialWidth / 100) * containerWidth.value
+    } else {
+      startWidth.value = 0.4 * containerWidth.value
+    }
   }
 
   console.log("startResize-startWidth.value:" + startWidth.value);
@@ -57,6 +83,7 @@ window.addEventListener('resize', () => {
   console.log("window.innerWidth:" + window.innerWidth);
   console.log("containerWidth.value:" + containerWidth.value);
   containerWidth.value = window.innerWidth
+  containerHeight.value = window.innerHeight
 })
 
 onMounted(() => {
@@ -76,7 +103,7 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <div class="resizer-range" ref="resizer">
+  <div class="resizer-range" :class="{ vertical: getDirection() === 'vertical' }" ref="resizer">
     <div class="container-resizer"></div>
   </div>
 </template>
@@ -93,6 +120,12 @@ onBeforeUnmount(() => {
   cursor: ew-resize;
 }
 
+.resizer-range.vertical {
+  width: 100%;
+  height: 22px;
+  cursor: ns-resize;
+}
+
 .resizer-range:active {
   cursor: ew-resize;
 }
@@ -102,5 +135,10 @@ onBeforeUnmount(() => {
   height: 100%;
   background-color: #999;
   width: 2px;
+}
+
+.resizer-range.vertical .container-resizer {
+  width: 100%;
+  height: 2px;
 }
 </style>
