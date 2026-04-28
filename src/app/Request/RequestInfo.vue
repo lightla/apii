@@ -5,19 +5,21 @@ import RequestTagManager from "@/app/Generals/TagManager/RequestTagManager.vue";
 import QuillEditor from "@/app/TextEditor/Quill/QuillEditor2.vue";
 import RequestBrowserTabManager2 from "./RequestBrowserTabManager2.vue";
 
-const props = defineProps<{ route: RouteInfo | null }>()
+const props = defineProps<{ 
+  route: RouteInfo | null,
+  storageKey?: string
+}>()
 const emit = defineEmits(['route-tags-updated'])
 
 const editorStorageKey = ref<string | null>(null)
 
-function generateEditorStorageKey(route: RouteInfo): string {
-  const safeRoute = route.route.replace(/[^a-zA-Z0-9]/g, '_')
-  return `request_info_note_quill_${route.method}_${safeRoute}`
+function generateEditorStorageKey(id: string): string {
+  return `request_info_note_quill_${id}`
 }
 
-watch(() => props.route, (newRoute) => {
-  if (newRoute && newRoute.route) {
-    editorStorageKey.value = generateEditorStorageKey(newRoute)
+watch(() => [props.route?.id, props.storageKey] as const, ([id, storageKey]) => {
+  if (id) {
+    editorStorageKey.value = generateEditorStorageKey(storageKey ?? id)
   } else {
     editorStorageKey.value = null
   }

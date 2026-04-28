@@ -16,7 +16,7 @@ import { IconSquareRoundedPlus } from "@tabler/icons-vue";
 import { useRequestParamsStorage } from '@/storages/payload.ts'
 import { usePresetStorage } from '@/storages/presets.ts'
 
-const props = defineProps<{ route: RouteInfo }>()
+const props = defineProps<{ route: RouteInfo, storageKey?: string }>()
 const store = useRequestParamsStorage()
 const presetStore = usePresetStorage()
 
@@ -34,7 +34,7 @@ const togglePreset = (id: string) => {
   
   store.selectedHeaderPresetIds = current
   store.syncManagedHeaders()
-  store.saveToStorage(props.route.id || props.route.route)
+  store.saveToStorage(props.storageKey ?? props.route.id)
 }
 
 // Logic cho Master Toggle ở Header

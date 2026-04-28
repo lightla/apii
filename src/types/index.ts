@@ -5,6 +5,7 @@
 export * from './variable-input.ts'
 
 export interface RouteInfo {
+  id: string
   group: string
   method: string
   route: string,

@@ -240,19 +240,6 @@ const sendRequest = async (_event?: any) => {
       <IconBrandTelegram @click="sendRequest" class="btn-send-request" stroke-width="1"/>
     </div>
   </div>
-
-  <Teleport to="body">
-    <div class="method-select-dropdown" v-if="isMethodSelectOpen" :style="methodDropdownStyle">
-      <div 
-        v-for="m in methods" 
-        :key="m" 
-        class="method-select-option" 
-        @click="selectMethod(m)"
-      >
-        {{ m }}
-      </div>
-    </div>
-  </Teleport>
 </template>
 
 <style scoped lang="scss">

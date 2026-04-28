@@ -32,7 +32,7 @@ function enrichAndRefreshData() {
   const enriched = props.requests.map(request => {
     const newRequest = { ...request };
     // Key này phải giống hệt key trong RequestInfo.vue
-    const storageKey = `request_info_search_fields_${request.method}_${request.route.replace(/[^a-zA-Z0-9]/g, '_')}`;
+    const storageKey = `request_info_search_fields_${request.id}`;
     const savedData = localStorage.getItem(storageKey);
 
     if (savedData) {
@@ -151,7 +151,7 @@ function formatRoute(route: string) {
         <div class="group-title">{{ groupName }}</div>
         <div
             v-for="item in groupItems"
-            :key="item.method + item.route"
+            :key="item.id"
             class="route-line"
             @click="handleClick(item)"
         >

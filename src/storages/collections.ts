@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
 import { computed, ref, watch } from 'vue'
 import { nanoid } from 'nanoid'
+import { cloneRequestData, deleteRequestData } from '@/utils/storage-clone'
 
 export type CollectionItem = {
   id: string
@@ -178,8 +179,12 @@ export const useCollectionsStorage = defineStore('request-collections', () => {
         sortOrder: nextSortOrder(target.groups ?? []),
       }]
     }
+
+    const newItemId = nanoid()
+    cloneRequestData(requestId, newItemId)
+
     target.items.unshift({
-      id: nanoid(),
+      id: newItemId,
       requestId,
       requestKey,
       label: '',
@@ -193,6 +198,7 @@ export const useCollectionsStorage = defineStore('request-collections', () => {
     const col = collections.value.find(c => c.id === collectionId)
     if (!col) return
     col.items = col.items.filter(i => i.id !== itemId)
+    deleteRequestData(itemId)
   }
 
   const copyItems = (fromCollectionId: string, toCollectionId: string, itemIds: string[]) => {
@@ -203,16 +209,81 @@ export const useCollectionsStorage = defineStore('request-collections', () => {
     normalizeCollection(to)
     const toCopy = from.items.filter(i => itemIds.includes(i.id))
     let sortOrder = nextSortOrder(to.items) - 1000
-    const cloned = toCopy.map(i => ({
-      id: nanoid(),
-      requestId: i.requestId ?? i.requestKey,
-      requestKey: i.requestKey,
-      label: i.label ?? '',
-      group: i.group ?? '',
-      sortOrder: sortOrder += 1000,
-      addedAt: Date.now(),
-    }))
+    const cloned = toCopy.map(i => {
+      const newItemId = nanoid()
+      cloneRequestData(i.id, newItemId)
+      return {
+        id: newItemId,
+        requestId: i.requestId ?? i.requestKey,
+        requestKey: i.requestKey,
+        label: i.label ?? '',
+        group: i.group ?? '',
+        sortOrder: sortOrder += 1000,
+        addedAt: Date.now(),
+      }
+    })
     to.items = [...cloned, ...to.items]
+  }
+
+  const duplicateItems = (collectionId: string, itemIds: string[]) => {
+    const col = collections.value.find(c => c.id === collectionId)
+    if (!col) return
+    normalizeCollection(col)
+
+    const toDuplicate = col.items.filter(i => itemIds.includes(i.id))
+    const newItems: CollectionItem[] = []
+
+    toDuplicate.forEach(item => {
+      const newItemId = nanoid()
+      cloneRequestData(item.id, newItemId)
+
+      const newItem: CollectionItem = {
+        ...item,
+        id: newItemId,
+        label: item.label ? `${item.label} (Copy)` : '',
+        addedAt: Date.now(),
+        sortOrder: item.sortOrder ? item.sortOrder + 1 : nextSortOrder(col.items)
+      }
+      newItems.push(newItem)
+    })
+
+    col.items = [...col.items, ...newItems]
+  }
+
+  const duplicateGroup = (collectionId: string, groupName: string) => {
+    const col = collections.value.find(c => c.id === collectionId)
+    if (!col) return
+    normalizeCollection(col)
+
+    const normalized = groupName.trim()
+    if (!normalized || normalized === 'UNGROUPED') return
+
+    const newGroupName = `${normalized} (Copy)`
+    const newGroupId = nanoid()
+
+    col.groups = [...(col.groups ?? []), {
+      id: newGroupId,
+      name: newGroupName,
+      sortOrder: nextSortOrder(col.groups ?? [])
+    }]
+
+    const itemsToClone = col.items.filter(i => (i.group ?? '').trim() === normalized)
+    const newItems: CollectionItem[] = []
+
+    itemsToClone.forEach(item => {
+      const newItemId = nanoid()
+      cloneRequestData(item.id, newItemId)
+
+      newItems.push({
+        ...item,
+        id: newItemId,
+        group: newGroupName,
+        addedAt: Date.now(),
+        sortOrder: nextSortOrder([...col.items, ...newItems])
+      })
+    })
+
+    col.items = [...col.items, ...newItems]
   }
 
   const setItemsLabel = (collectionId: string, itemIds: string[], label: string) => {
@@ -372,6 +443,8 @@ export const useCollectionsStorage = defineStore('request-collections', () => {
     addRequestToActive,
     removeItem,
     copyItems,
+    duplicateItems,
+    duplicateGroup,
     setItemsLabel,
     setItemsGroup,
     createGroup,

@@ -15,17 +15,17 @@ import SwitchableTabs from '@/app/Generals/SwitchableTab/SwitchableTabs.vue'
 import SwitchableTab from '@/app/Generals/SwitchableTab/SwitchableTab.vue'
 import ScrollContainer from "@/app/Generals/ScrollContainer/ScrollContainer.vue";
 
-const props = defineProps<{ route: RouteInfo }>()
+const props = defineProps<{ route: RouteInfo, storageKey?: string }>()
 
 // --- Logic Toggle (Giữ nguyên) ---
-const toggleStates = inject<Ref<boolean[]>>('toggleStates')!
-const toggleMenuItemIndexRef = inject<Ref<number>>('toggleMenuItemIndexRef')!
+const toggleStates = inject<Ref<Map<string, boolean>>>('toggleStates')!
+const toggleMenuItemIdRef = inject<Ref<string>>('toggleMenuItemIdRef')!
 const toggleActive = ref(true)
 onMounted(() => {
-  toggleActive.value = toggleStates.value[toggleMenuItemIndexRef.value]
+  toggleActive.value = toggleStates.value.get(toggleMenuItemIdRef.value) ?? true
 })
-watch(() => toggleStates.value[toggleMenuItemIndexRef.value], (val) => {
-  toggleActive.value = val
+watch(() => toggleStates.value.get(toggleMenuItemIdRef.value), (val) => {
+  toggleActive.value = val ?? true
 })
 
 // --- Định nghĩa danh sách Tabs ---
@@ -54,7 +54,7 @@ const tabs = [
         <div class="tab-detail">
           <div class="tab-detail-content-wrap">
             <SwitchableTab v-for="(tab, index) in tabs" :key="tab.id" :index="index">
-              <component :is="tab.component" :route="props.route" />
+              <component :is="tab.component" :route="props.route" :storage-key="props.storageKey ?? props.route.id" />
             </SwitchableTab>
           </div>
         </div>

@@ -6,7 +6,7 @@ import ParamUriParameter from "@/app/Request/Editor/Payload/ParamTab/Param/Param
 import ParamQueryParam from "@/app/Request/Editor/Payload/ParamTab/Param/ParamQueryParam.vue";
 import { useRequestParamsStorage } from '@/storages/payload.ts'
 
-const props = defineProps<{ route: RouteInfo }>()
+const props = defineProps<{ route: RouteInfo, storageKey?: string }>()
 const store = useRequestParamsStorage()
 
 watch(() => props.route?.route, (url) => {
@@ -17,8 +17,8 @@ watch(() => props.route?.route, (url) => {
 <template>
   <div class="param-tab">
     <ParamUrlPreview :route="props.route"/>
-    <ParamUriParameter :route="props.route"/>
-    <ParamQueryParam :route="props.route"/>
+    <ParamUriParameter :route="props.route" :storage-key="props.storageKey ?? props.route.id"/>
+    <ParamQueryParam :route="props.route" :storage-key="props.storageKey ?? props.route.id"/>
   </div>
 </template>
 

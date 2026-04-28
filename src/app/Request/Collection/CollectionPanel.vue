@@ -19,7 +19,7 @@ const props = defineProps<{
 }>()
 
 const emit = defineEmits<{
-  (e: 'select', requestId: string): void
+  (e: 'select', payload: { requestId: string, storageKey: string }): void
 }>()
 
 const store = useCollectionsStorage()
@@ -61,7 +61,6 @@ const panelRef = ref<HTMLDivElement | null>(null)
 const addTargetGroup = ref<string | null>(null)
 const menuItemId = ref<string | null>(null)
 const menuGroup = ref<string | null>(null)
-const copyTargetId = ref<string>('')
 const draggingItemIds = ref<string[]>([])
 const draggingGroup = ref<string | null>(null)
 const dragOverGroup = ref<string | null>(null)
@@ -75,12 +74,6 @@ watch(() => store.activeCollectionId, () => {
   activeItemId.value = null
   closeMenus()
 })
-
-const otherCollections = computed(() => store.collections.filter(c => c.id !== store.activeCollectionId))
-
-watch(otherCollections, (list) => {
-  if (!list.some(c => c.id === copyTargetId.value)) copyTargetId.value = list[0]?.id ?? ''
-}, { immediate: true })
 
 watch(requestMap, () => {
   const active = store.activeCollection
@@ -299,7 +292,7 @@ function onClickItem(e: MouseEvent, itemId: string, requestId: string) {
   selectedItemIds.value = new Set()
   activeItemId.value = itemId
   const resolved = resolveRequestById(requestId)
-  emit('select', (resolved as any)?.id ?? requestId)
+  emit('select', { requestId: (resolved as any)?.id ?? requestId, storageKey: itemId })
 }
 
 function onRenameItem(itemId: string) {
@@ -321,11 +314,18 @@ function removeItems(itemIds: string[]) {
   closeMenus()
 }
 
-function copyItems(itemIds: string[]) {
+function duplicateItems(itemIds: string[]) {
   const active = store.activeCollection
-  if (!active || !copyTargetId.value || itemIds.length === 0) return
-  store.copyItems(active.id, copyTargetId.value, itemIds)
+  if (!active || itemIds.length === 0) return
+  store.duplicateItems(active.id, itemIds)
   selectedItemIds.value = new Set()
+  closeMenus()
+}
+
+function duplicateGroup(group: string) {
+  const active = store.activeCollection
+  if (!active || group === 'UNGROUPED') return
+  store.duplicateGroup(active.id, group)
   closeMenus()
 }
 
@@ -471,11 +471,9 @@ function itemLabel(item: { requestKey: string; label?: string }) {
           <IconTrash />
           {{ selectedCount }}
         </button>
-        <select class="compact-select" v-model="copyTargetId" :disabled="otherCollections.length === 0" title="Copy selected to collection">
-          <option v-for="c in otherCollections" :key="c.id" :value="c.id">{{ c.name }}</option>
-        </select>
-        <button class="toolbar-btn" :disabled="!copyTargetId" title="Copy selected" @click="copyItems(Array.from(selectedItemIds))">
+        <button class="toolbar-btn" title="Duplicate selected" @click="duplicateItems(Array.from(selectedItemIds))">
           <IconCopy />
+          Duplicate
         </button>
       </template>
     </div>
@@ -511,6 +509,7 @@ function itemLabel(item: { requestKey: string; label?: string }) {
 
           <div v-if="menuGroup === block.group" class="context-menu" @click.stop>
             <button @click="openAddRequest(block.group)">Add request</button>
+            <button :disabled="block.group === 'UNGROUPED'" @click="duplicateGroup(block.group)">Duplicate group</button>
             <button :disabled="block.group === 'UNGROUPED'" @click="onRenameGroup(block.group)">Rename group</button>
             <button :disabled="block.group === 'UNGROUPED'" @click="onDeleteGroup(block.group)">Delete group</button>
           </div>
@@ -551,7 +550,7 @@ function itemLabel(item: { requestKey: string; label?: string }) {
 
           <div v-if="menuItemId === item.id" class="context-menu item-context" @click.stop>
             <button @click="onRenameItem(item.id)">Rename</button>
-            <button @click="copyItems([item.id])" :disabled="!copyTargetId">Copy</button>
+            <button @click="duplicateItems([item.id])">Duplicate</button>
             <button @click="removeItems([item.id])">Remove</button>
           </div>
         </div>
@@ -581,7 +580,7 @@ function itemLabel(item: { requestKey: string; label?: string }) {
         <div class="popup-list">
           <button
               v-for="request in filteredRequests"
-              :key="requestKeyOf(request)"
+              :key="request.id"
               class="popup-request"
               @click="addRequestToGroup(request)"
           >

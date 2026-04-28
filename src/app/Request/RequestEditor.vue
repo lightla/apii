@@ -11,6 +11,7 @@ import {useRequestParamsStorage} from "@/storages/payload.ts"
 
 const props = defineProps<{
   route: RouteInfo
+  storageKey?: string
 }>()
 
 const envStorage = useEnvStorage();
@@ -18,18 +19,19 @@ const payloadStore = useRequestParamsStorage();
 
 const editorRef = ref<HTMLDivElement | null>(null);
 
-// Nạp dữ liệu khi component được mount hoặc route thay đổi
-watch(() => props.route?.route, (newUrl, oldUrl) => {
-  if (oldUrl) {
-    // Lưu lại trạng thái của URL cũ trước khi chuyển
-    payloadStore.saveToStorage(oldUrl)
+// Nạp dữ liệu khi component được mount hoặc request storage key thay đổi
+watch(() => [props.route?.id, props.storageKey] as const, ([newId, newStorageKey], oldValues) => {
+  const [oldId, oldStorageKey] = oldValues || [undefined, undefined]
+  if (oldId || oldStorageKey) {
+    // Lưu lại trạng thái của request cũ trước khi chuyển
+    payloadStore.saveToStorage(oldStorageKey ?? oldId ?? '')
   }
-  if (newUrl) {
+  if (newId) {
     // Nạp trạng thái của URL mới
-    payloadStore.loadFromStorage(newUrl)
+    payloadStore.loadFromStorage(newStorageKey ?? newId)
     // Đảm bảo baseUrl luôn khớp với route hiện tại nếu nó trống
     if (!payloadStore.baseUrl) {
-      payloadStore.baseUrl = newUrl
+      payloadStore.baseUrl = props.route.route
     }
     // Đồng bộ method từ route info nếu store chưa có hoặc là mặc định
     if (props.route.method) {
@@ -44,8 +46,9 @@ let saveTimeout: ReturnType<typeof setTimeout>
 watch(() => payloadStore.$state, () => {
   clearTimeout(saveTimeout)
   saveTimeout = setTimeout(() => {
-    if (props.route?.route) {
-      payloadStore.saveToStorage(props.route.route)
+    const storageKey = props.storageKey ?? props.route?.id
+    if (storageKey) {
+      payloadStore.saveToStorage(storageKey)
     }
   }, 500)
 }, { deep: true })
@@ -61,7 +64,7 @@ watch(() => payloadStore.$state, () => {
       <EditorUrlBar :route="props.route"/>
       <ToggleMenu class="payload-response-container">
         <ToggleMenuItem>
-          <EditorPayload :route="props.route"/>
+          <EditorPayload :route="props.route" :storage-key="props.storageKey ?? props.route.id"/>
         </ToggleMenuItem>
         <ToggleMenuItem>
           <EditorResponse :route="props.route"/>

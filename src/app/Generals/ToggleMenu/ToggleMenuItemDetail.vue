@@ -1,16 +1,16 @@
 <script setup lang="ts">
 import {inject, onMounted, ref, type Ref, watch} from 'vue'
 
-const toggleStates = inject<Ref<boolean[]>>('toggleStates')!
-const toggleMenuItemIndexRef = inject<Ref<number>>('toggleMenuItemIndexRef')!
+const toggleStates = inject<Ref<Map<string, boolean>>>('toggleStates')!
+const toggleMenuItemIdRef = inject<Ref<string>>('toggleMenuItemIdRef')!
 const toggleActive = ref<boolean>(true)
 
 onMounted(() => {
-  toggleActive.value = toggleStates.value[toggleMenuItemIndexRef.value]
+  toggleActive.value = toggleStates.value.get(toggleMenuItemIdRef.value) ?? true
 })
 
-watch(() => toggleStates.value[toggleMenuItemIndexRef.value], (val) => {
-  toggleActive.value = val
+watch(() => toggleStates.value.get(toggleMenuItemIdRef.value), (val) => {
+  toggleActive.value = val ?? true
 })
 
 </script>

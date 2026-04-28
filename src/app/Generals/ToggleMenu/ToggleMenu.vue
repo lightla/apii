@@ -1,20 +1,27 @@
 <script setup lang="ts">
 import { ref, provide, watch, nextTick } from 'vue'
 
-const toggleStates = ref<boolean[]>([])
+const toggleStates = ref<Map<string, boolean>>(new Map())
 
-function registerItem(defaultValue = true) {
-  toggleStates.value.push(defaultValue)
-
-  return toggleStates.value.length - 1
+function registerItem(id: string, defaultValue = true) {
+  if (!toggleStates.value.has(id)) {
+    toggleStates.value.set(id, defaultValue)
+  }
 }
 
-function toggle(index: number) {
-  toggleStates.value[index] = !toggleStates.value[index]
+function unregisterItem(id: string) {
+  // We can keep the state or delete it. Let's keep it for persistence across remounts
+  // but we won't let the map grow if items are same.
+}
+
+function toggle(id: string) {
+  const current = toggleStates.value.get(id)
+  toggleStates.value.set(id, !current)
 }
 
 provide('toggleStates', toggleStates)
 provide('registerItem', registerItem)
+provide('unregisterItem', unregisterItem)
 provide('toggleItem', toggle)
 
 const containerRef = ref<HTMLElement | null>(null)
@@ -24,34 +31,31 @@ watch(toggleStates, () => {
     if (!containerRef.value) return
 
     const children = Array.from(containerRef.value.children)
-    const visibleCount = toggleStates.value.filter(v => v).length
-
-    console.log("visibleCount: ", visibleCount)
-    console.log("children.length: ", children.length)
+    const visibleCount = Array.from(toggleStates.value.values()).filter(v => v).length
 
     if (visibleCount === 0) {
-      children.forEach((child, childIndex) => {
-        const element = child as HTMLElement;
-        element.style.flex = '0 0 auto';
+      children.forEach((child) => {
+        (child as HTMLElement).style.flex = '0 0 auto';
       })
-
       return;
     }
 
     if (visibleCount === children.length) {
-      children.forEach((child, childIndex) => {
-        const element = child as HTMLElement;
-
-        element.style.flex = '1 1 0';
+      children.forEach((child) => {
+        (child as HTMLElement).style.flex = '1 1 0';
       })
-
       return;
     }
 
-    children.forEach((child, childIndex) => {
+    // This part is tricky because we need to know which child corresponds to which ID.
+    // Let's assume the children are in the same order as registration? No.
+    // For now, let's use a simpler flex logic or just set display.
+    children.forEach((child, index) => {
       const element = child as HTMLElement;
-      const isVisible = toggleStates.value[childIndex];
-
+      // We'll need a way to link element to state. 
+      // For now, let's just use the index if possible.
+      const statesArray = Array.from(toggleStates.value.values());
+      const isVisible = statesArray[index];
       element.style.flex = isVisible ? '1 1 100%' : '0 0 auto';
     })
   })

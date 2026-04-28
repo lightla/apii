@@ -18,15 +18,15 @@ import { useResponseStorage } from '@/storages/response.ts'
 const props = defineProps<{ route: RouteInfo }>()
 
 // --- Logic Toggle ---
-const toggleStates = inject<Ref<boolean[]>>('toggleStates')!
-const toggleMenuItemIndexRef = inject<Ref<number>>('toggleMenuItemIndexRef')!
+const toggleStates = inject<Ref<Map<string, boolean>>>('toggleStates')!
+const toggleMenuItemIdRef = inject<Ref<string>>('toggleMenuItemIdRef')!
 
 const toggleActive = ref(true)
 onMounted(() => {
-  toggleActive.value = toggleStates.value[toggleMenuItemIndexRef.value]
+  toggleActive.value = toggleStates.value.get(toggleMenuItemIdRef.value) ?? true
 })
-watch(() => toggleStates.value[toggleMenuItemIndexRef.value], (val) => {
-  toggleActive.value = val
+watch(() => toggleStates.value.get(toggleMenuItemIdRef.value), (val) => {
+  toggleActive.value = val ?? true
 })
 
 // --- Response store for status badge ---

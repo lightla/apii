@@ -1,19 +1,26 @@
 <script setup lang="ts">
-import { ref, onMounted, inject, provide, watch } from 'vue'
+import { ref, onMounted, inject, provide, onUnmounted } from 'vue'
+import { nanoid } from 'nanoid'
 
 const props = withDefaults(
-    defineProps<{ isActive?: boolean }>(),  // isActive là optional
-    { isActive: true }                      // default = true
+    defineProps<{ isActive?: boolean, id?: string }>(),
+    { isActive: true }
 )
 
-const registerItem = inject<(initialState: boolean) => number>('registerItem')!
+const registerItem = inject<(id: string, initialState: boolean) => void>('registerItem')!
+const unregisterItem = inject<(id: string) => void>('unregisterItem')!
 
-const toggleMenuItemIndexRef = ref<number | null>(null)
+const itemId = props.id || nanoid()
+const toggleMenuItemIdRef = ref<string>(itemId)
 
-provide('toggleMenuItemIndexRef', toggleMenuItemIndexRef)
+provide('toggleMenuItemIdRef', toggleMenuItemIdRef)
 
 onMounted(() => {
-  toggleMenuItemIndexRef.value = registerItem(props.isActive)
+  registerItem(itemId, props.isActive)
+})
+
+onUnmounted(() => {
+  unregisterItem(itemId)
 })
 
 </script>

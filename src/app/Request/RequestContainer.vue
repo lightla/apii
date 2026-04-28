@@ -11,9 +11,6 @@ import { IconSettings, IconCode, IconInfoCircle, IconListDetails, IconFolder } f
 import CollectionPanel from '@/app/Request/Collection/CollectionPanel.vue'
 import { useCollectionsStorage } from '@/storages'
 
-import IconEditor from '@/assets/svg/feathericons/edit.svg'
-import IconInfo from '@/assets/svg/feathericons/info.svg'
-
 const props = defineProps<{
   requestsData: RouteInfo[]
 }>()
@@ -26,6 +23,7 @@ type LeftMode = 'request_list' | 'collection'
 
 const containerLeftWidth = ref(40)
 const clickedRoute = ref<RouteInfo | null>(null)
+const clickedRouteStorageKey = ref<string | null>(null)
 const activeRightTab = ref<RightTab>('editor')
 const activeLeftMode = ref<LeftMode>('request_list')
 const searchableFields = ref<string[]>(['route', 'group'])
@@ -36,7 +34,9 @@ const updateLeftWidth = (newWidth: number) => {
 }
 
 const clickRoute = (route: RouteInfo) => {
-  clickedRoute.value = route
+  clickedRoute.value = toRaw(route)
+  clickedRouteStorageKey.value = route.id
+  activeRightTab.value = 'editor'
 }
 
 const localRequests = reactive([...props.requestsData])
@@ -47,7 +47,7 @@ watch(() => props.requestsData, (newRequests) => {
     return;
   }
   const enrichedRequests = newRequests.map(req => {
-    const tagStorageKey = `tags_${req.method}_${req.route}`;
+    const tagStorageKey = `tags_${req.id}`;
     const savedTagsData = localStorage.getItem(tagStorageKey);
     const newReq = { ...req };
     if (savedTagsData) {
@@ -81,10 +81,11 @@ watch(activeLeftMode, (newMode) => localStorage.setItem(STORAGE_KEY_LEFT_MODE, n
 
 const requestKeyOf = (route: RouteInfo) => `${route.method}::${route.route}`
 
-const selectFromCollection = (requestId: string) => {
-  const found = localRequests.find(r => r.id === requestId) ?? localRequests.find(r => requestKeyOf(r) === requestId)
+const selectFromCollection = (payload: { requestId: string, storageKey: string }) => {
+  const found = localRequests.find(r => r.id === payload.requestId) ?? localRequests.find(r => requestKeyOf(r) === payload.requestId)
   if (found) {
     clickedRoute.value = found
+    clickedRouteStorageKey.value = payload.storageKey
     activeRightTab.value = 'editor'
   }
 }
@@ -107,8 +108,8 @@ const selectFromCollection = (requestId: string) => {
 
     <div class="container-right">
       <div v-if="!clickedRoute" class="empty-right">Select a request</div>
-      <RequestEditor v-else-if="activeRightTab === 'editor'" :route="clickedRoute" />
-      <RequestInfo v-else-if="activeRightTab === 'info'" :route="clickedRoute" @route-tags-updated="updateTagsForRoute" />
+      <RequestEditor v-else-if="activeRightTab === 'editor'" :route="clickedRoute" :storage-key="clickedRouteStorageKey ?? clickedRoute.id" />
+      <RequestInfo v-else-if="activeRightTab === 'info'" :route="clickedRoute" :storage-key="clickedRouteStorageKey ?? clickedRoute.id" @route-tags-updated="updateTagsForRoute" />
       <EditorEnv v-else :route="clickedRoute" />
     </div>
 

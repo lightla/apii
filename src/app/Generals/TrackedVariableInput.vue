@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import {onMounted, ref, watch, nextTick} from 'vue'
+import {onMounted, ref, watch, nextTick, onUnmounted} from 'vue'
 import type {RouteInfo} from '@/types'
 import {type HighlightVariableOptionParam} from "@/types/variable-input.ts";
 import {useEnvStorage, useInputStorage} from "@/storages/env-variables-tmp.ts";
@@ -63,6 +63,15 @@ onMounted(() => {
     nextTick(() => {
       triggerHighlight(false);
     });
+  }
+})
+
+onUnmounted(() => {
+  if (variableInputRef.value) {
+    const index = inputStorage.trackedHighlightInputs.indexOf(variableInputRef.value);
+    if (index !== -1) {
+      inputStorage.trackedHighlightInputs.splice(index, 1);
+    }
   }
 })
 

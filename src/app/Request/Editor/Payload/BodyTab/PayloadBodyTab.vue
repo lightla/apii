@@ -21,7 +21,7 @@ import {
 } from "lucide-vue-next";
 import { IconSquareRoundedPlus } from "@tabler/icons-vue";
 
-const props = defineProps<{ route: RouteInfo }>()
+const props = defineProps<{ route: RouteInfo, storageKey?: string }>()
 const store = useRequestParamsStorage()
 const presetStore = usePresetStorage()
 const theme = ref('one-dark')
@@ -52,7 +52,7 @@ const togglePreset = (id: string) => {
   
   store.selectedBodyPresetIds = current
   store.syncManagedBody()
-  store.saveToStorage(props.route.id || props.route.route)
+  store.saveToStorage(props.storageKey ?? props.route.id)
 }
 
 const bodyTypes = [

@@ -1,12 +1,13 @@
 <script setup lang="ts">
 import {inject, type Ref} from 'vue'
 
-const toggleStates = inject<Ref<boolean[]>>('toggleStates')!
-const toggleMenuItemIndexRef = inject<Ref<number>>('toggleMenuItemIndexRef')!
+const toggleStates = inject<Ref<Map<string, boolean>>>('toggleStates')!
+const toggleMenuItemIdRef = inject<Ref<string>>('toggleMenuItemIdRef')!
 
 const onClick = (event: MouseEvent) => {
-  console.log("action-toggleMenuItemIndex: ", toggleMenuItemIndexRef.value)
-  toggleStates.value[toggleMenuItemIndexRef.value] = !toggleStates.value[toggleMenuItemIndexRef.value]
+  console.log("action-toggleMenuItemId: ", toggleMenuItemIdRef.value)
+  const current = toggleStates.value.get(toggleMenuItemIdRef.value)
+  toggleStates.value.set(toggleMenuItemIdRef.value, !current)
 }
 </script>
 

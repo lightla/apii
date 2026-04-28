@@ -16,13 +16,13 @@ const uriParamNames = computed<string[]>(() => {
 // Sync store.uriParameters when URL changes
 watch(uriParamNames, (names) => {
   store.uriParameters = names.map(name => ({
-    name,
-    value: store.uriParameters.find(v => v.name === name)?.value ?? ''
+    key: name,
+    value: store.uriParameters.find(v => v.key === name)?.value ?? ''
   }))
 }, { immediate: true })
 
 function getVarValue(name: string) {
-  return store.uriParameters.find(v => v.name === name)?.value ?? ''
+  return store.uriParameters.find(v => v.key === name)?.value ?? ''
 }
 
 </script>

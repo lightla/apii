@@ -239,7 +239,7 @@ function processTagColors(tag) {
 }
 
 // --- LOGIC LƯU TRỮ ---
-const generateStorageKey = (route) => route?.route ? `tags_${route.method}_${route.route}` : null;
+const generateStorageKey = (route) => route?.id ? `tags_${route.id}` : null;
 
 const loadDataFromStorage = (key) => {
   const data = localStorage.getItem(key);

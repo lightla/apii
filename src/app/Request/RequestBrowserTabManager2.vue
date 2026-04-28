@@ -28,7 +28,8 @@ import CodeMirrorContainer2 from '@/app/Generals/CodeEditor/CodeMirrorContainer2
 import type { RouteInfo } from "@/types/index.js";
 
 const props = defineProps<{
-  route: RouteInfo | null
+  route: RouteInfo | null,
+  storageKey?: string
 }>();
 
 const tabsData = ref<any[]>([]);
@@ -84,7 +85,8 @@ const handleActiveTabChanged = (tabId: string | null) => {
 };
 
 const loadStateFromLocalStorage = () => {
-  if (!props.route?.route) {
+  const targetId = props.storageKey ?? props.route?.id
+  if (!targetId) {
     const newTab = createNewTab();
     tabsData.value = [newTab];
     activeTabId.value = newTab.id;
@@ -92,7 +94,7 @@ const loadStateFromLocalStorage = () => {
   }
 
   try {
-    const saved = localStorage.getItem(`browser_tabs_state_${props.route.route}`);
+    const saved = localStorage.getItem(`browser_tabs_state_${targetId}`);
     if (saved) {
       const state = JSON.parse(saved);
       tabsData.value = state.tabs || [];
@@ -118,21 +120,22 @@ const loadStateFromLocalStorage = () => {
 };
 
 const saveStateToLocalStorage = () => {
-  if (!props.route?.route) return;
+  const targetId = props.storageKey ?? props.route?.id
+  if (!targetId) return;
   try {
     const state = {
       tabs: tabsData.value,
       activeTabId: activeTabId.value,
       currentTheme: currentTheme.value,
     };
-    localStorage.setItem(`browser_tabs_state_${props.route.route}`, JSON.stringify(state));
+    localStorage.setItem(`browser_tabs_state_${targetId}`, JSON.stringify(state));
   } catch (e) {
     console.error('Lỗi save state:', e);
   }
 };
 
-watch(() => props.route, (newRoute, oldRoute) => {
-  if (newRoute && newRoute.route !== oldRoute?.route) {
+watch(() => [props.route?.id, props.storageKey] as const, ([id, storageKey]) => {
+  if (id) {
     loadStateFromLocalStorage();
   }
 }, { immediate: true });
