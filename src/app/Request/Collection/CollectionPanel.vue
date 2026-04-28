@@ -59,6 +59,7 @@ const draggingItemIds = ref<string[]>([])
 const draggingGroup = ref<string | null>(null)
 const dragOverGroup = ref<string | null>(null)
 const dragOverItemId = ref<string | null>(null)
+const dragOverZone = ref<string | null>(null)
 
 watch(() => store.activeCollectionId, () => {
   selectedItemIds.value = new Set()
@@ -270,10 +271,12 @@ function onItemDragOver(e: DragEvent, itemId: string) {
   if (!draggingItemIds.value.length) return
   e.preventDefault()
   dragOverItemId.value = itemId
+  dragOverZone.value = null
+  dragOverGroup.value = null
   if (e.dataTransfer) e.dataTransfer.dropEffect = 'move'
 }
 
-function onItemDrop(e: DragEvent, group: string, beforeItemId: string) {
+function onItemDrop(e: DragEvent, group: string, beforeItemId?: string) {
   e.preventDefault()
   e.stopPropagation()
   const active = store.activeCollection
@@ -285,6 +288,16 @@ function onItemDrop(e: DragEvent, group: string, beforeItemId: string) {
   draggingItemIds.value = []
   dragOverItemId.value = null
   dragOverGroup.value = null
+  dragOverZone.value = null
+}
+
+function onZoneDragOver(e: DragEvent, zoneKey: string) {
+  if (!draggingItemIds.value.length) return
+  e.preventDefault()
+  dragOverZone.value = zoneKey
+  dragOverItemId.value = null
+  dragOverGroup.value = null
+  if (e.dataTransfer) e.dataTransfer.dropEffect = 'move'
 }
 
 function onGroupDragStart(e: DragEvent, group: string) {
@@ -295,28 +308,26 @@ function onGroupDragStart(e: DragEvent, group: string) {
 }
 
 function onGroupDragOver(e: DragEvent, group: string) {
-  if (!draggingItemIds.value.length && !draggingGroup.value) return
+  if (!draggingGroup.value) return
   e.preventDefault()
   dragOverGroup.value = group
+  dragOverItemId.value = null
+  dragOverZone.value = null
   if (e.dataTransfer) e.dataTransfer.dropEffect = 'move'
 }
 
 function onGroupDrop(e: DragEvent, group: string) {
   e.preventDefault()
   const active = store.activeCollection
-  if (!active) return
+  if (!active || !draggingGroup.value) return
 
-  if (draggingItemIds.value.length) {
-    store.moveItemsToPosition(active.id, draggingItemIds.value, group === 'UNGROUPED' ? '' : group)
-    selectedItemIds.value = new Set()
-  } else if (draggingGroup.value) {
-    store.reorderGroups(active.id, draggingGroup.value, group)
-  }
+  store.reorderGroups(active.id, draggingGroup.value, group)
 
   draggingItemIds.value = []
   draggingGroup.value = null
   dragOverGroup.value = null
   dragOverItemId.value = null
+  dragOverZone.value = null
 }
 
 function onDragEnd() {
@@ -324,6 +335,7 @@ function onDragEnd() {
   draggingGroup.value = null
   dragOverGroup.value = null
   dragOverItemId.value = null
+  dragOverZone.value = null
 }
 
 function itemLabel(item: { requestKey: string; label?: string }) {
@@ -420,6 +432,13 @@ function itemLabel(item: { requestKey: string; label?: string }) {
         </div>
 
         <div
+            class="drop-zone"
+            :class="{ active: dragOverZone === `${block.group}:top` }"
+            @dragover="onZoneDragOver($event, `${block.group}:top`)"
+            @drop="onItemDrop($event, block.group, block.items[0]?.id)"
+        ></div>
+
+        <div
             v-for="item in block.items"
             :key="item.id"
             class="collection-item"
@@ -446,6 +465,13 @@ function itemLabel(item: { requestKey: string; label?: string }) {
             <button @click="removeItems([item.id])">Remove</button>
           </div>
         </div>
+
+        <div
+            class="drop-zone bottom"
+            :class="{ active: dragOverZone === `${block.group}:bottom` }"
+            @dragover="onZoneDragOver($event, `${block.group}:bottom`)"
+            @drop="onItemDrop($event, block.group)"
+        ></div>
       </div>
     </div>
 
@@ -580,8 +606,7 @@ function itemLabel(item: { requestKey: string; label?: string }) {
 }
 
 .group-block.drag-over {
-  outline: 1px dashed #007bff;
-  background: rgba(0,123,255,0.04);
+  border-top: 2px solid #007bff;
 }
 
 .group-title {
@@ -690,6 +715,20 @@ function itemLabel(item: { requestKey: string; label?: string }) {
 
 .collection-item.active.selected {
   background: #d9ead3;
+}
+
+.drop-zone {
+  height: 8px;
+  margin: 0;
+  border-top: 2px solid transparent;
+}
+
+.drop-zone.bottom {
+  min-height: 14px;
+}
+
+.drop-zone.active {
+  border-top-color: #007bff;
 }
 
 .method {
