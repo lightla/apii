@@ -432,8 +432,8 @@ function onDeleteClick(index: number) {
   top: 100%;
   right: 0;
   width: 220px;
-  background: white;
-  border: 1px solid #888;
+  background: #f3f6fb;
+  border: 1px solid #9aa7b8;
   box-shadow: 0 4px 12px rgba(0,0,0,0.15);
   z-index: 1000;
   margin-top: 4px;
@@ -443,8 +443,8 @@ function onDeleteClick(index: number) {
 
 .dropdown-header {
   padding: 6px 10px;
-  background: #f4f4f4;
-  border-bottom: 1px solid #ddd;
+  background: #e7eef8;
+  border-bottom: 1px solid #cfd9e6;
   font-size: 11px;
   font-weight: 700;
   text-transform: uppercase;
@@ -463,7 +463,7 @@ function onDeleteClick(index: number) {
   padding: 6px 12px;
   cursor: pointer;
   font-size: 13px;
-  &:hover { background: #f0f7ff; }
+  &:hover { background: #dfeaf7; }
   
   .item-name {
     flex: 1;
