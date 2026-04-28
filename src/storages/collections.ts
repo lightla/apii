@@ -14,6 +14,7 @@ export type RequestCollection = {
   id: string
   name: string
   isDefault?: boolean
+  groups?: string[]
   items: CollectionItem[]
   createdAt: number
 }
@@ -42,6 +43,9 @@ export const useCollectionsStorage = defineStore('request-collections', () => {
   const ensureDefaultCollection = () => {
     if (collections.value.length > 0) {
       const hasDefault = collections.value.some(c => c.isDefault)
+      for (const collection of collections.value) {
+        if (!Array.isArray(collection.groups)) collection.groups = []
+      }
       if (!hasDefault) {
         // Backward compatibility: mark the first "Default" (or first item) as default
         const maybeDefault = collections.value.find(c => c.name === 'Default') ?? collections.value[0]
@@ -53,6 +57,7 @@ export const useCollectionsStorage = defineStore('request-collections', () => {
       id: nanoid(),
       name: 'Default',
       isDefault: true,
+      groups: [],
       items: [],
       createdAt: Date.now(),
     }
@@ -82,6 +87,7 @@ export const useCollectionsStorage = defineStore('request-collections', () => {
       id: nanoid(),
       name: trimmed || `Collection ${collections.value.length + 1}`,
       isDefault: false,
+      groups: [],
       items: [],
       createdAt: Date.now(),
     }
@@ -112,14 +118,18 @@ export const useCollectionsStorage = defineStore('request-collections', () => {
     activeCollectionId.value = id
   }
 
-  const addRequestToActive = (requestKey: string) => {
+  const addRequestToActive = (requestKey: string, group = '') => {
     const target = activeCollection.value
     if (!target) return
+    const normalizedGroup = group.trim()
+    if (normalizedGroup && !target.groups?.includes(normalizedGroup)) {
+      target.groups = [...(target.groups ?? []), normalizedGroup]
+    }
     target.items.unshift({
       id: nanoid(),
       requestKey,
       label: '',
-      group: '',
+      group: normalizedGroup,
       addedAt: Date.now(),
     })
   }
@@ -158,8 +168,44 @@ export const useCollectionsStorage = defineStore('request-collections', () => {
     const col = collections.value.find(c => c.id === collectionId)
     if (!col) return
     const normalized = group.trim()
+    if (normalized && !col.groups?.includes(normalized)) {
+      col.groups = [...(col.groups ?? []), normalized]
+    }
     for (const item of col.items) {
       if (itemIds.includes(item.id)) item.group = normalized
+    }
+  }
+
+  const createGroup = (collectionId: string, group: string) => {
+    const col = collections.value.find(c => c.id === collectionId)
+    if (!col) return
+    const normalized = group.trim()
+    if (!normalized) return
+    if (!col.groups?.includes(normalized)) col.groups = [...(col.groups ?? []), normalized]
+  }
+
+  const renameGroup = (collectionId: string, oldGroup: string, newGroup: string) => {
+    const col = collections.value.find(c => c.id === collectionId)
+    if (!col) return
+    const from = oldGroup.trim()
+    const to = newGroup.trim()
+    if (!from || !to || from === to) return
+    col.groups = (col.groups ?? []).map(g => g === from ? to : g)
+    if (!col.groups.includes(to)) col.groups.push(to)
+    col.groups = Array.from(new Set(col.groups.filter(g => g !== from || g === to)))
+    for (const item of col.items) {
+      if ((item.group ?? '').trim() === from) item.group = to
+    }
+  }
+
+  const deleteGroup = (collectionId: string, group: string) => {
+    const col = collections.value.find(c => c.id === collectionId)
+    if (!col) return
+    const normalized = group.trim()
+    if (!normalized) return
+    col.groups = (col.groups ?? []).filter(g => g !== normalized)
+    for (const item of col.items) {
+      if ((item.group ?? '').trim() === normalized) item.group = ''
     }
   }
 
@@ -179,5 +225,8 @@ export const useCollectionsStorage = defineStore('request-collections', () => {
     copyItems,
     setItemsLabel,
     setItemsGroup,
+    createGroup,
+    renameGroup,
+    deleteGroup,
   }
 })

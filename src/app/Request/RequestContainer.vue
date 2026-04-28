@@ -21,12 +21,10 @@ const props = defineProps<{
 const STORAGE_KEY_LEFT_WIDTH = 'containerLeftWidth'
 const STORAGE_KEY_ACTIVE_TAB = 'activeRightTab'
 const STORAGE_KEY_LEFT_MODE = 'activeLeftMode'
-const STORAGE_KEY_LEFT_TOP_HEIGHT = 'containerLeftTopHeight'
 type RightTab = 'editor' | 'info' | 'settings'
 type LeftMode = 'request_list' | 'collection'
 
 const containerLeftWidth = ref(40)
-const containerLeftTopHeight = ref(50)
 const clickedRoute = ref<RouteInfo | null>(null)
 const activeRightTab = ref<RightTab>('editor')
 const activeLeftMode = ref<LeftMode>('request_list')
@@ -35,10 +33,6 @@ const collectionsStore = useCollectionsStorage()
 
 const updateLeftWidth = (newWidth: number) => {
   containerLeftWidth.value = newWidth
-}
-
-const updateLeftTopHeight = (newHeight: number) => {
-  containerLeftTopHeight.value = newHeight
 }
 
 const clickRoute = (route: RouteInfo) => {
@@ -77,8 +71,6 @@ onMounted(() => {
   if (savedActiveTab) activeRightTab.value = savedActiveTab as RightTab
   const savedLeftMode = localStorage.getItem(STORAGE_KEY_LEFT_MODE)
   if (savedLeftMode) activeLeftMode.value = savedLeftMode as LeftMode
-  const savedLeftTopHeightStr = localStorage.getItem(STORAGE_KEY_LEFT_TOP_HEIGHT)
-  if (savedLeftTopHeightStr) containerLeftTopHeight.value = Number(savedLeftTopHeightStr)
 
   collectionsStore.load()
 })
@@ -86,13 +78,8 @@ onMounted(() => {
 watch(containerLeftWidth, (newVal) => localStorage.setItem(STORAGE_KEY_LEFT_WIDTH, String(newVal)))
 watch(activeRightTab, (newTab) => localStorage.setItem(STORAGE_KEY_ACTIVE_TAB, newTab))
 watch(activeLeftMode, (newMode) => localStorage.setItem(STORAGE_KEY_LEFT_MODE, newMode))
-watch(containerLeftTopHeight, (newVal) => localStorage.setItem(STORAGE_KEY_LEFT_TOP_HEIGHT, String(newVal)))
 
 const requestKeyOf = (route: RouteInfo) => `${route.method}::${route.route}`
-
-const addToCurrentCollection = (route: RouteInfo) => {
-  collectionsStore.addRequestToActive(requestKeyOf(route))
-}
 
 const selectFromCollection = (requestKey: string) => {
   const found = localRequests.find(r => requestKeyOf(r) === requestKey)
@@ -111,27 +98,8 @@ const selectFromCollection = (requestKey: string) => {
         <RequestManager :requests="localRequests" :search-fields="searchableFields" @click="clickRoute" />
       </div>
 
-      <div v-else class="left-split">
-        <div class="left-top" :style="{ height: containerLeftTopHeight + '%' }">
-          <RequestManager
-              :requests="localRequests"
-              :search-fields="searchableFields"
-              :show-add-to-collection="true"
-              @click="clickRoute"
-              @add-to-collection="addToCurrentCollection"
-          />
-        </div>
-
-        <Resizer
-            class="resizer-vertical"
-            direction="vertical"
-            :initial-width="containerLeftTopHeight"
-            @resize="updateLeftTopHeight"
-        />
-
-        <div class="left-bottom">
-          <CollectionPanel :requests="localRequests" @select="selectFromCollection" />
-        </div>
+      <div v-else class="left-single">
+        <CollectionPanel :requests="localRequests" @select="selectFromCollection" />
       </div>
     </div>
 
@@ -182,12 +150,6 @@ const selectFromCollection = (requestKey: string) => {
 .resizer { padding: 0; }
 .container-left { padding: 10px; overflow: hidden; max-width: 90%; min-width: 200px; display: flex; }
 .left-single { width: 100%; height: 100%; overflow: auto; }
-.left-split { width: 100%; height: 100%; display: flex; flex-direction: column; min-height: 0; }
-.left-top { overflow: hidden; min-height: 0; display: flex; }
-.left-top > * { width: 100%; height: 100%; min-height: 0; }
-.resizer-vertical { padding: 0; }
-.left-bottom { flex: 1; min-height: 0; overflow: hidden; display: flex; }
-.left-bottom > * { width: 100%; height: 100%; min-height: 0; }
 .container-right {
   flex: 1;
   padding: 10px;
