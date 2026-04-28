@@ -330,7 +330,7 @@ export const useCollectionsStorage = defineStore('request-collections', () => {
     col.items = remaining
   }
 
-  const reorderGroups = (collectionId: string, fromGroup: string, toGroup: string) => {
+  const reorderGroups = (collectionId: string, fromGroup: string, toGroup: string, position: 'before' | 'after' = 'before') => {
     const col = collections.value.find(c => c.id === collectionId)
     if (!col) return
     normalizeCollection(col)
@@ -344,7 +344,10 @@ export const useCollectionsStorage = defineStore('request-collections', () => {
     if (fromIndex === -1 || toIndex === -1) return
 
     const [moved] = groups.splice(fromIndex, 1)
-    groups.splice(toIndex, 0, moved)
+    const targetIndex = groups.findIndex(g => g.name === to)
+    if (targetIndex === -1) return
+    const insertAt = position === 'after' ? targetIndex + 1 : targetIndex
+    groups.splice(insertAt, 0, moved)
     groups.forEach((group, index) => {
       group.sortOrder = (index + 1) * 1000
     })

@@ -59,6 +59,7 @@ const copyTargetId = ref<string>('')
 const draggingItemIds = ref<string[]>([])
 const draggingGroup = ref<string | null>(null)
 const dragOverGroup = ref<string | null>(null)
+const dragOverGroupPosition = ref<'before' | 'after' | null>(null)
 const dragOverItemId = ref<string | null>(null)
 const dragOverZone = ref<string | null>(null)
 const suppressNextClick = ref(false)
@@ -347,6 +348,17 @@ function onItemDrop(e: DragEvent, group: string, beforeItemId?: string) {
   const active = store.activeCollection
   if (!active) return
 
+  if (draggingGroup.value) {
+    store.reorderGroups(active.id, draggingGroup.value, group, 'before')
+    draggingItemIds.value = []
+    draggingGroup.value = null
+    dragOverGroup.value = null
+    dragOverGroupPosition.value = null
+    dragOverItemId.value = null
+    dragOverZone.value = null
+    return
+  }
+
   const ids = selectedItemIds.value.size > 0
     ? Array.from(selectedItemIds.value)
     : [...draggingItemIds.value]
@@ -379,6 +391,7 @@ function onGroupDragStart(e: DragEvent, group: string) {
 function onGroupDragOver(e: DragEvent, group: string) {
   if (!draggingGroup.value) return
   e.preventDefault()
+  dragOverGroupPosition.value = 'before'
   dragOverGroup.value = group
   dragOverItemId.value = null
   dragOverZone.value = null
@@ -390,11 +403,12 @@ function onGroupDrop(e: DragEvent, group: string) {
   const active = store.activeCollection
   if (!active || !draggingGroup.value) return
 
-  store.reorderGroups(active.id, draggingGroup.value, group)
+  store.reorderGroups(active.id, draggingGroup.value, group, 'before')
 
   draggingItemIds.value = []
   draggingGroup.value = null
   dragOverGroup.value = null
+  dragOverGroupPosition.value = null
   dragOverItemId.value = null
   dragOverZone.value = null
 }
@@ -403,6 +417,7 @@ function onDragEnd() {
   draggingItemIds.value = []
   draggingGroup.value = null
   dragOverGroup.value = null
+  dragOverGroupPosition.value = null
   dragOverItemId.value = null
   dragOverZone.value = null
   suppressNextClick.value = false
@@ -464,7 +479,7 @@ function itemLabel(item: { requestKey: string; label?: string }) {
           v-for="block in groupedItems"
           :key="block.group"
           class="group-block"
-          :class="{ 'drag-over': dragOverGroup === block.group }"
+          :class="{ 'drag-over-before': dragOverGroup === block.group }"
           @dragover="onGroupDragOver($event, block.group)"
           @drop="onGroupDrop($event, block.group)"
       >
@@ -673,10 +688,16 @@ function itemLabel(item: { requestKey: string; label?: string }) {
 }
 
 .group-block {
+  position: relative;
   margin-bottom: 8px;
 }
 
-.group-block.drag-over {
+.group-block.drag-over-before::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
   border-top: 2px solid #007bff;
 }
 
@@ -800,13 +821,13 @@ function itemLabel(item: { requestKey: string; label?: string }) {
 }
 
 .drop-zone {
-  height: 8px;
+  height: 4px;
   margin: 0;
   border-top: 2px solid transparent;
 }
 
 .drop-zone.bottom {
-  min-height: 14px;
+  min-height: 4px;
 }
 
 .drop-zone.active {
