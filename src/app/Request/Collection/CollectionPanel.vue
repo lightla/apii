@@ -68,6 +68,12 @@ const dragOverGroupPosition = ref<'before' | 'after' | null>(null)
 const dragOverItemId = ref<string | null>(null)
 const dragOverZone = ref<string | null>(null)
 const suppressNextClick = ref(false)
+const editingItemId = ref<string | null>(null)
+const editingItemLabel = ref('')
+const editingGroupId = ref<string | null>(null)
+const editingGroupLabel = ref('')
+const editingInput = ref<HTMLInputElement | null>(null)
+const editingGroupInput = ref<HTMLInputElement | null>(null)
 
 watch(() => store.activeCollectionId, () => {
   selectedItemIds.value = new Set()
@@ -224,10 +230,28 @@ function onCreateGroup() {
 function onRenameGroup(group: string) {
   const active = store.activeCollection
   if (!active || group === 'UNGROUPED') return
-  const name = window.prompt('Rename group:', group)
-  if (name == null) return
-  store.renameGroup(active.id, group, name)
+  editingGroupLabel.value = group
+  editingGroupId.value = group
   closeMenus()
+  nextTick(() => editingGroupInput.value?.focus())
+}
+
+function applyRenameGroup() {
+  if (!editingGroupId.value) return
+  const active = store.activeCollection
+  if (!active) return
+  
+  const oldName = editingGroupId.value
+  const newName = editingGroupLabel.value.trim()
+  
+  if (newName && newName !== oldName) {
+    store.renameGroup(active.id, oldName, newName)
+  }
+  editingGroupId.value = null
+}
+
+function cancelRenameGroup() {
+  editingGroupId.value = null
 }
 
 function onDeleteGroup(group: string) {
@@ -296,14 +320,24 @@ function onClickItem(e: MouseEvent, itemId: string, requestId: string) {
 }
 
 function onRenameItem(itemId: string) {
-  const active = store.activeCollection
-  if (!active) return
-  const item = active.items.find(i => i.id === itemId)
+  const item = getItemById(itemId)
   if (!item) return
-  const name = window.prompt('Request name (does not change URL):', item.label ?? '')
-  if (name == null) return
-  store.setItemsLabel(active.id, [itemId], name)
+  editingItemLabel.value = itemLabel(item)
+  editingItemId.value = itemId
   closeMenus()
+  nextTick(() => editingInput.value?.focus())
+}
+
+function applyRenameItem() {
+  if (!editingItemId.value) return
+  const id = editingItemId.value
+  const label = editingItemLabel.value.trim()
+  store.setItemsLabel(store.activeCollectionId!, [id], label)
+  editingItemId.value = null
+}
+
+function cancelRenameItem() {
+  editingItemId.value = null
 }
 
 function removeItems(itemIds: string[]) {
@@ -492,12 +526,25 @@ function itemLabel(item: { requestKey: string; label?: string }) {
             :draggable="block.group !== 'UNGROUPED'"
             @dragstart="onGroupDragStart($event, block.group)"
             @dragend="onDragEnd"
+            @dblclick="block.group !== 'UNGROUPED' && onRenameGroup(block.group)"
             @contextmenu.prevent.stop="menuGroup = block.group; menuItemId = null"
         >
-          <span class="group-name">
+          <span class="group-name" v-if="editingGroupId !== block.group">
             <IconGripVertical v-if="block.group !== 'UNGROUPED'" />
             {{ block.group }}
           </span>
+
+          <input
+              v-else
+              ref="editingGroupInput"
+              v-model="editingGroupLabel"
+              class="inline-rename-input group-rename-input"
+              @keydown.enter="applyRenameGroup"
+              @keydown.esc="cancelRenameGroup"
+              @blur="applyRenameGroup"
+              @click.stop
+          />
+
           <div class="group-actions">
             <button class="mini-icon" title="Add request" @click="openAddRequest(block.group)">
               <IconPlus />
@@ -531,19 +578,32 @@ function itemLabel(item: { requestKey: string; label?: string }) {
             v-for="item in block.items"
             :key="item.id"
             class="collection-item"
-            :class="{ active: activeItemId === item.id, selected: isSelected(item.id), 'drag-over-item': dragOverItemId === item.id }"
+            :class="{ active: activeItemId === item.id, selected: isSelected(item.id), 'drag-over-item': dragOverItemId === item.id, 'is-editing': editingItemId === item.id }"
             draggable="true"
             @click="onClickItem($event, item.id, item.requestId ?? item.requestKey)"
+            @dblclick="onRenameItem(item.id)"
             @dragstart="onItemDragStart($event, item.id)"
             @dragover="onItemDragOver($event, item.id)"
             @drop="onItemDrop($event, block.group, item.id)"
             @dragend="onDragEnd"
             @contextmenu.prevent.stop="menuItemId = item.id; menuGroup = null"
         >
-          <span class="method">{{ resolveRequestById(item.requestId ?? item.requestKey)?.method ?? resolveRequest(item.requestKey)?.request.method ?? '??' }}</span>
-          <span class="route" :title="resolveRequestById(item.requestId ?? item.requestKey)?.route ?? resolveRequest(item.requestKey)?.request.route ?? item.requestKey">
+          <span class="method" v-if="editingItemId !== item.id">{{ resolveRequestById(item.requestId ?? item.requestKey)?.method ?? resolveRequest(item.requestKey)?.request.method ?? '??' }}</span>
+          <span class="route" v-if="editingItemId !== item.id" :title="resolveRequestById(item.requestId ?? item.requestKey)?.route ?? resolveRequest(item.requestKey)?.request.route ?? item.requestKey">
             {{ itemLabel(item) }}
           </span>
+
+          <input
+              v-else
+              ref="editingInput"
+              v-model="editingItemLabel"
+              class="inline-rename-input"
+              @keydown.enter="applyRenameItem"
+              @keydown.esc="cancelRenameItem"
+              @blur="applyRenameItem"
+              @click.stop
+          />
+
           <button class="mini-icon item-menu-btn" title="Request menu" @click.stop="menuItemId = menuItemId === item.id ? null : item.id; menuGroup = null">
             <IconDotsVertical />
           </button>
@@ -850,6 +910,22 @@ function itemLabel(item: { requestKey: string; label?: string }) {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.inline-rename-input {
+  flex: 1;
+  height: 22px;
+  padding: 0 4px;
+  border: 1px solid #007bff;
+  background: white;
+  outline: none;
+  font-size: inherit;
+  font-family: inherit;
+}
+
+.group-rename-input {
+  height: 24px;
+  margin-right: 8px;
 }
 
 .item-menu-btn {
