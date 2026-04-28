@@ -1,11 +1,12 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, nextTick, onMounted, ref, watch } from 'vue'
 import type { RouteInfo } from '@/types'
 import { useCollectionsStorage } from '@/storages'
 import {
   IconCopy,
   IconDotsVertical,
   IconFolderPlus,
+  IconGripVertical,
   IconPencil,
   IconPlus,
   IconSearch,
@@ -49,10 +50,15 @@ const resolveRequest = (requestKey: string) => {
 const selectedItemIds = ref<Set<string>>(new Set())
 const activeItemId = ref<string | null>(null)
 const requestSearch = ref('')
+const requestSearchInput = ref<HTMLInputElement | null>(null)
 const addTargetGroup = ref<string | null>(null)
 const menuItemId = ref<string | null>(null)
 const menuGroup = ref<string | null>(null)
 const copyTargetId = ref<string>('')
+const draggingItemIds = ref<string[]>([])
+const draggingGroup = ref<string | null>(null)
+const dragOverGroup = ref<string | null>(null)
+const dragOverItemId = ref<string | null>(null)
 
 watch(() => store.activeCollectionId, () => {
   selectedItemIds.value = new Set()
@@ -80,13 +86,23 @@ const activeGroups = computed(() => {
   const active = store.activeCollection
   if (!active) return []
 
-  const groups = new Set<string>(active.groups ?? [])
+  const knownNames = new Set<string>()
+  const ordered = [...(active.groups ?? [])]
+    .sort((a, b) => a.sortOrder - b.sortOrder)
+    .map(group => {
+      knownNames.add(group.name)
+      return group.name
+    })
+
   for (const item of active.items) {
     const group = (item.group ?? '').trim()
-    if (group) groups.add(group)
+    if (group && !knownNames.has(group)) {
+      ordered.push(group)
+      knownNames.add(group)
+    }
   }
 
-  return Array.from(groups).sort((a, b) => a.localeCompare(b))
+  return ordered
 })
 
 const groupedItems = computed(() => {
@@ -96,7 +112,9 @@ const groupedItems = computed(() => {
   const byGroup = new Map<string, typeof active.items>()
   for (const group of activeGroups.value) byGroup.set(group, [])
 
-  for (const item of active.items) {
+  const sortedItems = [...active.items].sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0))
+
+  for (const item of sortedItems) {
     const group = (item.group ?? '').trim() || 'UNGROUPED'
     if (!byGroup.has(group)) byGroup.set(group, [])
     byGroup.get(group)!.push(item)
@@ -104,11 +122,12 @@ const groupedItems = computed(() => {
 
   if (!byGroup.has('UNGROUPED')) byGroup.set('UNGROUPED', [])
 
-  const orderedGroups = Array.from(byGroup.keys()).sort((a, b) => {
-    if (a === 'UNGROUPED') return 1
-    if (b === 'UNGROUPED') return -1
-    return a.localeCompare(b)
-  })
+  const orderedGroups = [
+    ...activeGroups.value.filter(group => byGroup.has(group)),
+    ...Array.from(byGroup.keys()).filter(group => group !== 'UNGROUPED' && !activeGroups.value.includes(group)),
+  ]
+
+  if (byGroup.has('UNGROUPED')) orderedGroups.push('UNGROUPED')
 
   return orderedGroups.map(group => ({ group, items: byGroup.get(group)! }))
 })
@@ -180,6 +199,7 @@ function openAddRequest(group: string) {
   addTargetGroup.value = group === 'UNGROUPED' ? '' : group
   requestSearch.value = ''
   closeMenus()
+  nextTick(() => requestSearchInput.value?.focus())
 }
 
 function closeAddRequest() {
@@ -196,6 +216,10 @@ function toggleSelected(id: string) {
   if (next.has(id)) next.delete(id)
   else next.add(id)
   selectedItemIds.value = next
+}
+
+function isSelected(id: string) {
+  return selectedItemIds.value.has(id)
 }
 
 function onClickItem(e: MouseEvent, itemId: string, requestKey: string) {
@@ -235,11 +259,71 @@ function copyItems(itemIds: string[]) {
   closeMenus()
 }
 
-function moveSelectedToGroup(group: string) {
+function onItemDragStart(e: DragEvent, itemId: string) {
+  const ids = selectedItemIds.value.has(itemId) ? Array.from(selectedItemIds.value) : [itemId]
+  draggingItemIds.value = ids
+  e.dataTransfer?.setData('text/plain', JSON.stringify({ type: 'collection-items', ids }))
+  if (e.dataTransfer) e.dataTransfer.effectAllowed = 'move'
+}
+
+function onItemDragOver(e: DragEvent, itemId: string) {
+  if (!draggingItemIds.value.length) return
+  e.preventDefault()
+  dragOverItemId.value = itemId
+  if (e.dataTransfer) e.dataTransfer.dropEffect = 'move'
+}
+
+function onItemDrop(e: DragEvent, group: string, beforeItemId: string) {
+  e.preventDefault()
+  e.stopPropagation()
   const active = store.activeCollection
-  if (!active || selectedCount.value === 0) return
-  store.setItemsGroup(active.id, Array.from(selectedItemIds.value), group === 'UNGROUPED' ? '' : group)
+  if (!active || !draggingItemIds.value.length) return
+
+  const targetGroup = group === 'UNGROUPED' ? '' : group
+  store.moveItemsToPosition(active.id, draggingItemIds.value, targetGroup, beforeItemId)
   selectedItemIds.value = new Set()
+  draggingItemIds.value = []
+  dragOverItemId.value = null
+  dragOverGroup.value = null
+}
+
+function onGroupDragStart(e: DragEvent, group: string) {
+  if (group === 'UNGROUPED') return
+  draggingGroup.value = group
+  e.dataTransfer?.setData('text/plain', JSON.stringify({ type: 'collection-group', group }))
+  if (e.dataTransfer) e.dataTransfer.effectAllowed = 'move'
+}
+
+function onGroupDragOver(e: DragEvent, group: string) {
+  if (!draggingItemIds.value.length && !draggingGroup.value) return
+  e.preventDefault()
+  dragOverGroup.value = group
+  if (e.dataTransfer) e.dataTransfer.dropEffect = 'move'
+}
+
+function onGroupDrop(e: DragEvent, group: string) {
+  e.preventDefault()
+  const active = store.activeCollection
+  if (!active) return
+
+  if (draggingItemIds.value.length) {
+    store.moveItemsToPosition(active.id, draggingItemIds.value, group === 'UNGROUPED' ? '' : group)
+    selectedItemIds.value = new Set()
+  } else if (draggingGroup.value) {
+    store.reorderGroups(active.id, draggingGroup.value, group)
+  }
+
+  draggingItemIds.value = []
+  draggingGroup.value = null
+  dragOverGroup.value = null
+  dragOverItemId.value = null
+}
+
+function onDragEnd() {
+  draggingItemIds.value = []
+  draggingGroup.value = null
+  dragOverGroup.value = null
+  dragOverItemId.value = null
 }
 
 function itemLabel(item: { requestKey: string; label?: string }) {
@@ -294,13 +378,26 @@ function itemLabel(item: { requestKey: string; label?: string }) {
     </div>
 
     <div class="collection-list">
-      <div v-for="block in groupedItems" :key="block.group" class="group-block">
-        <div class="group-title" @contextmenu.prevent.stop="menuGroup = block.group; menuItemId = null">
-          <span>{{ block.group }}</span>
+      <div
+          v-for="block in groupedItems"
+          :key="block.group"
+          class="group-block"
+          :class="{ 'drag-over': dragOverGroup === block.group }"
+          @dragover="onGroupDragOver($event, block.group)"
+          @drop="onGroupDrop($event, block.group)"
+      >
+        <div
+            class="group-title"
+            :draggable="block.group !== 'UNGROUPED'"
+            @dragstart="onGroupDragStart($event, block.group)"
+            @dragend="onDragEnd"
+            @contextmenu.prevent.stop="menuGroup = block.group; menuItemId = null"
+        >
+          <span class="group-name">
+            <IconGripVertical v-if="block.group !== 'UNGROUPED'" />
+            {{ block.group }}
+          </span>
           <div class="group-actions">
-            <button class="mini-btn" title="Move selected here" :disabled="selectedCount === 0" @click="moveSelectedToGroup(block.group)">
-              Move
-            </button>
             <button class="mini-icon" title="Add request" @click="openAddRequest(block.group)">
               <IconPlus />
             </button>
@@ -326,18 +423,15 @@ function itemLabel(item: { requestKey: string; label?: string }) {
             v-for="item in block.items"
             :key="item.id"
             class="collection-item"
-            :class="{ active: activeItemId === item.id, selected: selectedItemIds.has(item.id) }"
+            :class="{ active: activeItemId === item.id, selected: isSelected(item.id), 'drag-over-item': dragOverItemId === item.id }"
+            draggable="true"
             @click="onClickItem($event, item.id, item.requestKey)"
+            @dragstart="onItemDragStart($event, item.id)"
+            @dragover="onItemDragOver($event, item.id)"
+            @drop="onItemDrop($event, block.group, item.id)"
+            @dragend="onDragEnd"
             @contextmenu.prevent.stop="menuItemId = item.id; menuGroup = null"
         >
-          <input
-              class="item-checkbox"
-              type="checkbox"
-              :checked="selectedItemIds.has(item.id)"
-              title="Ctrl + Click"
-              @click.stop
-              @change="toggleSelected(item.id)"
-          />
           <span class="method">{{ resolveRequest(item.requestKey)?.request.method ?? '??' }}</span>
           <span class="route" :title="resolveRequest(item.requestKey)?.request.route ?? item.requestKey">
             {{ itemLabel(item) }}
@@ -360,7 +454,7 @@ function itemLabel(item: { requestKey: string; label?: string }) {
         <div class="popup-header">
           <div class="popup-search">
             <IconSearch />
-            <input v-model="requestSearch" autofocus placeholder="Search request..." />
+            <input ref="requestSearchInput" v-model="requestSearch" placeholder="Search request..." />
           </div>
           <button class="icon-btn" title="Close" @click="closeAddRequest">
             <IconX />
@@ -485,6 +579,11 @@ function itemLabel(item: { requestKey: string; label?: string }) {
   margin-bottom: 8px;
 }
 
+.group-block.drag-over {
+  outline: 1px dashed #007bff;
+  background: rgba(0,123,255,0.04);
+}
+
 .group-title {
   min-height: 28px;
   padding: 3px 4px 3px 6px;
@@ -494,6 +593,27 @@ function itemLabel(item: { requestKey: string; label?: string }) {
   border-bottom: 1px solid #eeeeee;
   font-weight: bold;
   position: relative;
+}
+
+.group-title[draggable="true"] {
+  cursor: grab;
+}
+
+.group-title[draggable="true"]:active {
+  cursor: grabbing;
+}
+
+.group-name {
+  min-width: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.group-name :deep(svg) {
+  width: 15px;
+  height: 15px;
+  color: #777777;
 }
 
 .group-actions {
@@ -553,14 +673,23 @@ function itemLabel(item: { requestKey: string; label?: string }) {
   background: #e2e2e2;
 }
 
+.collection-item.selected {
+  background: #d9ead3;
+}
+
+.collection-item.drag-over-item {
+  border-top: 2px solid #007bff;
+  padding-top: 2px;
+}
+
 .collection-item.active {
   background: #e9ecef;
   border-left: 3px solid #007bff;
   padding-left: 5px;
 }
 
-.item-checkbox {
-  flex-shrink: 0;
+.collection-item.active.selected {
+  background: #d9ead3;
 }
 
 .method {
