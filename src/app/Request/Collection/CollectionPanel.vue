@@ -425,18 +425,17 @@ function itemLabel(item: { requestKey: string; label?: string }) {
           </div>
         </div>
 
-        <div v-if="block.items.length === 0" class="empty-group">
+        <div
+            v-if="block.items.length === 0"
+            class="empty-group"
+            :class="{ active: dragOverZone === `${block.group}:empty` }"
+            @dragover="onZoneDragOver($event, `${block.group}:empty`)"
+            @drop="onItemDrop($event, block.group)"
+        >
           <button class="empty-add" title="Add request" @click="openAddRequest(block.group)">
             <IconPlus />
           </button>
         </div>
-
-        <div
-            class="drop-zone"
-            :class="{ active: dragOverZone === `${block.group}:top` }"
-            @dragover="onZoneDragOver($event, `${block.group}:top`)"
-            @drop="onItemDrop($event, block.group, block.items[0]?.id)"
-        ></div>
 
         <div
             v-for="item in block.items"
@@ -467,6 +466,7 @@ function itemLabel(item: { requestKey: string; label?: string }) {
         </div>
 
         <div
+            v-if="block.items.length > 0"
             class="drop-zone bottom"
             :class="{ active: dragOverZone === `${block.group}:bottom` }"
             @dragover="onZoneDragOver($event, `${block.group}:bottom`)"
@@ -662,12 +662,17 @@ function itemLabel(item: { requestKey: string; label?: string }) {
 }
 
 .empty-group {
-  padding: 5px 8px;
+  padding: 2px 4px;
+  border-top: 2px solid transparent;
+}
+
+.empty-group.active {
+  border-top-color: #007bff;
 }
 
 .empty-add {
   width: 100%;
-  height: 28px;
+  height: 22px;
   border: 1px dashed #bbbbbb;
   background: transparent;
   cursor: pointer;
