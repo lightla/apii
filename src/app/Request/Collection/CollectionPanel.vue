@@ -5,12 +5,14 @@ import { useCollectionsStorage } from '@/storages'
 import {
   IconCopy,
   IconDotsVertical,
+  IconDownload,
   IconFolderPlus,
   IconGripVertical,
   IconPencil,
   IconPlus,
   IconSearch,
   IconTrash,
+  IconUpload,
   IconX,
 } from '@tabler/icons-vue'
 
@@ -23,8 +25,37 @@ const emit = defineEmits<{
 }>()
 
 const store = useCollectionsStorage()
+const fileInput = ref<HTMLInputElement | null>(null)
 
 onMounted(() => store.load())
+
+const onExport = () => {
+  if (store.activeCollectionId) {
+    store.exportCollection(store.activeCollectionId)
+  }
+}
+
+const onImportClick = () => {
+  fileInput.value?.click()
+}
+
+const onFileSelected = (event: Event) => {
+  const target = event.target as HTMLInputElement
+  const file = target.files?.[0]
+  if (!file) return
+
+  const reader = new FileReader()
+  reader.onload = (e) => {
+    const content = e.target?.result as string
+    if (store.importCollection(content)) {
+      alert('Collection imported successfully')
+    } else {
+      alert('Failed to import collection. Please check the file format.')
+    }
+    target.value = '' // Reset input
+  }
+  reader.readAsText(file)
+}
 
 const resolveRequestById = (requestId: string) => {
   return props.requests.find(r => r.id === requestId) || null
@@ -459,6 +490,23 @@ function itemLabel(item: { requestId?: string; requestKey: string; label?: strin
       <button class="icon-btn" title="New collection" @click.stop="onCreateCollection">
         <IconFolderPlus />
       </button>
+
+      <button class="icon-btn" title="Export collection" @click.stop="onExport">
+        <IconDownload />
+      </button>
+
+      <button class="icon-btn" title="Import collection" @click.stop="onImportClick">
+        <IconUpload />
+      </button>
+
+      <input 
+        type="file" 
+        ref="fileInput" 
+        style="display: none" 
+        accept="application/json" 
+        @change="onFileSelected"
+      />
+
       <button class="icon-btn" title="Rename collection" :disabled="!!store.activeCollection?.isDefault" @click.stop="onRenameCollection">
         <IconPencil />
       </button>

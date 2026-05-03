@@ -430,6 +430,100 @@ export const useCollectionsStorage = defineStore('request-collections', () => {
     col.groups = groups
   }
 
+  const exportCollection = (collectionId: string) => {
+    const col = collections.value.find(c => c.id === collectionId)
+    if (!col) return null
+
+    const requestsData: Record<string, Record<string, any>> = {}
+    col.items.forEach(item => {
+      const itemData: Record<string, any> = {}
+      const keys = [
+        { key: 'request', storage: `api_request_data_${item.id}` },
+        { key: 'note', storage: `request_info_note_quill_${item.id}` },
+        { key: 'searchFields', storage: `request_info_search_fields_${item.id}` },
+        { key: 'tags', storage: `tags_${item.id}` }
+      ]
+
+      keys.forEach(({ key, storage }) => {
+        const data = localStorage.getItem(storage)
+        if (data !== null) {
+          try {
+            itemData[key] = JSON.parse(data)
+          } catch {
+            itemData[key] = data
+          }
+        }
+      })
+      requestsData[item.id] = itemData
+    })
+
+    const exportData = {
+      version: '1.0',
+      type: 'apii-collection',
+      collection: col,
+      requestsData
+    }
+
+    const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `${col.name.replace(/[^a-z0-9]/gi, '_').toLowerCase()}_collection.json`
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    URL.revokeObjectURL(url)
+  }
+
+  const importCollection = (jsonContent: string) => {
+    try {
+      const data = JSON.parse(jsonContent)
+      if (data.type !== 'apii-collection' || !data.collection) {
+        throw new Error('Invalid collection file')
+      }
+
+      const importedCol = data.collection as RequestCollection
+      const requestsData = data.requestsData as Record<string, any>
+
+      // Create a new collection ID and name to avoid conflicts
+      const newCollectionId = nanoid()
+      const newCollection: RequestCollection = {
+        ...importedCol,
+        id: newCollectionId,
+        name: `${importedCol.name} (Imported)`,
+        isDefault: false,
+        createdAt: Date.now()
+      }
+
+      // Map old item IDs to new item IDs
+      newCollection.items = importedCol.items.map(item => {
+        const oldId = item.id
+        const newId = nanoid()
+        
+        // Restore associated data with new ID
+        const itemData = requestsData[oldId]
+        if (itemData) {
+          if (itemData.request) localStorage.setItem(`api_request_data_${newId}`, JSON.stringify(itemData.request))
+          if (itemData.note) localStorage.setItem(`request_info_note_quill_${newId}`, typeof itemData.note === 'string' ? itemData.note : JSON.stringify(itemData.note))
+          if (itemData.searchFields) localStorage.setItem(`request_info_search_fields_${newId}`, JSON.stringify(itemData.searchFields))
+          if (itemData.tags) localStorage.setItem(`tags_${newId}`, JSON.stringify(itemData.tags))
+        }
+
+        return {
+          ...item,
+          id: newId
+        }
+      })
+
+      collections.value = [newCollection, ...collections.value]
+      activeCollectionId.value = newCollectionId
+      return true
+    } catch (e) {
+      console.error('Failed to import collection', e)
+      return false
+    }
+  }
+
   watch([collections, activeCollectionId], persist, { deep: true })
 
   return {
@@ -454,5 +548,7 @@ export const useCollectionsStorage = defineStore('request-collections', () => {
     moveItemsToGroup,
     moveItemsToPosition,
     reorderGroups,
+    exportCollection,
+    importCollection,
   }
 })
