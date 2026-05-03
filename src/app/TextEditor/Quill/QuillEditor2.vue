@@ -7,6 +7,8 @@ const props = defineProps<{
   storageKey: string
 }>()
 
+const safeId = computed(() => props.storageKey.replace(/[^a-zA-Z0-9_-]/g, '_'))
+
 const Size = Quill.import('attributors/style/size')
 Size.whitelist = null
 Quill.register(Size, true)
@@ -267,7 +269,7 @@ const keepCurrentFontSizeForEmptyEditor = (quill: any) => {
 }
 
 const toolbarOptions = computed(() => ({
-  container: `#toolbar-${props.storageKey}`,
+  container: `#toolbar-${safeId.value}`,
   handlers: {
     color(this: { quill: any }, value: string) {
       applyInlineFormat(this.quill, 'color', value || false)
@@ -497,7 +499,7 @@ watch(() => props.storageKey, () => {
     :class="{ 'is-format-previewing': isSelectionSuppressed }"
   >
     <div
-      :id="'toolbar-' + props.storageKey"
+      :id="'toolbar-' + safeId"
       ref="toolbarRef"
       class="custom-note-toolbar"
       @mouseover="handleToolbarMouseOver"

@@ -1,21 +1,24 @@
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, getCurrentInstance } from 'vue'
+import { ref, onMounted, onUnmounted, getCurrentInstance, watch } from 'vue'
 import type { RouteInfo } from '@/types'
 import TrackedVariableInput from "@/app/Generals/TrackedVariableInput.vue";
 import {useInputStorage, useEnvStorage} from "@/storages/env-variables-tmp.ts";
 import { IconBrandTelegram } from '@tabler/icons-vue';
 import { useResponseStorage } from '@/storages/response.ts'
 import { useRequestParamsStorage } from '@/storages/payload.ts'
+import { useHistoryStorage } from '@/storages/history.ts'
 import { parseCurl, matchUrlPattern } from '@/utils/curl-parser.ts'
 
 const props = defineProps<{
   route: RouteInfo
+  storageKey: string
 }>()
 
 const envStorage = useEnvStorage();
 const inputStorage = useInputStorage();
 const responseStorage = useResponseStorage()
 const requestParams = useRequestParamsStorage()
+const historyStorage = useHistoryStorage()
 
 const myComponentRef = ref<InstanceType<typeof TrackedVariableInput> | null>(null)
 
@@ -96,6 +99,12 @@ const processCurlIfPresent = (text: string) => {
 const onUrlChange = (newText: string) => {
   requestParams.baseUrl = newText
 }
+
+watch(() => requestParams.triggerSendCount, (newVal) => {
+  if (newVal > 0) {
+    sendRequest()
+  }
+})
 
 // Khi nhấn Enter hoặc Click ra ngoài: Mới bắt đầu phân giải cURL
 const onUrlCommit = (text: string) => {
@@ -189,14 +198,67 @@ const sendRequest = async (_event?: any) => {
     responseStorage.responseHeaders = headers
     const responseText = await res.text()
     responseStorage.rawBody = responseText
+    let parsedData: any
     try {
-      responseStorage.data = JSON.parse(responseText)
+      parsedData = JSON.parse(responseText)
+      responseStorage.data = parsedData
     } catch {
-      responseStorage.data = responseText
+      parsedData = responseText
+      responseStorage.data = parsedData
     }
+
+    // Record History
+    historyStorage.addRecent(props.storageKey, {
+      requestId: props.storageKey,
+      timestamp: Date.now(),
+      method: method,
+      url: finalUrl,
+      status: res.status,
+      statusText: res.statusText,
+      duration: Date.now() - startTime,
+      response: parsedData,
+      responseType: res.headers.get('content-type') || 'text/plain',
+      requestData: {
+        baseUrl: requestParams.baseUrl,
+        method: requestParams.method,
+        headers: [...requestParams.headers],
+        queryParams: [...requestParams.queryParams],
+        uriParameters: [...requestParams.uriParameters],
+        body: requestParams.body,
+        bodyType: requestParams.bodyType,
+        selectedHeaderPresetIds: [...requestParams.selectedHeaderPresetIds],
+        selectedQueryPresetIds: [...requestParams.selectedQueryPresetIds],
+        selectedBodyPresetIds: [...requestParams.selectedBodyPresetIds],
+      }
+    })
   } catch (e) {
     responseStorage.error = String(e)
     responseStorage.responseTime = Date.now() - startTime
+    
+    // Record Failed History
+    historyStorage.addRecent(props.storageKey, {
+      requestId: props.storageKey,
+      timestamp: Date.now(),
+      method: method,
+      url: finalUrl,
+      status: 0,
+      statusText: String(e),
+      duration: Date.now() - startTime,
+      response: null,
+      responseType: 'error',
+      requestData: {
+        baseUrl: requestParams.baseUrl,
+        method: requestParams.method,
+        headers: [...requestParams.headers],
+        queryParams: [...requestParams.queryParams],
+        uriParameters: [...requestParams.uriParameters],
+        body: requestParams.body,
+        bodyType: requestParams.bodyType,
+        selectedHeaderPresetIds: [...requestParams.selectedHeaderPresetIds],
+        selectedQueryPresetIds: [...requestParams.selectedQueryPresetIds],
+        selectedBodyPresetIds: [...requestParams.selectedBodyPresetIds],
+      }
+    })
   } finally {
     responseStorage.loading = false
   }

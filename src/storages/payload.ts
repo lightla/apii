@@ -82,6 +82,8 @@ export const useRequestParamsStorage = defineStore('request-params', {
       // CORS Proxy
       useProxy: globalSettings.useProxy,
       proxyUrl: globalSettings.proxyUrl,
+
+      triggerSendCount: 0,
     }
   },
 
@@ -432,6 +434,20 @@ export const useRequestParamsStorage = defineStore('request-params', {
       } else {
         this.resetAll()
       }
+    },
+    applyHistory(data: any) {
+      if (!data) return
+      this.baseUrl = data.baseUrl || ''
+      this.method = data.method || 'GET'
+      this.queryParams = [...(data.queryParams || [])]
+      this.uriParameters = [...(data.uriParameters || [])]
+      this.headers = [...(data.headers || [])]
+      this.body = data.body || ''
+      this.bodyType = data.bodyType || 'json'
+      this.selectedHeaderPresetIds = [...(data.selectedHeaderPresetIds || [])]
+      this.selectedQueryPresetIds = [...(data.selectedQueryPresetIds || [])]
+      this.selectedBodyPresetIds = [...(data.selectedBodyPresetIds || [])]
+      this.syncManagedHeaders()
     },
     applyParsedCurl(parsed: { method: string, url: string, headers: Record<string, string>, body: string, params: Record<string, string> }) {
       this.method = parsed.method

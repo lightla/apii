@@ -1,6 +1,5 @@
   // main.ts
   import {createVueApp} from "@/bootstrap.ts";
-  import {nanoid} from "nanoid";
 
   const seedRequest = (id: string, data: unknown) => {
     const key = `api_request_data_${id}`
@@ -9,14 +8,13 @@
     }
   }
 
-  // Seed full examples for https://api.restful-api.dev (method/url/body/params...)
-  const restfulGetAllObjectsId = nanoid()
-  const restfulGetObjectByIdId = nanoid()
-  const restfulGetObject7Id = nanoid()
-  const restfulPostCreateObjectId = nanoid()
-  const restfulPutUpdateObjectId = nanoid()
-  const restfulPatchPartialUpdateObjectId = nanoid()
-  const restfulDeleteObjectId = nanoid()
+  const restfulGetAllObjectsId = 'GET:https://api.restful-api.dev/objects'
+  const restfulGetObjectByIdId = 'GET:https://api.restful-api.dev/objects/{id}'
+  const restfulGetObject7Id = 'GET:https://api.restful-api.dev/objects/7'
+  const restfulPostCreateObjectId = 'POST:https://api.restful-api.dev/objects'
+  const restfulPutUpdateObjectId = 'PUT:https://api.restful-api.dev/objects/{id}'
+  const restfulPatchPartialUpdateObjectId = 'PATCH:https://api.restful-api.dev/objects/{id}'
+  const restfulDeleteObjectId = 'DELETE:https://api.restful-api.dev/objects/{id}'
 
   seedRequest(restfulGetAllObjectsId, {
     baseUrl: 'https://api.restful-api.dev/objects',
@@ -150,10 +148,10 @@
 
   createVueApp({
     requestsData: [
-      { id: nanoid(), group: 'User22212ff', method: 'GET', route: '{domain}/resource/{$activeStructureCode}/board-role/role/get/roles/{{$widgetRoleId}}', tags: [] },
-      { id: nanoid(), group: 'User44', method: 'POST', route: '{domain}/users', tags: [] },
-      { id: nanoid(), group: 'Auth', method: 'POST', route: '{domain}/login', tags: [] },
-      { id: nanoid(), group: 'Sample', method: 'GET', route: 'https://api.sampleapis.com/codingresources/codingResources', tags: [] },
+      { id: 'GET:{domain}/resource/{$activeStructureCode}/board-role/role/get/roles/{{$widgetRoleId}}', group: 'User22212ff', method: 'GET', route: '{domain}/resource/{$activeStructureCode}/board-role/role/get/roles/{{$widgetRoleId}}', tags: [] },
+      { id: 'POST:{domain}/users', group: 'User44', method: 'POST', route: '{domain}/users', tags: [] },
+      { id: 'POST:{domain}/login', group: 'Auth', method: 'POST', route: '{domain}/login', tags: [] },
+      { id: 'GET:https://api.sampleapis.com/codingresources/codingResources', group: 'Sample', method: 'GET', route: 'https://api.sampleapis.com/codingresources/codingResources', tags: [] },
       { id: restfulGetAllObjectsId, group: 'RESTful API', method: 'GET', route: 'https://api.restful-api.dev/objects', tags: [] },
       { id: restfulGetObjectByIdId, group: 'RESTful API', method: 'GET', route: 'https://api.restful-api.dev/objects/{id}', tags: [] },
       { id: restfulGetObject7Id, group: 'RESTful API', method: 'GET', route: 'https://api.restful-api.dev/objects/7', tags: [] },
@@ -161,7 +159,8 @@
       { id: restfulPutUpdateObjectId, group: 'RESTful API', method: 'PUT', route: 'https://api.restful-api.dev/objects/{id}', tags: [] },
       { id: restfulPatchPartialUpdateObjectId, group: 'RESTful API', method: 'PATCH', route: 'https://api.restful-api.dev/objects/{id}', tags: [] },
       { id: restfulDeleteObjectId, group: 'RESTful API', method: 'DELETE', route: 'https://api.restful-api.dev/objects/{id}', tags: [] },
-      { id: nanoid(), group: 'Sample', method: 'POST', route: 'https://api.escuelajs.co/api/v1/files/upload', tags: [] },
+      { id: 'POST:https://api.escuelajs.co/api/v1/files/upload', group: 'Sample', method: 'POST', route: 'https://api.escuelajs.co/api/v1/files/upload', tags: [] },
+      { id: 'INVALID', group: 'Invalid', method: 'GET', route: '', tags: [] }, // This should be filtered out
     ],
     saveUrl: '/dev-url',
     mountId: '#app',

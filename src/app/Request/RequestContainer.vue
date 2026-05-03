@@ -36,7 +36,6 @@ const updateLeftWidth = (newWidth: number) => {
 const clickRoute = (route: RouteInfo) => {
   clickedRoute.value = toRaw(route)
   clickedRouteStorageKey.value = route.id
-  activeRightTab.value = 'editor'
 }
 
 const localRequests = reactive([...props.requestsData])
@@ -46,7 +45,10 @@ watch(() => props.requestsData, (newRequests) => {
     localRequests.splice(0, localRequests.length);
     return;
   }
-  const enrichedRequests = newRequests.map(req => {
+  // Filter out requests with empty routes
+  const filtered = newRequests.filter(req => req.route && req.route.trim() !== '');
+  
+  const enrichedRequests = filtered.map(req => {
     const tagStorageKey = `tags_${req.id}`;
     const savedTagsData = localStorage.getItem(tagStorageKey);
     const newReq = { ...req };
@@ -79,16 +81,11 @@ watch(containerLeftWidth, (newVal) => localStorage.setItem(STORAGE_KEY_LEFT_WIDT
 watch(activeRightTab, (newTab) => localStorage.setItem(STORAGE_KEY_ACTIVE_TAB, newTab))
 watch(activeLeftMode, (newMode) => localStorage.setItem(STORAGE_KEY_LEFT_MODE, newMode))
 
-const requestKeyOf = (route: RouteInfo) => `${route.method}::${route.route}`
-
 const selectFromCollection = (payload: { requestId: string, storageKey: string }) => {
-  const found =
-    localRequests.find(r => r.id === payload.requestId) ??
-    localRequests.find(r => requestKeyOf(r) === payload.requestId)
+  const found = localRequests.find(r => r.id === payload.requestId)
   if (found) {
     clickedRoute.value = toRaw(found)
     clickedRouteStorageKey.value = payload.storageKey
-    activeRightTab.value = 'editor'
   }
 }
 

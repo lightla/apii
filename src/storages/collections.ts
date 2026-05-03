@@ -167,9 +167,8 @@ export const useCollectionsStorage = defineStore('request-collections', () => {
     activeCollectionId.value = id
   }
 
-  // `sourceRequestId` is used only for cloning editor state into the new collection item.
-  // The persisted `requestId` for collection items should be stable across reloads, so we store `requestKey`.
-  const addRequestToActive = (sourceRequestId: string, requestKey: string, group = '') => {
+  // `sourceId` is used to clone the current editor state into the new collection item.
+  const addRequestToActive = (sourceId: string, group = '') => {
     const target = activeCollection.value
     if (!target) return
     normalizeCollection(target)
@@ -183,12 +182,12 @@ export const useCollectionsStorage = defineStore('request-collections', () => {
     }
 
     const newItemId = nanoid()
-    cloneRequestData(sourceRequestId, newItemId)
+    cloneRequestData(sourceId, newItemId)
 
     target.items.unshift({
       id: newItemId,
-      requestId: requestKey,
-      requestKey,
+      requestId: sourceId,
+      requestKey: sourceId, // Keeping for type compatibility, but it's just the ID now
       label: '',
       group: normalizedGroup,
       sortOrder: nextSortOrder(target.items),

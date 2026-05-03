@@ -7,6 +7,8 @@ const props = defineProps<{
   storageKey: string
 }>()
 
+const safeId = computed(() => props.storageKey.replace(/[^a-zA-Z0-9_-]/g, '_'))
+
 // Đăng ký Style để dùng pt thay vì class
 const Size = Quill.import('attributors/style/size');
 Size.whitelist = null; 
@@ -376,7 +378,7 @@ const commitInlineFormat = (quill: any, format: string, value: string | boolean)
 }
 
 const toolbarOptions = computed(() => ({
-  container: `#toolbar-${props.storageKey}`,
+  container: `#toolbar-${safeId.value}`,
   handlers: {
     color(this: { quill: any }, value: string) {
       commitInlineFormat(this.quill, 'color', value || false)
@@ -592,7 +594,7 @@ watch(() => props.storageKey, () => {
   <div ref="wrapperRef" class="note-quill-final-wrapper">
     <!-- Toolbar -->
     <div
-      :id="'toolbar-' + props.storageKey"
+      :id="'toolbar-' + safeId"
       class="custom-note-toolbar"
       @mouseover="handleToolbarMouseOver"
       @mouseleave="handleToolbarMouseLeave"

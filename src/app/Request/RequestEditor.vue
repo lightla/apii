@@ -1,12 +1,12 @@
 <script setup lang="ts">
-import {ref, watch} from 'vue'
+import {ref, watch, onMounted} from 'vue'
 import type {RouteInfo} from '@/types'
 import EditorUrlBar from "@/app/Request/Editor/EditorUrlBar.vue";
 import ToggleMenuItem from "@/app/Generals/ToggleMenu/ToggleMenuItem.vue";
 import EditorPayload from "@/app/Request/Editor/EditorPayload.vue";
 import EditorResponse from "@/app/Request/Editor/EditorResponse.vue";
 import ToggleMenu from "@/app/Generals/ToggleMenu/ToggleMenu.vue";
-import {useEnvStorage} from "@/storages"
+import {useEnvStorage, useHistoryStorage} from "@/storages"
 import {useRequestParamsStorage} from "@/storages/payload.ts"
 
 const props = defineProps<{
@@ -16,30 +16,37 @@ const props = defineProps<{
 
 const envStorage = useEnvStorage();
 const payloadStore = useRequestParamsStorage();
+const historyStore = useHistoryStorage();
+
+onMounted(() => {
+  historyStore.load();
+});
 
 const editorRef = ref<HTMLDivElement | null>(null);
 
 // Nạp dữ liệu khi component được mount hoặc request storage key thay đổi
 watch(() => [props.route?.id, props.storageKey] as const, ([newId, newStorageKey], oldValues) => {
   const [oldId, oldStorageKey] = oldValues || [undefined, undefined]
-  if (oldId || oldStorageKey) {
+  const oldKey = oldStorageKey || oldId
+  if (oldKey) {
     // Lưu lại trạng thái của request cũ trước khi chuyển
-    payloadStore.saveToStorage(oldStorageKey ?? oldId ?? '')
+    payloadStore.saveToStorage(oldKey)
   }
-  if (newId) {
+  
+  const currentKey = newStorageKey || newId
+  if (currentKey) {
     // Nạp trạng thái của URL mới
-    payloadStore.loadFromStorage(newStorageKey ?? newId)
+    payloadStore.loadFromStorage(currentKey)
 
-    const storageKey = newStorageKey ?? newId
-
-    // Request List mode: storageKey === route.id -> always sync URL/method from request definition
-    // Collection mode: storageKey !== route.id (item id) -> keep stored URL/method so each item is editable & isolated
-    const isCanonicalRequest = storageKey === newId
+    // Request List mode: storageKey is not provided (or same as id) -> always sync URL/method from request definition
+    // Collection mode: storageKey is provided (distinct from id) -> keep stored URL/method so each item is editable & isolated
+    const isCanonicalRequest = !props.storageKey || props.storageKey === newId
 
     if (isCanonicalRequest) {
       payloadStore.baseUrl = props.route.route
       if (props.route.method) payloadStore.method = props.route.method
     } else {
+      // In Collection/isolated mode, if we don't have stored data yet, initialize from the route
       if (!payloadStore.baseUrl) payloadStore.baseUrl = props.route.route
       if (props.route.method && (!payloadStore.method || payloadStore.method === 'GET')) {
         payloadStore.method = props.route.method
@@ -69,7 +76,7 @@ watch(() => payloadStore.$state, () => {
     <!-- Environment settings have been moved to its own Tab in RequestContainer.vue -->
 
     <div class="editor-request">
-      <EditorUrlBar :route="props.route"/>
+      <EditorUrlBar :route="props.route" :storage-key="props.storageKey ?? props.route.id"/>
       <ToggleMenu class="payload-response-container">
         <ToggleMenuItem>
           <EditorPayload :route="props.route" :storage-key="props.storageKey ?? props.route.id"/>

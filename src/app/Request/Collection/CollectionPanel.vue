@@ -26,31 +26,8 @@ const store = useCollectionsStorage()
 
 onMounted(() => store.load())
 
-const requestKeyOf = (req: RouteInfo) => `${req.method}::${req.route}`
-
-const requestMap = computed(() => {
-  const m = new Map<string, RouteInfo>()
-  for (const r of props.requests) m.set(requestKeyOf(r), r)
-  return m
-})
-
-const resolveRequest = (requestKey: string) => {
-  const byComposite = requestMap.value.get(requestKey)
-  if (byComposite) return { request: byComposite, compositeKey: requestKey }
-
-  const byId = props.requests.find(r => (r as any).id === requestKey)
-  if (byId) {
-    const compositeKey = requestKeyOf(byId)
-    return { request: byId, compositeKey }
-  }
-
-  return null
-}
-
 const resolveRequestById = (requestId: string) => {
-  const request = props.requests.find(r => (r as any).id === requestId)
-  if (request) return request
-  return resolveRequest(requestId)?.request ?? null
+  return props.requests.find(r => r.id === requestId) || null
 }
 
 const selectedItemIds = ref<Set<string>>(new Set())
@@ -81,20 +58,10 @@ watch(() => store.activeCollectionId, () => {
   closeMenus()
 })
 
-watch(requestMap, () => {
-  const active = store.activeCollection
-  if (!active) return
-  for (const item of active.items) {
-    if (!item.requestId) item.requestId = item.requestKey
-    const byId = props.requests.find(r => (r as any).id === item.requestId)
-    if (byId) item.requestKey = requestKeyOf(byId)
-    // Migration: older items persisted `requestId` as a runtime nanoid, which breaks after refresh.
-    // If the stored requestId no longer exists, fall back to the stable requestKey.
-    if (!byId && item.requestKey && requestMap.value.has(item.requestKey)) {
-      item.requestId = item.requestKey
-    }
-  }
-})
+// No longer needed: ID is a stable black box string from the source.
+watch(() => props.requests, () => {
+  // Logic updated to rely on stable IDs
+}, { deep: true })
 
 const activeGroups = computed(() => {
   const active = store.activeCollection
@@ -281,7 +248,7 @@ function closeAddRequest() {
 
 function addRequestToGroup(route: RouteInfo) {
   // Clone editor state from the current request id, but persist a stable request key so items survive refresh.
-  store.addRequestToActive((route as any).id ?? requestKeyOf(route), requestKeyOf(route), addTargetGroup.value ?? '')
+  store.addRequestToActive(route.id, addTargetGroup.value ?? '')
 }
 
 function toggleSelected(id: string) {
@@ -469,10 +436,10 @@ function onDragEnd() {
   suppressNextClick.value = false
 }
 
-function itemLabel(item: { requestKey: string; label?: string }) {
+function itemLabel(item: { requestId?: string; requestKey: string; label?: string }) {
   const label = (item.label ?? '').trim()
   if (label) return label
-  return resolveRequest(item.requestKey)?.request.route ?? item.requestKey
+  return resolveRequestById(item.requestId ?? item.requestKey)?.route ?? item.requestKey
 }
 </script>
 
@@ -594,8 +561,8 @@ function itemLabel(item: { requestKey: string; label?: string }) {
             @dragend="onDragEnd"
             @contextmenu.prevent.stop="menuItemId = item.id; menuGroup = null"
         >
-          <span class="method" v-if="editingItemId !== item.id">{{ resolveRequestById(item.requestId ?? item.requestKey)?.method ?? resolveRequest(item.requestKey)?.request.method ?? '??' }}</span>
-          <span class="route" v-if="editingItemId !== item.id" :title="resolveRequestById(item.requestId ?? item.requestKey)?.route ?? resolveRequest(item.requestKey)?.request.route ?? item.requestKey">
+          <span class="method" v-if="editingItemId !== item.id">{{ resolveRequestById(item.requestId ?? item.requestKey)?.method ?? '??' }}</span>
+          <span class="route" v-if="editingItemId !== item.id" :title="resolveRequestById(item.requestId ?? item.requestKey)?.route ?? item.requestKey">
             {{ itemLabel(item) }}
           </span>
 
