@@ -26,8 +26,13 @@ const emit = defineEmits<{
 
 const store = useCollectionsStorage()
 const fileInput = ref<HTMLInputElement | null>(null)
+const isHeaderMenuOpen = ref(false)
 
 onMounted(() => store.load())
+
+const toggleHeaderMenu = () => {
+  isHeaderMenuOpen.value = !isHeaderMenuOpen.value
+}
 
 const onExport = () => {
   if (store.activeCollectionId) {
@@ -159,6 +164,7 @@ const selectedCount = computed(() => selectedItemIds.value.size)
 function closeMenus() {
   menuItemId.value = null
   menuGroup.value = null
+  isHeaderMenuOpen.value = false
 }
 
 function getItemById(itemId: string) {
@@ -487,17 +493,31 @@ function itemLabel(item: { requestId?: string; requestKey: string; label?: strin
         </option>
       </select>
 
-      <button class="icon-btn" title="New collection" @click.stop="onCreateCollection">
-        <IconFolderPlus />
-      </button>
+      <div class="header-actions-container">
+        <button class="icon-btn" title="New collection" @click.stop="onCreateCollection">
+          <IconFolderPlus />
+        </button>
 
-      <button class="icon-btn" title="Export collection" @click.stop="onExport">
-        <IconDownload />
-      </button>
+        <button class="icon-btn" title="Collection actions" @click.stop="isHeaderMenuOpen = !isHeaderMenuOpen">
+          <IconDotsVertical />
+        </button>
 
-      <button class="icon-btn" title="Import collection" @click.stop="onImportClick">
-        <IconUpload />
-      </button>
+        <div v-if="isHeaderMenuOpen" class="context-menu header-menu" @click.stop>
+          <button @click="onImportClick">
+            <IconUpload :size="14" /> Import Collection
+          </button>
+          <button @click="onExport">
+            <IconDownload :size="14" /> Export Collection
+          </button>
+          <div class="menu-divider"></div>
+          <button :disabled="!!store.activeCollection?.isDefault" @click="onRenameCollection">
+            <IconPencil :size="14" /> Rename
+          </button>
+          <button class="delete-action" :disabled="!!store.activeCollection?.isDefault" @click="onDeleteCollection">
+            <IconTrash :size="14" /> Delete
+          </button>
+        </div>
+      </div>
 
       <input 
         type="file" 
@@ -506,13 +526,6 @@ function itemLabel(item: { requestId?: string; requestKey: string; label?: strin
         accept="application/json" 
         @change="onFileSelected"
       />
-
-      <button class="icon-btn" title="Rename collection" :disabled="!!store.activeCollection?.isDefault" @click.stop="onRenameCollection">
-        <IconPencil />
-      </button>
-      <button class="icon-btn" title="Delete collection" :disabled="!!store.activeCollection?.isDefault" @click.stop="onDeleteCollection">
-        <IconTrash />
-      </button>
     </div>
 
     <div class="collection-toolbar">
@@ -689,14 +702,15 @@ function itemLabel(item: { requestId?: string; requestKey: string; label?: strin
 }
 
 .collection-header {
-  display: grid;
-  grid-template-columns: 1fr 30px 30px 30px;
+  display: flex;
+  justify-content: space-between;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
+  padding: 4px 0;
 }
 
-.collection-select,
-.compact-select {
+.collection-select {
+  flex: 1; /* Để dropdown giãn rộng nhất có thể */
   height: 30px;
   padding: 0 8px;
   border: 1px solid #888888;
@@ -744,6 +758,39 @@ function itemLabel(item: { requestId?: string; requestKey: string; label?: strin
 .mini-icon :deep(svg) {
   width: 16px;
   height: 16px;
+}
+
+.header-actions-container {
+  display: flex;
+  gap: 4px;
+  position: relative;
+}
+
+.header-menu {
+  top: 32px;
+  right: 0;
+  width: 180px;
+}
+
+.header-menu button {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 13px;
+}
+
+.menu-divider {
+  height: 1px;
+  background: #ddd;
+  margin: 4px 0;
+}
+
+.delete-action {
+  color: #c62828;
+}
+
+.delete-action:hover:not(:disabled) {
+  background: #ffcdd2 !important;
 }
 
 .collection-toolbar {
