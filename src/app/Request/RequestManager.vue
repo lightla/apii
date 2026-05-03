@@ -11,6 +11,7 @@ interface SearchFieldConfig { id: number; key: string; value: string; searchable
 const props = defineProps<{
   requests: RouteInfo[],
   searchFields: string[],
+  activeRouteId?: string | null,
   showAddToCollection?: boolean
 }>()
 
@@ -153,6 +154,7 @@ function formatRoute(route: string) {
             v-for="item in groupItems"
             :key="item.id"
             class="route-line"
+            :class="{ active: props.activeRouteId === item.id }"
             @click="handleClick(item)"
         >
           <div class="route-main">
@@ -180,6 +182,11 @@ function formatRoute(route: string) {
 .group-title { font-weight: bold; margin-top: 10px; margin-bottom: 5px; padding-bottom: 5px; border-bottom: 1px solid #eee; }
 .route-line { cursor: pointer; color: black; padding: 3px 6px; margin-bottom: 4px; line-height: 1.3; user-select: none; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: flex; flex-direction: row; gap: 3px; }
 .route-line:hover { background: #e2e2e2; }
+.route-line.active {
+  background: #e9ecef;
+  border-left: 3px solid #007bff;
+  padding-left: 3px; /* Adjusted since original padding was 6px */
+}
 .no-results { padding: 20px; text-align: center; color: #6c757d; }
 
 .route-main { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; display: flex; gap: 3px; }

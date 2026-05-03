@@ -35,21 +35,23 @@ watch(() => [props.route?.id, props.storageKey] as const, ([newId, newStorageKey
   
   const currentKey = newStorageKey || newId
   if (currentKey) {
-    // Nạp trạng thái của URL mới
+    // 1. Nạp trạng thái từ localStorage (bao gồm params, headers, body...)
     payloadStore.loadFromStorage(currentKey)
 
-    // Request List mode: storageKey is not provided (or same as id) -> always sync URL/method from request definition
-    // Collection mode: storageKey is provided (distinct from id) -> keep stored URL/method so each item is editable & isolated
+    // 2. Kiểm tra nếu đây là Request gốc (không phải từ Collection)
     const isCanonicalRequest = !props.storageKey || props.storageKey === newId
 
     if (isCanonicalRequest) {
+      // 3. ÉP BUỘC: Lấy Method và Route từ định nghĩa Laravel, tuyệt đối không cho phép storage ghi đè
       payloadStore.baseUrl = props.route.route
-      if (props.route.method) payloadStore.method = props.route.method
+      if (props.route.method) {
+        payloadStore.method = props.route.method.toUpperCase()
+      }
     } else {
-      // In Collection/isolated mode, if we don't have stored data yet, initialize from the route
+      // Với Collection/Isolated mode: Chỉ khởi tạo nếu storage đang trống
       if (!payloadStore.baseUrl) payloadStore.baseUrl = props.route.route
       if (props.route.method && (!payloadStore.method || payloadStore.method === 'GET')) {
-        payloadStore.method = props.route.method
+        payloadStore.method = props.route.method.toUpperCase()
       }
     }
   }

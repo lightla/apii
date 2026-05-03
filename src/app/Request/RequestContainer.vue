@@ -95,7 +95,12 @@ const selectFromCollection = (payload: { requestId: string, storageKey: string }
   <div class="container">
     <div class="container-left" :style="{ width: containerLeftWidth + '%' }">
       <div v-if="activeLeftMode === 'request_list'" class="left-single">
-        <RequestManager :requests="localRequests" :search-fields="searchableFields" @click="clickRoute" />
+        <RequestManager 
+          :requests="localRequests" 
+          :search-fields="searchableFields" 
+          :active-route-id="clickedRoute?.id"
+          @click="clickRoute" 
+        />
       </div>
 
       <div v-else class="left-single">
