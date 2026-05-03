@@ -138,6 +138,12 @@ const onVariableInputChange = (event: Event): void => {
   });
 }
 
+const onTextChange = (event: CustomEvent): void => {
+  const value = event.detail?.value || '';
+  emit('text-change', value);
+  triggerHighlight(true);
+}
+
 </script>
 
 <template>
@@ -153,6 +159,7 @@ const onVariableInputChange = (event: Event): void => {
         @keydown="onKeyDown"
         @keyup="onKeyUp"
         @blur="emit('blur', $event.target.textContent || '')"
+        @text-change="onTextChange"
     ></div>
   </div>
 

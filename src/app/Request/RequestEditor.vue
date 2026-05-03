@@ -29,13 +29,21 @@ watch(() => [props.route?.id, props.storageKey] as const, ([newId, newStorageKey
   if (newId) {
     // Nạp trạng thái của URL mới
     payloadStore.loadFromStorage(newStorageKey ?? newId)
-    // Đảm bảo baseUrl luôn khớp với route hiện tại nếu nó trống
-    if (!payloadStore.baseUrl) {
+
+    const storageKey = newStorageKey ?? newId
+
+    // Request List mode: storageKey === route.id -> always sync URL/method from request definition
+    // Collection mode: storageKey !== route.id (item id) -> keep stored URL/method so each item is editable & isolated
+    const isCanonicalRequest = storageKey === newId
+
+    if (isCanonicalRequest) {
       payloadStore.baseUrl = props.route.route
-    }
-    // Đồng bộ method từ route info nếu store chưa có hoặc là mặc định
-    if (props.route.method) {
-      payloadStore.method = props.route.method
+      if (props.route.method) payloadStore.method = props.route.method
+    } else {
+      if (!payloadStore.baseUrl) payloadStore.baseUrl = props.route.route
+      if (props.route.method && (!payloadStore.method || payloadStore.method === 'GET')) {
+        payloadStore.method = props.route.method
+      }
     }
   }
 }, { immediate: true })

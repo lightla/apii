@@ -199,6 +199,9 @@ const selectVariable = (newName: string) => {
       if (inputIndex !== -1) {
         inputStorage.highlightInput({ inputIndex, options: { definedEnvVariables: envStorage.collectEnvVariableNames() }, withCursor: false });
       }
+      // Trigger text-change event
+      const event = new CustomEvent('text-change', { detail: { value: parentInput.textContent || '' } });
+      parentInput.dispatchEvent(event);
     }
   } else if (menuMode.value === 'selection' && lastInput.value) {
     insertAtCursor(lastInput.value, newName);
@@ -206,6 +209,9 @@ const selectVariable = (newName: string) => {
     if (inputIndex !== -1) {
       inputStorage.highlightInput({ inputIndex, options: { definedEnvVariables: envStorage.collectEnvVariableNames() }, withCursor: true });
     }
+    // Trigger text-change event
+    const event = new CustomEvent('text-change', { detail: { value: lastInput.value.textContent || '' } });
+    lastInput.value.dispatchEvent(event);
   }
   hidePopup();
 }

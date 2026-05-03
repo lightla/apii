@@ -176,7 +176,7 @@ function onDeleteClick(index: number) {
                   :route="props.route"
                   :value="param.key"
                   :enabled-env-variable="true"
-                  @text-change="val => param.key = val"
+                  @text-change="val => store.updateQueryParam(index, val, param.value)"
                 />
               </div>
             </td>
@@ -186,7 +186,7 @@ function onDeleteClick(index: number) {
                   :route="props.route"
                   :value="param.value"
                   :enabled-env-variable="true"
-                  @text-change="val => param.value = val"
+                  @text-change="val => store.updateQueryParam(index, param.key, val)"
                 />
               </div>
             </td>

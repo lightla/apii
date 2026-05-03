@@ -167,7 +167,9 @@ export const useCollectionsStorage = defineStore('request-collections', () => {
     activeCollectionId.value = id
   }
 
-  const addRequestToActive = (requestId: string, requestKey: string, group = '') => {
+  // `sourceRequestId` is used only for cloning editor state into the new collection item.
+  // The persisted `requestId` for collection items should be stable across reloads, so we store `requestKey`.
+  const addRequestToActive = (sourceRequestId: string, requestKey: string, group = '') => {
     const target = activeCollection.value
     if (!target) return
     normalizeCollection(target)
@@ -181,11 +183,11 @@ export const useCollectionsStorage = defineStore('request-collections', () => {
     }
 
     const newItemId = nanoid()
-    cloneRequestData(requestId, newItemId)
+    cloneRequestData(sourceRequestId, newItemId)
 
     target.items.unshift({
       id: newItemId,
-      requestId,
+      requestId: requestKey,
       requestKey,
       label: '',
       group: normalizedGroup,

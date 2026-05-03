@@ -88,6 +88,11 @@ watch(requestMap, () => {
     if (!item.requestId) item.requestId = item.requestKey
     const byId = props.requests.find(r => (r as any).id === item.requestId)
     if (byId) item.requestKey = requestKeyOf(byId)
+    // Migration: older items persisted `requestId` as a runtime nanoid, which breaks after refresh.
+    // If the stored requestId no longer exists, fall back to the stable requestKey.
+    if (!byId && item.requestKey && requestMap.value.has(item.requestKey)) {
+      item.requestId = item.requestKey
+    }
   }
 })
 
@@ -275,6 +280,7 @@ function closeAddRequest() {
 }
 
 function addRequestToGroup(route: RouteInfo) {
+  // Clone editor state from the current request id, but persist a stable request key so items survive refresh.
   store.addRequestToActive((route as any).id ?? requestKeyOf(route), requestKeyOf(route), addTargetGroup.value ?? '')
 }
 

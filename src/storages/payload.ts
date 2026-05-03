@@ -325,9 +325,16 @@ export const useRequestParamsStorage = defineStore('request-params', {
       const trimmed = value.trim()
       const index = this.uriParameters.findIndex(v => v.key === key)
       if (index !== -1) {
-        this.uriParameters[index].value = trimmed
+        // Use spread operator to trigger reactivity
+        this.uriParameters[index] = { ...this.uriParameters[index], value: trimmed }
       } else {
         this.uriParameters.push({ key, value: trimmed })
+      }
+    },
+    updateQueryParam(index: number, key: string, value: string) {
+      if (this.queryParams[index]) {
+        // Use spread operator to trigger reactivity
+        this.queryParams[index] = { ...this.queryParams[index], key, value }
       }
     },
     addHeader() {

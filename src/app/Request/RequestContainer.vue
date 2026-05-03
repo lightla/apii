@@ -82,9 +82,11 @@ watch(activeLeftMode, (newMode) => localStorage.setItem(STORAGE_KEY_LEFT_MODE, n
 const requestKeyOf = (route: RouteInfo) => `${route.method}::${route.route}`
 
 const selectFromCollection = (payload: { requestId: string, storageKey: string }) => {
-  const found = localRequests.find(r => r.id === payload.requestId) ?? localRequests.find(r => requestKeyOf(r) === payload.requestId)
+  const found =
+    localRequests.find(r => r.id === payload.requestId) ??
+    localRequests.find(r => requestKeyOf(r) === payload.requestId)
   if (found) {
-    clickedRoute.value = found
+    clickedRoute.value = toRaw(found)
     clickedRouteStorageKey.value = payload.storageKey
     activeRightTab.value = 'editor'
   }
