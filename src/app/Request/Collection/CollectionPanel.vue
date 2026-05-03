@@ -231,9 +231,22 @@ function onDeleteCollection() {
 function onCreateGroup() {
   const active = store.activeCollection
   if (!active) return
-  const name = window.prompt('Group name?')
-  if (name == null) return
-  store.createGroup(active.id, name)
+
+  const existingGroups = active.groups || []
+  let index = 1
+  let newName = `New Group ${index}`
+
+  while (existingGroups.some(g => g.name === newName)) {
+    index++
+    newName = `New Group ${index}`
+  }
+
+  store.createGroup(active.id, newName)
+  
+  // Enter rename mode immediately for the new group
+  nextTick(() => {
+    onRenameGroup(newName)
+  })
 }
 
 function onRenameGroup(group: string) {
