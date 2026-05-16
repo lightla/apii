@@ -18,7 +18,7 @@ import ScrollContainer from "@/app/Generals/ScrollContainer/ScrollContainer.vue"
 import { useHistoryStorage, type HistoryItem } from '@/storages/history.ts'
 import { useRequestParamsStorage } from '@/storages/payload.ts'
 import { useResponseStorage } from '@/storages/response.ts'
-import { IconEye } from '@tabler/icons-vue'
+import { IconEye, IconBookmark, IconTrash } from '@tabler/icons-vue'
 
 const props = defineProps<{ route: RouteInfo, storageKey?: string }>()
 const historyStore = useHistoryStorage()
@@ -64,7 +64,7 @@ const selectedHistoryItem = computed<HistoryItem | null>(() => {
 const selectedHistoryLabel = computed(() => {
   const item = selectedHistoryItem.value
   if (!item) return 'Apply history...'
-  return `${item.method} ${item.url}`
+  return item.name || item.url
 })
 const hasAnyHistory = computed(() => savedItems.value.length > 0 || recentItems.value.length > 0)
 
@@ -109,6 +109,21 @@ const removeHistoryItem = (key: string) => {
   if (selectedHistoryKey.value === key) {
     selectedHistoryKey.value = ''
   }
+}
+
+const clearAllSavedHistory = () => {
+  const requestId = props.storageKey ?? props.route.id
+  historyStore.clearSaved(requestId)
+}
+
+const clearAllRecentHistory = () => {
+  const requestId = props.storageKey ?? props.route.id
+  historyStore.clearRecent(requestId)
+}
+
+const saveRecentHistoryItem = (itemId: string) => {
+  const requestId = props.storageKey ?? props.route.id
+  historyStore.saveHistory(requestId, itemId)
 }
 
 const editingSavedItemId = ref<string | null>(null)
@@ -232,7 +247,10 @@ onUnmounted(() => {
           <div class="history-quick-actions">
             <div ref="historyDropdownRef" class="history-select-wrap">
               <button class="history-select" @click.stop="toggleHistoryDropdown" :disabled="!hasAnyHistory">
-                <span class="history-select-label">{{ selectedHistoryLabel }}</span>
+                <span class="history-select-content">
+                  <span v-if="selectedHistoryItem" class="history-select-method">{{ selectedHistoryItem.method }}</span>
+                  <span class="history-select-label">{{ selectedHistoryLabel }}</span>
+                </span>
                 <span class="history-select-arrow">▾</span>
               </button>
             </div>
@@ -244,36 +262,56 @@ onUnmounted(() => {
                 :style="historyDropdownStyle"
                 @mousedown="onHistoryDropdownPanelMouseDown"
               >
-                <div v-if="savedItems.length > 0" class="history-dropdown-group-title">Saved</div>
-                <button
-                  v-for="item in savedItems"
-                  :key="`saved:${item.id}`"
-                  class="history-dropdown-item"
-                  @click.stop="handleHistoryItemClick(`saved:${item.id}`)"
-                >
-                  <span class="history-item-method">{{ item.method }}</span>
-                  <input
-                    v-if="editingSavedItemId === item.id"
-                    v-model="editingSavedName"
-                    class="history-item-input"
-                    @click.stop
-                    @blur="onRenameInputBlur"
-                    @keydown.enter.prevent="saveRenameSavedHistoryItem"
-                  />
-                  <span v-else class="history-item-text">{{ getSavedDisplayName(item) }}</span>
-                  <span class="history-item-edit" title="Rename saved item" @click.stop="startRenameSavedHistoryItem(item)">✎</span>
-                  <span class="history-item-remove" @click.stop="removeHistoryItem(`saved:${item.id}`)">×</span>
-                </button>
-                <div v-if="recentItems.length > 0" class="history-dropdown-group-title">Recent</div>
-                <button
-                  v-for="item in recentItems"
-                  :key="`recent:${item.id}`"
-                  class="history-dropdown-item"
-                  @click.stop="handleHistoryItemClick(`recent:${item.id}`)"
-                >
-                  <span class="history-item-text">{{ item.method }} {{ item.url }}</span>
-                  <span class="history-item-remove" @click.stop="removeHistoryItem(`recent:${item.id}`)">×</span>
-                </button>
+                <div class="history-dropdown-group-title">
+                  <span>Saved</span>
+                  <button class="history-group-clear-btn" title="Delete all saved" @click.stop="clearAllSavedHistory">
+                    <IconTrash size="12" />
+                  </button>
+                </div>
+                <div v-if="savedItems.length > 0" class="history-dropdown-group-items">
+                  <button
+                    v-for="item in savedItems"
+                    :key="`saved:${item.id}`"
+                    class="history-dropdown-item"
+                    @click.stop="handleHistoryItemClick(`saved:${item.id}`)"
+                  >
+                    <span class="history-item-method">{{ item.method }}</span>
+                    <input
+                      v-if="editingSavedItemId === item.id"
+                      v-model="editingSavedName"
+                      class="history-item-input"
+                      @click.stop
+                      @blur="onRenameInputBlur"
+                      @keydown.enter.prevent="saveRenameSavedHistoryItem"
+                    />
+                    <span v-else class="history-item-text">{{ getSavedDisplayName(item) }}</span>
+                    <span class="history-item-edit" title="Rename saved item" @click.stop="startRenameSavedHistoryItem(item)">✎</span>
+                    <span class="history-item-remove" @click.stop="removeHistoryItem(`saved:${item.id}`)">x</span>
+                  </button>
+                </div>
+                <div v-else class="history-dropdown-empty">No saved history yet.</div>
+                <div class="history-dropdown-group-title">
+                  <span>Recent</span>
+                  <button class="history-group-clear-btn" title="Delete all recent" @click.stop="clearAllRecentHistory">
+                    <IconTrash size="12" />
+                  </button>
+                </div>
+                <div v-if="recentItems.length > 0" class="history-dropdown-group-items">
+                  <button
+                    v-for="item in recentItems"
+                    :key="`recent:${item.id}`"
+                    class="history-dropdown-item"
+                    @click.stop="handleHistoryItemClick(`recent:${item.id}`)"
+                  >
+                    <span class="history-item-method">{{ item.method }}</span>
+                    <span class="history-item-text">{{ item.name || item.url }}</span>
+                    <span class="history-item-save" title="Save to Saved" @click.stop="saveRecentHistoryItem(item.id)">
+                      <IconBookmark size="10" />
+                    </span>
+                    <span class="history-item-remove" @click.stop="removeHistoryItem(`recent:${item.id}`)">x</span>
+                  </button>
+                </div>
+                <div v-else class="history-dropdown-empty">No recent history yet.</div>
               </div>
             </Teleport>
             <button class="preview-btn" :disabled="!selectedHistoryItem" title="Preview snapshot" @click="openPreview">
@@ -413,6 +451,14 @@ onUnmounted(() => {
   cursor: pointer;
 }
 
+.history-select-content {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  flex: 1;
+}
+
 .history-select-wrap {
   position: relative;
   width: 170px;
@@ -426,7 +472,17 @@ onUnmounted(() => {
   text-overflow: ellipsis;
   white-space: nowrap;
   display: block;
-  width: 100%;
+  min-width: 0;
+  flex: 1;
+}
+
+.history-select-method {
+  flex: 0 0 auto;
+  font-size: 11px;
+  font-weight: 700;
+  color: #1d4ed8;
+  min-width: 20px;
+  margin-right: 0;
 }
 
 .history-select-arrow {
@@ -444,7 +500,8 @@ onUnmounted(() => {
   width: max-content;
   max-width: min(480px, 85vw);
   max-height: 260px;
-  overflow: auto;
+  overflow-y: auto;
+  overflow-x: hidden;
   border: 1px solid #888;
   background: #efefef;
   z-index: 30000;
@@ -458,11 +515,40 @@ onUnmounted(() => {
 }
 
 .history-dropdown-group-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
   font-size: 11px;
   font-weight: 700;
   color: #666;
   padding: 6px 8px 4px;
   text-transform: uppercase;
+}
+
+.history-group-clear-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #aaa;
+  background: #efefef;
+  width: 18px;
+  height: 18px;
+  line-height: 1;
+  padding: 0;
+  text-transform: none;
+  cursor: pointer;
+}
+
+.history-dropdown-group-items {
+  max-height: 120px;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+.history-dropdown-empty {
+  padding: 6px 8px 8px;
+  font-size: 12px;
+  color: #888;
 }
 
 .history-dropdown-item {
@@ -501,7 +587,8 @@ onUnmounted(() => {
   font-size: 11px;
   font-weight: 700;
   color: #1d4ed8;
-  min-width: 36px;
+  min-width: 20px;
+  margin-right: 0;
 }
 
 .history-item-input {
@@ -514,14 +601,18 @@ onUnmounted(() => {
 }
 
 .history-item-remove {
+  display: grid;
+  place-items: center;
   flex: 0 0 auto;
   width: 16px;
   height: 16px;
-  line-height: 14px;
-  text-align: center;
   border: 1px solid #999;
-  font-size: 11px;
   color: #666;
+  font-size: 12px;
+  line-height: 1;
+  text-align: center;
+  font-weight: 400;
+  padding: 0;
 
   &:hover {
     background: #f6d7da;
@@ -534,16 +625,36 @@ onUnmounted(() => {
   flex: 0 0 auto;
   width: 16px;
   height: 16px;
-  line-height: 14px;
-  text-align: center;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   border: 1px solid #999;
   font-size: 11px;
+  line-height: 1;
   color: #666;
 
   &:hover {
     background: #dbeafe;
     color: #1d4ed8;
     border-color: #3b82f6;
+  }
+}
+
+.history-item-save {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  width: 16px;
+  height: 16px;
+  border: 1px solid #999;
+  color: #666;
+  line-height: 1;
+
+  &:hover {
+    background: #fff3cd;
+    color: #7a5d00;
+    border-color: #d4b106;
   }
 }
 

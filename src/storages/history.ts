@@ -125,6 +125,11 @@ export const useHistoryStorage = defineStore('request-history', () => {
     persist()
   }
 
+  const clearSaved = (requestId: string) => {
+    delete saved.value[requestId]
+    persist()
+  }
+
   return {
     recent,
     saved,
@@ -135,6 +140,7 @@ export const useHistoryStorage = defineStore('request-history', () => {
     removeSaved,
     removeRecent,
     renameSaved,
-    clearRecent
+    clearRecent,
+    clearSaved
   }
 })
