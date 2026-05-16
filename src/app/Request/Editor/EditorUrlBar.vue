@@ -293,6 +293,8 @@ const sendRequest = async (_event?: any) => {
         selectedHeaderPresetIds: [...requestParams.selectedHeaderPresetIds],
         selectedQueryPresetIds: [...requestParams.selectedQueryPresetIds],
         selectedBodyPresetIds: [...requestParams.selectedBodyPresetIds],
+        preRequestScript: requestParams.preRequestScript,
+        postRequestScript: requestParams.postRequestScript,
       }
     })
     await runRequestScript(requestParams.postRequestScript, {
@@ -328,6 +330,8 @@ const sendRequest = async (_event?: any) => {
         selectedHeaderPresetIds: [...requestParams.selectedHeaderPresetIds],
         selectedQueryPresetIds: [...requestParams.selectedQueryPresetIds],
         selectedBodyPresetIds: [...requestParams.selectedBodyPresetIds],
+        preRequestScript: requestParams.preRequestScript,
+        postRequestScript: requestParams.postRequestScript,
       }
     })
     await runRequestScript(requestParams.postRequestScript, {
@@ -368,6 +372,8 @@ const saveCurrentSnapshot = () => {
       selectedHeaderPresetIds: [...requestParams.selectedHeaderPresetIds],
       selectedQueryPresetIds: [...requestParams.selectedQueryPresetIds],
       selectedBodyPresetIds: [...requestParams.selectedBodyPresetIds],
+      preRequestScript: requestParams.preRequestScript,
+      postRequestScript: requestParams.postRequestScript,
     }
   })
 }

@@ -106,6 +106,12 @@ export const useHistoryStorage = defineStore('request-history', () => {
     persist()
   }
 
+  const removeRecent = (requestId: string, itemId: string) => {
+    if (!recent.value[requestId]) return
+    recent.value[requestId] = recent.value[requestId].filter(i => i.id !== itemId)
+    persist()
+  }
+
   const renameSaved = (requestId: string, itemId: string, newName: string) => {
     const item = saved.value[requestId]?.find(i => i.id === itemId)
     if (item) {
@@ -127,6 +133,7 @@ export const useHistoryStorage = defineStore('request-history', () => {
     saveHistory,
     saveSnapshot,
     removeSaved,
+    removeRecent,
     renameSaved,
     clearRecent
   }

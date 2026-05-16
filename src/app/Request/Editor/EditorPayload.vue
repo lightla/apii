@@ -28,7 +28,10 @@ const selectedHistoryKey = ref('')
 const isPreviewOpen = ref(false)
 const isHistoryDropdownOpen = ref(false)
 const historyDropdownRef = ref<HTMLElement | null>(null)
+const historyDropdownPanelRef = ref<HTMLElement | null>(null)
 const historyDropdownStyle = ref<Record<string, string>>({})
+const lastPointerDownInsideDropdown = ref(false)
+const suppressNextHistorySelect = ref(false)
 
 // --- Logic Toggle (Giữ nguyên) ---
 const toggleStates = inject<Ref<Map<string, boolean>>>('toggleStates')!
@@ -94,6 +97,78 @@ const selectHistory = (key: string) => {
   applySelectedHistory()
   isHistoryDropdownOpen.value = false
 }
+
+const removeHistoryItem = (key: string) => {
+  const [kind, id] = key.split(':')
+  const requestId = props.storageKey ?? props.route.id
+  if (kind === 'saved') {
+    historyStore.removeSaved(requestId, id)
+  } else {
+    historyStore.removeRecent(requestId, id)
+  }
+  if (selectedHistoryKey.value === key) {
+    selectedHistoryKey.value = ''
+  }
+}
+
+const editingSavedItemId = ref<string | null>(null)
+const editingSavedName = ref('')
+
+const getSavedDisplayName = (item: HistoryItem) => item.name || item.url
+
+const startRenameSavedHistoryItem = (item: HistoryItem) => {
+  editingSavedItemId.value = item.id
+  editingSavedName.value = getSavedDisplayName(item)
+}
+
+const saveRenameSavedHistoryItem = () => {
+  const itemId = editingSavedItemId.value
+  if (!itemId) return
+  const requestId = props.storageKey ?? props.route.id
+  const trimmed = editingSavedName.value.trim()
+  if (trimmed) {
+    historyStore.renameSaved(requestId, itemId, trimmed)
+  }
+  editingSavedItemId.value = null
+}
+
+const onRenameInputBlur = () => {
+  if (lastPointerDownInsideDropdown.value) {
+    saveRenameSavedHistoryItem()
+  }
+}
+
+const onHistoryDropdownPanelMouseDown = (event: MouseEvent) => {
+  if (!editingSavedItemId.value) return
+  const target = event.target as HTMLElement | null
+  if (!target) return
+  const isInput = target.closest('.history-item-input')
+  const isEdit = target.closest('.history-item-edit')
+  if (!isInput && !isEdit) {
+    suppressNextHistorySelect.value = true
+    saveRenameSavedHistoryItem()
+  }
+}
+
+const handleHistoryItemClick = (key: string) => {
+  if (suppressNextHistorySelect.value) {
+    suppressNextHistorySelect.value = false
+    return
+  }
+  if (editingSavedItemId.value) return
+  selectHistory(key)
+}
+
+const trackPointerDownArea = (event: MouseEvent) => {
+  const target = event.target as Node | null
+  if (!target) {
+    lastPointerDownInsideDropdown.value = false
+    return
+  }
+  const isInTrigger = !!historyDropdownRef.value?.contains(target)
+  const isInPanel = !!historyDropdownPanelRef.value?.contains(target)
+  lastPointerDownInsideDropdown.value = isInTrigger || isInPanel
+}
 const toggleHistoryDropdown = () => {
   if (isHistoryDropdownOpen.value) {
     isHistoryDropdownOpen.value = false
@@ -130,16 +205,20 @@ const formatPreview = (value: unknown) => {
 const closeHistoryDropdownOnOutsideClick = (event: MouseEvent) => {
   const target = event.target as Node | null
   if (!target) return
-  if (historyDropdownRef.value && !historyDropdownRef.value.contains(target)) {
+  const isInTrigger = !!historyDropdownRef.value?.contains(target)
+  const isInPanel = !!historyDropdownPanelRef.value?.contains(target)
+  if (!isInTrigger && !isInPanel) {
     isHistoryDropdownOpen.value = false
   }
 }
 
 onMounted(() => {
+  window.addEventListener('mousedown', trackPointerDownArea, true)
   window.addEventListener('click', closeHistoryDropdownOnOutsideClick)
 })
 
 onUnmounted(() => {
+  window.removeEventListener('mousedown', trackPointerDownArea, true)
   window.removeEventListener('click', closeHistoryDropdownOnOutsideClick)
 })
 </script>
@@ -158,24 +237,42 @@ onUnmounted(() => {
               </button>
             </div>
             <Teleport to="body">
-              <div v-if="isHistoryDropdownOpen" class="history-dropdown-panel" :style="historyDropdownStyle">
+              <div
+                v-if="isHistoryDropdownOpen"
+                ref="historyDropdownPanelRef"
+                class="history-dropdown-panel"
+                :style="historyDropdownStyle"
+                @mousedown="onHistoryDropdownPanelMouseDown"
+              >
                 <div v-if="savedItems.length > 0" class="history-dropdown-group-title">Saved</div>
                 <button
                   v-for="item in savedItems"
                   :key="`saved:${item.id}`"
                   class="history-dropdown-item"
-                  @click.stop="selectHistory(`saved:${item.id}`)"
+                  @click.stop="handleHistoryItemClick(`saved:${item.id}`)"
                 >
-                  {{ item.method }} {{ item.url }}
+                  <span class="history-item-method">{{ item.method }}</span>
+                  <input
+                    v-if="editingSavedItemId === item.id"
+                    v-model="editingSavedName"
+                    class="history-item-input"
+                    @click.stop
+                    @blur="onRenameInputBlur"
+                    @keydown.enter.prevent="saveRenameSavedHistoryItem"
+                  />
+                  <span v-else class="history-item-text">{{ getSavedDisplayName(item) }}</span>
+                  <span class="history-item-edit" title="Rename saved item" @click.stop="startRenameSavedHistoryItem(item)">✎</span>
+                  <span class="history-item-remove" @click.stop="removeHistoryItem(`saved:${item.id}`)">×</span>
                 </button>
                 <div v-if="recentItems.length > 0" class="history-dropdown-group-title">Recent</div>
                 <button
                   v-for="item in recentItems"
                   :key="`recent:${item.id}`"
                   class="history-dropdown-item"
-                  @click.stop="selectHistory(`recent:${item.id}`)"
+                  @click.stop="handleHistoryItemClick(`recent:${item.id}`)"
                 >
-                  {{ item.method }} {{ item.url }}
+                  <span class="history-item-text">{{ item.method }} {{ item.url }}</span>
+                  <span class="history-item-remove" @click.stop="removeHistoryItem(`recent:${item.id}`)">×</span>
                 </button>
               </div>
             </Teleport>
@@ -369,7 +466,9 @@ onUnmounted(() => {
 }
 
 .history-dropdown-item {
-  display: block;
+  display: flex;
+  align-items: center;
+  gap: 8px;
   width: 100%;
   max-width: 100%;
   box-sizing: border-box;
@@ -386,6 +485,65 @@ onUnmounted(() => {
 
   &:hover {
     background: #ddd;
+  }
+}
+
+.history-item-text {
+  min-width: 0;
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.history-item-method {
+  flex: 0 0 auto;
+  font-size: 11px;
+  font-weight: 700;
+  color: #1d4ed8;
+  min-width: 36px;
+}
+
+.history-item-input {
+  flex: 1;
+  min-width: 0;
+  height: 22px;
+  border: 1px solid #9ca3af;
+  padding: 0 6px;
+  font-size: 12px;
+}
+
+.history-item-remove {
+  flex: 0 0 auto;
+  width: 16px;
+  height: 16px;
+  line-height: 14px;
+  text-align: center;
+  border: 1px solid #999;
+  font-size: 11px;
+  color: #666;
+
+  &:hover {
+    background: #f6d7da;
+    color: #842029;
+    border-color: #dc3545;
+  }
+}
+
+.history-item-edit {
+  flex: 0 0 auto;
+  width: 16px;
+  height: 16px;
+  line-height: 14px;
+  text-align: center;
+  border: 1px solid #999;
+  font-size: 11px;
+  color: #666;
+
+  &:hover {
+    background: #dbeafe;
+    color: #1d4ed8;
+    border-color: #3b82f6;
   }
 }
 
