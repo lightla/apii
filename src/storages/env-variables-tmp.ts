@@ -124,6 +124,28 @@ const useEnvStorage = defineStore('variables', () => {
         void persist()
     }
 
+    const getVariableValueByName = (variableName: string): string => {
+        const targetName = (variableName || '').trim()
+        if (!targetName) return ''
+        const idx = variableDefinitions.value.findIndex(v => v.name === targetName)
+        if (idx === -1) return ''
+        const varDef = variableDefinitions.value[idx]
+        return envValues.value[selectedEnvCode.value]?.[varDef.id] || ''
+    }
+
+    const setVariableValueByName = (variableName: string, newValue: string) => {
+        const targetName = (variableName || '').trim()
+        if (!targetName) return
+        const idx = variableDefinitions.value.findIndex(v => v.name === targetName)
+        if (idx === -1) return
+        const varDef = variableDefinitions.value[idx]
+        if (!envValues.value[selectedEnvCode.value]) {
+            envValues.value[selectedEnvCode.value] = {}
+        }
+        envValues.value[selectedEnvCode.value][varDef.id] = newValue ?? ''
+        void persist()
+    }
+
     const collectEnvVariableNames = () => {
         return variableDefinitions.value
             .map(v => v.name)
@@ -141,6 +163,7 @@ const useEnvStorage = defineStore('variables', () => {
         variableDefinitions, definedEnvVariables, 
         addVariableDefinition, removeVariableDefinition,
         updateVariableName, updateVariableValue,
+        getVariableValueByName, setVariableValueByName,
         collectEnvVariableNames, persist
     };
 });

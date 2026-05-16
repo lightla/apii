@@ -3,11 +3,12 @@ import { ref, onMounted, onUnmounted, getCurrentInstance, watch } from 'vue'
 import type { RouteInfo } from '@/types'
 import TrackedVariableInput from "@/app/Generals/TrackedVariableInput.vue";
 import {useInputStorage, useEnvStorage} from "@/storages/env-variables-tmp.ts";
-import { IconBrandTelegram } from '@tabler/icons-vue';
+import { IconBrandTelegram, IconBookmark } from '@tabler/icons-vue';
 import { useResponseStorage } from '@/storages/response.ts'
 import { useRequestParamsStorage } from '@/storages/payload.ts'
 import { useHistoryStorage } from '@/storages/history.ts'
 import { parseCurl, matchUrlPattern } from '@/utils/curl-parser.ts'
+import { nanoid } from 'nanoid'
 
 const props = defineProps<{
   route: RouteInfo
@@ -111,6 +112,67 @@ const onUrlCommit = (text: string) => {
   processCurlIfPresent(text)
 }
 
+const getValueByPath = (source: any, path: string): any => {
+  if (!path) return source
+  return path.split('.').reduce((acc, key) => (acc == null ? undefined : acc[key]), source)
+}
+
+const runRequestScript = async (
+  script: string,
+  context: { responseBody?: any; responseHeaders?: Record<string, string>; status?: number; error?: string } = {}
+) => {
+  if (!script || !script.trim()) return
+  const apii = {
+    env: {
+      get: (name: string) => envStorage.getVariableValueByName(name),
+      set: (name: string, value: any) => envStorage.setVariableValueByName(name, String(value ?? '')),
+    },
+    request: {
+      getUrl: () => requestParams.baseUrl,
+      setUrl: (url: string) => { requestParams.baseUrl = String(url ?? '') },
+      getMethod: () => requestParams.method,
+      setMethod: (method: string) => { requestParams.method = String(method ?? 'GET').toUpperCase() },
+      setHeader: (key: string, value: string) => {
+        const headerKey = String(key ?? '').trim()
+        if (!headerKey) return
+        const existing = requestParams.headers.find(h => h.key.toLowerCase() === headerKey.toLowerCase())
+        if (existing) {
+          existing.value = String(value ?? '')
+          existing.enabled = true
+          return
+        }
+        requestParams.headers.push({
+          id: nanoid(),
+          key: headerKey,
+          value: String(value ?? ''),
+          enabled: true,
+          description: 'Set by script',
+        })
+      },
+      setBody: (body: any) => { requestParams.body = typeof body === 'string' ? body : JSON.stringify(body ?? {}) },
+    },
+    response: {
+      status: context.status ?? 0,
+      headers: context.responseHeaders || {},
+      error: context.error || '',
+      body: context.responseBody,
+      json: (path?: string) => getValueByPath(context.responseBody, path || ''),
+      text: () => (typeof context.responseBody === 'string' ? context.responseBody : JSON.stringify(context.responseBody ?? '')),
+    },
+    console,
+  }
+
+  try {
+    await new Function(
+      'apii',
+      `return (async () => { ${script} })();`
+    )(apii)
+  } catch (e) {
+    console.error('[Script Runtime Error]', e)
+    responseStorage.error = `Script error: ${String(e)}`
+  }
+}
+
 const sendRequest = async (_event?: any) => {
   const method = (requestParams.method || 'GET').toUpperCase()
   const envVariables = envStorage.definedEnvVariables;
@@ -118,6 +180,7 @@ const sendRequest = async (_event?: any) => {
   // Trước khi gửi, đảm bảo đã xử lý cURL nếu còn sót
   const currentUrl = myComponentRef.value?.getText() || ''
   processCurlIfPresent(currentUrl)
+  await runRequestScript(requestParams.preRequestScript)
 
   const resolveEnvVars = (text: string): string => {
     let result = text
@@ -218,6 +281,7 @@ const sendRequest = async (_event?: any) => {
       duration: Date.now() - startTime,
       response: parsedData,
       responseType: res.headers.get('content-type') || 'text/plain',
+      responseHeaders: headers,
       requestData: {
         baseUrl: requestParams.baseUrl,
         method: requestParams.method,
@@ -230,6 +294,11 @@ const sendRequest = async (_event?: any) => {
         selectedQueryPresetIds: [...requestParams.selectedQueryPresetIds],
         selectedBodyPresetIds: [...requestParams.selectedBodyPresetIds],
       }
+    })
+    await runRequestScript(requestParams.postRequestScript, {
+      responseBody: parsedData,
+      responseHeaders: headers,
+      status: res.status,
     })
   } catch (e) {
     responseStorage.error = String(e)
@@ -246,6 +315,8 @@ const sendRequest = async (_event?: any) => {
       duration: Date.now() - startTime,
       response: null,
       responseType: 'error',
+      responseHeaders: {},
+      error: String(e),
       requestData: {
         baseUrl: requestParams.baseUrl,
         method: requestParams.method,
@@ -259,9 +330,46 @@ const sendRequest = async (_event?: any) => {
         selectedBodyPresetIds: [...requestParams.selectedBodyPresetIds],
       }
     })
+    await runRequestScript(requestParams.postRequestScript, {
+      responseBody: null,
+      responseHeaders: {},
+      status: 0,
+      error: String(e),
+    })
   } finally {
     responseStorage.loading = false
   }
+}
+
+const saveCurrentSnapshot = () => {
+  const method = (requestParams.method || 'GET').toUpperCase()
+  const url = requestParams.urlPreview || requestParams.baseUrl || ''
+
+  historyStorage.saveSnapshot(props.storageKey, {
+    requestId: props.storageKey,
+    timestamp: Date.now(),
+    method,
+    url,
+    status: responseStorage.status || 0,
+    statusText: responseStorage.statusText || 'Snapshot',
+    duration: responseStorage.responseTime || 0,
+    response: responseStorage.data || responseStorage.rawBody || null,
+    responseType: responseStorage.responseHeaders?.['content-type'] || 'application/json',
+    responseHeaders: { ...(responseStorage.responseHeaders || {}) },
+    error: responseStorage.error || '',
+    requestData: {
+      baseUrl: requestParams.baseUrl,
+      method: requestParams.method,
+      headers: [...requestParams.headers],
+      queryParams: [...requestParams.queryParams],
+      uriParameters: [...requestParams.uriParameters],
+      body: requestParams.body,
+      bodyType: requestParams.bodyType,
+      selectedHeaderPresetIds: [...requestParams.selectedHeaderPresetIds],
+      selectedQueryPresetIds: [...requestParams.selectedQueryPresetIds],
+      selectedBodyPresetIds: [...requestParams.selectedBodyPresetIds],
+    }
+  })
 }
 </script>
 
@@ -300,6 +408,9 @@ const sendRequest = async (_event?: any) => {
     </div>
       <div class="send-request-cover">
       <IconBrandTelegram @click="sendRequest" class="btn-send-request" stroke-width="1"/>
+      <button class="icon-action-btn" @click="saveCurrentSnapshot" title="Save snapshot" aria-label="Save snapshot">
+        <IconBookmark class="btn-save-request" stroke-width="1.6" />
+      </button>
     </div>
   </div>
 </template>
@@ -389,6 +500,34 @@ const sendRequest = async (_event?: any) => {
 
   &:hover {
     fill: #cccccc;
+  }
+}
+
+.send-request-cover {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.icon-action-btn {
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+}
+
+.btn-save-request {
+  width: 19px;
+  height: 19px;
+  color: #444;
+
+  .icon-action-btn:hover & {
+    color: #000;
   }
 }
 </style>

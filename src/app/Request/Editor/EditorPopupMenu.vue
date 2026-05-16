@@ -7,6 +7,7 @@ import InputMenu from './Popup/InputMenu.vue';
 import VariablePicker from './Popup/VariablePicker.vue';
 
 import { useToast } from "vue-toastification";
+import { IconCopy } from '@tabler/icons-vue';
 
 const lastMousePosition = ref({ clientX: 0, clientY: 0 })
 const lastElement = ref<HTMLElement | null>(null)
@@ -24,6 +25,8 @@ const currentVarName = ref<string>('');
 const currentVarValue = ref<string>('');
 const isDefined = ref<boolean>(false);
 const searchQuery = ref<string>('');
+const hasSelection = ref<boolean>(false);
+const selectedText = ref<string>('');
 
 // 'variable' | 'input' | 'selection'
 const menuMode = ref<'variable' | 'input' | 'selection'>('variable');
@@ -97,6 +100,10 @@ const onGlobalClick = (e : MouseEvent) => {
 }
 
 const onContextMenu = (e: MouseEvent) => {
+  const selection = window.getSelection();
+  selectedText.value = selection?.toString() || '';
+  hasSelection.value = selectedText.value.length > 0;
+
   const el = document.elementFromPoint(e.clientX, e.clientY) as HTMLElement | null
   
   const variableEl = el?.closest('.undefined-env-variable, .defined-env-variable') as HTMLElement | null;
@@ -236,37 +243,61 @@ const switchToSelection = () => {
   menuMode.value = 'selection';
 }
 
+const isFeatureMode = computed(() => {
+  return !hasSelection.value && (menuMode.value === 'variable' || menuMode.value === 'selection');
+});
+
+const copySelection = () => {
+  if (selectedText.value) {
+    navigator.clipboard.writeText(selectedText.value).then(() => {
+      toast.success('Copied to clipboard!', { timeout: 2000 });
+    }).catch(err => {
+      console.error('Failed to copy: ', err);
+    });
+    hidePopup();
+  }
+}
+
 </script>
 
 <template>
-  <div ref="popupRef" class="popup shadow-lg">
+  <div ref="popupRef" class="popup shadow-lg" :class="{ 'is-feature': isFeatureMode }">
+    <div v-if="hasSelection" class="context-menu-list">
+      <div class="context-menu-item" @click="copySelection">
+        <IconCopy size="16" class="me-2" />
+        <span>Copy</span>
+      </div>
+    </div>
+
     <!-- Modular Content -->
-    <VariableEditor 
-      v-if="menuMode === 'variable'"
-      :varName="currentVarName"
-      :varValue="currentVarValue"
-      :isDefined="isDefined"
-      :searchQuery="searchQuery"
-      :filteredVariables="filteredVariables"
-      @update:varValue="onVariableValueUpdate"
-      @update:searchQuery="searchQuery = $event"
-      @delete="deleteVariable"
-      @select="selectVariable"
-      @input-blur="onVariableValueBlur"
-    />
-    
-    <InputMenu 
-      v-else-if="menuMode === 'input'"
-      @select-variable="switchToSelection"
-    />
-    
-    <VariablePicker 
-      v-else-if="menuMode === 'selection'"
-      :searchQuery="searchQuery"
-      :filteredVariables="filteredVariables"
-      @update:searchQuery="searchQuery = $event"
-      @select="selectVariable"
-    />
+    <template v-else>
+      <VariableEditor 
+        v-if="menuMode === 'variable'"
+        :varName="currentVarName"
+        :varValue="currentVarValue"
+        :isDefined="isDefined"
+        :searchQuery="searchQuery"
+        :filteredVariables="filteredVariables"
+        @update:varValue="onVariableValueUpdate"
+        @update:searchQuery="searchQuery = $event"
+        @delete="deleteVariable"
+        @select="selectVariable"
+        @input-blur="onVariableValueBlur"
+      />
+
+      <InputMenu 
+        v-else-if="menuMode === 'input'"
+        @select-variable="switchToSelection"
+      />
+
+      <VariablePicker 
+        v-else-if="menuMode === 'selection'"
+        :searchQuery="searchQuery"
+        :filteredVariables="filteredVariables"
+        @update:searchQuery="searchQuery = $event"
+        @select="selectVariable"
+      />
+    </template>
   </div>
 </template>
 
@@ -282,11 +313,38 @@ const switchToSelection = () => {
   background-color: #dddddd; 
   border: 1px solid #888888;
   border-radius: 0;
-  width: 260px;
+  width: fit-content;
+  min-width: 140px;
+  max-width: 400px;
   padding: 0;
   font-family: "Calibri", Arial, sans-serif;
   box-shadow: 0 4px 12px rgba(0,0,0,0.3);
   overflow: hidden;
+
+  &.is-feature {
+    width: 260px;
+  }
+}
+
+.context-menu-list {
+  padding: 4px 0;
+  width: 100%;
+}
+
+.context-menu-item {
+  display: flex;
+  align-items: center;
+  padding: 8px 12px;
+  font-size: 13px;
+  cursor: pointer;
+  color: #333;
+  transition: all 0.1s;
+  white-space: nowrap;
+
+  &:hover {
+    background-color: #cccccc;
+    color: #000;
+  }
 }
 
 .popup-header {
@@ -294,8 +352,8 @@ const switchToSelection = () => {
   padding: 8px 12px;
   border-bottom: 1px solid #888888;
   font-size: 13px;
+  white-space: nowrap;
 }
-
 .var-label {
   font-size: 12px;
   color: #444;
@@ -392,3 +450,4 @@ const switchToSelection = () => {
   -ms-overflow-style: none;
 }
 </style>
+

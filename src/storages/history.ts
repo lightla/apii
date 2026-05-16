@@ -13,6 +13,8 @@ export interface HistoryItem {
   duration: number
   response: any
   responseType: string
+  responseHeaders?: Record<string, string>
+  error?: string
   requestData: {
     baseUrl: string
     method: string
@@ -83,6 +85,21 @@ export const useHistoryStorage = defineStore('request-history', () => {
     persist()
   }
 
+  const saveSnapshot = (requestId: string, item: Omit<HistoryItem, 'id'>) => {
+    if (!saved.value[requestId]) {
+      saved.value[requestId] = []
+    }
+
+    const newItem: HistoryItem = {
+      ...item,
+      id: crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).substring(2),
+    }
+
+    saved.value[requestId].unshift(newItem)
+    persist()
+    return newItem
+  }
+
   const removeSaved = (requestId: string, itemId: string) => {
     if (!saved.value[requestId]) return
     saved.value[requestId] = saved.value[requestId].filter(i => i.id !== itemId)
@@ -108,6 +125,7 @@ export const useHistoryStorage = defineStore('request-history', () => {
     load,
     addRecent,
     saveHistory,
+    saveSnapshot,
     removeSaved,
     renameSaved,
     clearRecent

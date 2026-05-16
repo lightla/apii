@@ -3,7 +3,6 @@
 import { ref, watch, computed, toRaw } from 'vue'
 import type { RouteInfo } from '@/types'
 import SearchComponent from "@/app/Generals/Search/SearchComponent.vue";
-import RequestTagManager from "@/app/Generals/TagManager/RequestTagManager.vue";
 import { IconPlus } from '@tabler/icons-vue'
 
 interface SearchFieldConfig { id: number; key: string; value: string; searchable: boolean; }
@@ -22,8 +21,6 @@ const emit = defineEmits<{
 
 // --- STATE ---
 const searchTitleValue = ref<string>("");
-const filteredTags = ref<any[]>([]);
-const tagFilterMode = ref<'AND' | 'OR'>('OR');
 
 // 🔥 SỬA 1: KHÔI PHỤC LẠI `reactiveEnrichedRequests` VÀ HÀM "LÀM GIÀU"
 const reactiveEnrichedRequests = ref<RouteInfo[]>([]);
@@ -79,20 +76,6 @@ const filteredRequests = computed(() => {
     });
   }
 
-  // 2️⃣ LỌC THEO TAG (với logic AND/OR)
-  if (filteredTags.value && filteredTags.value.length > 0) {
-    const selectedTagIds = filteredTags.value.map(tag => tag.id);
-    result = result.filter(req => {
-      if (!req.tags || req.tags.length === 0) return false;
-      const requestTagIds = new Set(req.tags.map(tag => tag.id));
-      if (tagFilterMode.value === 'AND') {
-        return selectedTagIds.every(id => requestTagIds.has(id));
-      } else {
-        return selectedTagIds.some(id => requestTagIds.has(id));
-      }
-    });
-  }
-
   return result;
 });
 
@@ -127,23 +110,6 @@ function formatRoute(route: string) {
         :fields="props.searchFields"
         @search:value="searchTitleValue = $event"
     />
-
-    <!-- Bố cục hàng ngang với nút kiểu cột (ĐÃ SỬA LẠI CHO ĐÚNG) -->
-    <div class="tag-filter-container-horizontal">
-      <RequestTagManager
-          class="tag-manager-input"
-          route=""
-          @tags-updated="filteredTags=$event"
-      />
-      <button
-          class="filter-mode-toggle-column"
-          @click="tagFilterMode = (tagFilterMode === 'OR' ? 'AND' : 'OR')"
-          :title="`Chế độ lọc tag: ${tagFilterMode}. Click để chuyển.`"
-      >
-        <div :class="{ 'active': tagFilterMode === 'OR' }">OR</div>
-        <div :class="{ 'active': tagFilterMode === 'AND' }">AND</div>
-      </button>
-    </div>
 
     <!-- Hiển thị kết quả đã được gom nhóm -->
     <div class="request-list">

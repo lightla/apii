@@ -84,6 +84,8 @@ export const useRequestParamsStorage = defineStore('request-params', {
       proxyUrl: globalSettings.proxyUrl,
 
       triggerSendCount: 0,
+      preRequestScript: '',
+      postRequestScript: '',
     }
   },
 
@@ -391,6 +393,8 @@ export const useRequestParamsStorage = defineStore('request-params', {
       this.selectedHeaderPresetIds = []
       this.selectedQueryPresetIds = []
       this.selectedBodyPresetIds = []
+      this.preRequestScript = ''
+      this.postRequestScript = ''
       this.syncManagedHeaders();
     },
     saveToStorage(routeId: string) {
@@ -407,6 +411,8 @@ export const useRequestParamsStorage = defineStore('request-params', {
         selectedHeaderPresetIds: this.selectedHeaderPresetIds,
         selectedQueryPresetIds: this.selectedQueryPresetIds,
         selectedBodyPresetIds: this.selectedBodyPresetIds,
+        preRequestScript: this.preRequestScript,
+        postRequestScript: this.postRequestScript,
       }
       localStorage.setItem(`api_request_data_${routeId}`, JSON.stringify(data))
     },
@@ -427,6 +433,8 @@ export const useRequestParamsStorage = defineStore('request-params', {
           this.selectedHeaderPresetIds = data.selectedHeaderPresetIds || []
           this.selectedQueryPresetIds = data.selectedQueryPresetIds || []
           this.selectedBodyPresetIds = data.selectedBodyPresetIds || []
+          this.preRequestScript = data.preRequestScript || ''
+          this.postRequestScript = data.postRequestScript || ''
           this.syncManagedHeaders();
         } catch (e) {
           console.error('Failed to parse saved request data', e)
@@ -447,6 +455,8 @@ export const useRequestParamsStorage = defineStore('request-params', {
       this.selectedHeaderPresetIds = [...(data.selectedHeaderPresetIds || [])]
       this.selectedQueryPresetIds = [...(data.selectedQueryPresetIds || [])]
       this.selectedBodyPresetIds = [...(data.selectedBodyPresetIds || [])]
+      this.preRequestScript = data.preRequestScript || ''
+      this.postRequestScript = data.postRequestScript || ''
       this.syncManagedHeaders()
     },
     applyParsedCurl(parsed: { method: string, url: string, headers: Record<string, string>, body: string, params: Record<string, string> }) {

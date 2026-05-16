@@ -88,6 +88,24 @@ const editingGroupLabel = ref('')
 const editingInput = ref<HTMLInputElement | null>(null)
 const editingGroupInput = ref<HTMLInputElement | null>(null)
 
+const hasSelection = ref(false)
+const selectedText = ref('')
+
+function checkSelection() {
+  const selection = window.getSelection()
+  selectedText.value = selection?.toString() || ''
+  hasSelection.value = selectedText.value.length > 0
+}
+
+function copySelection() {
+  if (selectedText.value) {
+    navigator.clipboard.writeText(selectedText.value)
+    hasSelection.value = false
+    selectedText.value = ''
+    closeMenus()
+  }
+}
+
 watch(() => store.activeCollectionId, () => {
   selectedItemIds.value = new Set()
   activeItemId.value = null
@@ -574,7 +592,7 @@ function itemLabel(item: { requestId?: string; requestKey: string; label?: strin
             @dragstart="onGroupDragStart($event, block.group)"
             @dragend="onDragEnd"
             @dblclick="block.group !== 'UNGROUPED' && onRenameGroup(block.group)"
-            @contextmenu.prevent.stop="menuGroup = block.group; menuItemId = null"
+            @contextmenu.prevent.stop="checkSelection(); menuGroup = block.group; menuItemId = null"
         >
           <span class="group-name" v-if="editingGroupId !== block.group">
             <IconGripVertical v-if="block.group !== 'UNGROUPED'" />
@@ -596,16 +614,19 @@ function itemLabel(item: { requestId?: string; requestKey: string; label?: strin
             <button class="mini-icon" title="Add request" @click="openAddRequest(block.group)">
               <IconPlus />
             </button>
-            <button class="mini-icon" title="Group menu" @click.stop="menuGroup = menuGroup === block.group ? null : block.group; menuItemId = null">
+            <button class="mini-icon" title="Group menu" @click.stop="checkSelection(); menuGroup = menuGroup === block.group ? null : block.group; menuItemId = null">
               <IconDotsVertical />
             </button>
           </div>
 
           <div v-if="menuGroup === block.group" class="context-menu" @click.stop>
-            <button @click="openAddRequest(block.group)">Add request</button>
-            <button :disabled="block.group === 'UNGROUPED'" @click="duplicateGroup(block.group)">Duplicate group</button>
-            <button :disabled="block.group === 'UNGROUPED'" @click="onRenameGroup(block.group)">Rename group</button>
-            <button :disabled="block.group === 'UNGROUPED'" @click="onDeleteGroup(block.group)">Delete group</button>
+            <button v-if="hasSelection" @click="copySelection">Copy</button>
+            <template v-else>
+              <button @click="openAddRequest(block.group)">Add request</button>
+              <button :disabled="block.group === 'UNGROUPED'" @click="duplicateGroup(block.group)">Duplicate group</button>
+              <button :disabled="block.group === 'UNGROUPED'" @click="onRenameGroup(block.group)">Rename group</button>
+              <button :disabled="block.group === 'UNGROUPED'" @click="onDeleteGroup(block.group)">Delete group</button>
+            </template>
           </div>
         </div>
 
@@ -633,7 +654,7 @@ function itemLabel(item: { requestId?: string; requestKey: string; label?: strin
             @dragover="onItemDragOver($event, item.id)"
             @drop="onItemDrop($event, block.group, item.id)"
             @dragend="onDragEnd"
-            @contextmenu.prevent.stop="menuItemId = item.id; menuGroup = null"
+            @contextmenu.prevent.stop="checkSelection(); menuItemId = item.id; menuGroup = null"
         >
           <span class="method" v-if="editingItemId !== item.id">{{ resolveRequestById(item.requestId ?? item.requestKey)?.method ?? '??' }}</span>
           <span class="route" v-if="editingItemId !== item.id" :title="resolveRequestById(item.requestId ?? item.requestKey)?.route ?? item.requestKey">
@@ -651,16 +672,21 @@ function itemLabel(item: { requestId?: string; requestKey: string; label?: strin
               @click.stop
           />
 
-          <button class="mini-icon item-menu-btn" title="Request menu" @click.stop="menuItemId = menuItemId === item.id ? null : item.id; menuGroup = null">
+          <button class="mini-icon item-menu-btn" title="Request menu" @click.stop="checkSelection(); menuItemId = menuItemId === item.id ? null : item.id; menuGroup = null">
             <IconDotsVertical />
           </button>
 
           <div v-if="menuItemId === item.id" class="context-menu item-context" @click.stop>
-            <button @click="onRenameItem(item.id)">Rename</button>
-            <button @click="duplicateItems([item.id])">Duplicate</button>
-            <button @click="removeItems([item.id])">Remove</button>
+            <button v-if="hasSelection" @click="copySelection">Copy</button>
+            <template v-else>
+              <button @click="onRenameItem(item.id)">Rename</button>
+              <button @click="duplicateItems([item.id])">Duplicate</button>
+              <button @click="removeItems([item.id])">Remove</button>
+            </template>
           </div>
         </div>
+
+
 
         <div
             v-if="block.items.length > 0"

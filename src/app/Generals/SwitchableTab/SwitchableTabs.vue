@@ -50,21 +50,26 @@ defineSlots<{
   display: flex;
   flex-direction: row;
   align-items: center;
-  justify-content: space-between;
   border: var(--tab-border);
   background-color: var(--tab-bg-color);
   padding-right: 5px;
+  min-width: 0;
 }
 
 .tabs {
   display: flex;
   flex-direction: row;
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
 }
 
 .tab {
   padding: 9px 15px;
   cursor: pointer;
   font-size: 14px;
+  white-space: nowrap;
+  flex: 0 0 auto;
 
   &.active {
     background-color: var(--tab-bg-color-active);
