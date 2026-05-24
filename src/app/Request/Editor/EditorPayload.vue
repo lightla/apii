@@ -18,7 +18,7 @@ import ScrollContainer from "@/app/Generals/ScrollContainer/ScrollContainer.vue"
 import { useHistoryStorage, type HistoryItem } from '@/storages/history.ts'
 import { useRequestParamsStorage } from '@/storages/payload.ts'
 import { useResponseStorage } from '@/storages/response.ts'
-import { IconEye, IconBookmark, IconTrash } from '@tabler/icons-vue'
+import { IconBookmark, IconTrash } from '@tabler/icons-vue'
 
 const props = defineProps<{ route: RouteInfo, storageKey?: string }>()
 const historyStore = useHistoryStorage()
@@ -207,6 +207,38 @@ const openPreview = () => {
   isPreviewOpen.value = true
 }
 
+const saveCurrentSnapshot = () => {
+  const method = (payloadStore.method || 'GET').toUpperCase()
+  const url = payloadStore.urlPreview || payloadStore.baseUrl || ''
+  historyStore.saveSnapshot(props.storageKey ?? props.route.id, {
+    requestId: props.storageKey ?? props.route.id,
+    timestamp: Date.now(),
+    method,
+    url,
+    status: responseStore.status || 0,
+    statusText: responseStore.statusText || 'Snapshot',
+    duration: responseStore.responseTime || 0,
+    response: responseStore.data || responseStore.rawBody || null,
+    responseType: responseStore.responseHeaders?.['content-type'] || 'application/json',
+    responseHeaders: { ...(responseStore.responseHeaders || {}) },
+    error: responseStore.error || '',
+    requestData: {
+      baseUrl: payloadStore.baseUrl,
+      method: payloadStore.method,
+      headers: [...payloadStore.headers],
+      queryParams: [...payloadStore.queryParams],
+      uriParameters: [...payloadStore.uriParameters],
+      body: payloadStore.body,
+      bodyType: payloadStore.bodyType,
+      selectedHeaderPresetIds: [...payloadStore.selectedHeaderPresetIds],
+      selectedQueryPresetIds: [...payloadStore.selectedQueryPresetIds],
+      selectedBodyPresetIds: [...payloadStore.selectedBodyPresetIds],
+      preRequestScript: payloadStore.preRequestScript,
+      postRequestScript: payloadStore.postRequestScript,
+    }
+  })
+}
+
 const closePreview = () => {
   isPreviewOpen.value = false
 }
@@ -314,8 +346,8 @@ onUnmounted(() => {
                 <div v-else class="history-dropdown-empty">No recent history yet.</div>
               </div>
             </Teleport>
-            <button class="preview-btn" :disabled="!selectedHistoryItem" title="Preview snapshot" @click="openPreview">
-              <IconEye size="16" />
+            <button class="preview-btn" :disabled="!selectedHistoryItem" title="Save snapshot" @click="saveCurrentSnapshot">
+              <IconBookmark size="16" stroke-width="1.6" />
             </button>
           </div>
           <ToggleMenuItemAction class="tab-toggle">

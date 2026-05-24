@@ -3,7 +3,7 @@ import { ref, onMounted, onUnmounted, getCurrentInstance, watch } from 'vue'
 import type { RouteInfo } from '@/types'
 import TrackedVariableInput from "@/app/Generals/TrackedVariableInput.vue";
 import {useInputStorage, useEnvStorage} from "@/storages/env-variables-tmp.ts";
-import { IconBrandTelegram, IconBookmark } from '@tabler/icons-vue';
+import { IconBrandTelegram } from '@tabler/icons-vue';
 import { useResponseStorage } from '@/storages/response.ts'
 import { useRequestParamsStorage } from '@/storages/payload.ts'
 import { useHistoryStorage } from '@/storages/history.ts'
@@ -414,9 +414,6 @@ const saveCurrentSnapshot = () => {
     </div>
       <div class="send-request-cover">
       <IconBrandTelegram @click="sendRequest" class="btn-send-request" stroke-width="1"/>
-      <button class="icon-action-btn" @click="saveCurrentSnapshot" title="Save snapshot" aria-label="Save snapshot">
-        <IconBookmark class="btn-save-request" stroke-width="1.6" />
-      </button>
     </div>
   </div>
 </template>

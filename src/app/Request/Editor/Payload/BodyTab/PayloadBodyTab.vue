@@ -25,8 +25,12 @@ const props = defineProps<{ route: RouteInfo, storageKey?: string }>()
 const store = useRequestParamsStorage()
 const presetStore = usePresetStorage()
 const theme = ref('one-dark')
+const onThemeUpdate = (val: string) => { theme.value = val }
 
 const showPresetDropdown = ref(false)
+const showFilePresetDropdown = ref(false)
+const filePresetForIndex = ref<number>(-1)
+const filePresetDropdownStyle = ref<Record<string, string>>({ top: '0px', left: '0px' })
 
 // Active presets for display (filtered by current body type)
 const activePresets = computed(() => {
@@ -44,15 +48,54 @@ const filteredBodyPresets = computed(() => {
   })
 })
 
+const selectedFilePreset = computed(() => {
+  if (!store.selectedFilePresetId) return null
+  return presetStore.filePresets.find(p => p.id === store.selectedFilePresetId) || null
+})
+
 const togglePreset = (id: string) => {
   const current = [...store.selectedBodyPresetIds]
   const idx = current.indexOf(id)
   if (idx === -1) current.push(id)
   else current.splice(idx, 1)
-  
+
   store.selectedBodyPresetIds = current
   store.syncManagedBody()
   store.saveToStorage(props.storageKey ?? props.route.id)
+}
+
+const selectFilePreset = (id: string) => {
+  if (store.selectedFilePresetId === id) {
+    store.selectedFilePresetId = ''
+    store.binaryFile = null
+  } else {
+    store.applyFilePresetToBinary(id)
+  }
+}
+
+const openFilePresetForFormData = (index: number) => {
+  filePresetForIndex.value = index
+  showFilePresetDropdown.value = true
+  nextTick(() => {
+    const btn = document.querySelector(`[data-fd-file-preset="${index}"]`) as HTMLElement
+    if (btn) {
+      const rect = btn.getBoundingClientRect()
+      const menuWidth = 240
+      const overflowRight = rect.left + menuWidth > window.innerWidth
+      filePresetDropdownStyle.value = {
+        top: `${rect.bottom + 4}px`,
+        ...(overflowRight
+          ? { right: `${window.innerWidth - rect.right}px` }
+          : { left: `${rect.left}px` }),
+        width: `${menuWidth}px`,
+      }
+    }
+  })
+}
+
+const applyFilePresetToFormData = (presetId: string) => {
+  store.applyFilePresetToFormData(filePresetForIndex.value, presetId)
+  showFilePresetDropdown.value = false
 }
 
 const bodyTypes = [
@@ -117,28 +160,28 @@ const activeSelectIndex = ref<number | null>(null);
 const activeSelectItem = ref<any>(null);
 const dropdownStyle = ref<Record<string, string>>({ top: '0px', left: '0px', width: '0px' });
 
-const presetDropdownStyle = ref<Record<string, string>>({ top: '0px', right: '0px' });
+const presetDropdownStyle = ref<Record<string, string>>({ top: '0px', right: '0px' })
 
 const updatePresetDropdownPosition = () => {
   nextTick(() => {
-    const btn = document.querySelector('.btn-add-preset') as HTMLElement;
+    const btn = document.querySelector('.body-tab-container .btn-add-preset') as HTMLElement
     if (btn) {
-      const rect = btn.getBoundingClientRect();
+      const rect = btn.getBoundingClientRect()
       presetDropdownStyle.value = {
         top: `${rect.bottom + 4}px`,
         right: `${window.innerWidth - rect.right}px`,
         width: '220px'
-      };
+      }
     }
-  });
-};
+  })
+}
 
 const togglePresetDropdown = () => {
-  showPresetDropdown.value = !showPresetDropdown.value;
+  showPresetDropdown.value = !showPresetDropdown.value
   if (showPresetDropdown.value) {
-    updatePresetDropdownPosition();
+    updatePresetDropdownPosition()
   }
-};
+}
 
 const closeCustomSelect = () => {
   activeSelectIndex.value = null;
@@ -234,39 +277,13 @@ const triggerFileInput = (id: string) => {
       </div>
 
       <!-- Active Presets with Inline Selector -->
-      <div class="ms-auto d-flex align-items-center flex-shrink-0 gap-1 overflow-visible position-relative pe-2" v-if="store.bodyType !== 'none'">
-        <span v-if="activePresets.length" class="preset-label">ACTIVE:</span>
-        <div v-for="p in activePresets" :key="p.id" class="active-preset-tag" :title="p.name">
-          {{ p.name }}
-        </div>
-        
-        <div class="preset-selector-wrap ms-1" v-click-outside="() => showPresetDropdown = false">
+      <div class="ms-auto d-flex align-items-center flex-shrink-0 overflow-visible position-relative pe-2" v-if="store.bodyType !== 'none'">
+        <div class="preset-selector-wrap ms-1">
           <button class="btn-add-preset" @click.stop="togglePresetDropdown" title="Toggle Presets">
             <Plus :size="14" stroke-width="3" />
             <ChevronDown :size="10" stroke-width="2" class="ms-1" />
           </button>
         </div>
-      </div>
-    </div>
-
-    <Teleport to="body">
-      <div v-if="showPresetDropdown" class="preset-dropdown-menu" :style="presetDropdownStyle" v-click-outside="() => showPresetDropdown = false">
-        <div class="dropdown-header">Select {{ store.bodyType }} Presets</div>
-        <div class="dropdown-list">
-          <div
-            v-for="p in filteredBodyPresets"
-            :key="p.id"
-            class="dropdown-item"
-            @click="togglePreset(p.id)"
-          >
-            <SquareCheck v-if="store.selectedBodyPresetIds.includes(p.id)" :size="16" class="text-primary me-2" />
-            <Square v-else :size="16" class="text-muted me-2" />
-            <span class="item-name">{{ p.name }}</span>
-          </div>
-          <div v-if="!filteredBodyPresets.length" class="dropdown-empty">No {{ store.bodyType }} presets</div>
-        </div>
-      </div>
-    </Teleport>
       </div>
     </div>
 
@@ -377,10 +394,13 @@ const triggerFileInput = (id: string) => {
                         <button class="btn-select-file" @click="triggerFileInput('fd-file-' + index)">
                           {{ item.file ? item.file.name : 'Select File' }}
                         </button>
-                        <input 
-                          :id="'fd-file-' + index" 
-                          type="file" 
-                          class="d-none" 
+                        <button class="btn-file-preset" :data-fd-file-preset="index" @click.stop="openFilePresetForFormData(index)" title="Use file preset">
+                          <Plus :size="12" stroke-width="3" />
+                        </button>
+                        <input
+                          :id="'fd-file-' + index"
+                          type="file"
+                          class="d-none"
                           @change="onFormDataFileChange(index, $event)"
                         />
                       </div>
@@ -410,9 +430,9 @@ const triggerFileInput = (id: string) => {
             <div class="file-name">{{ store.binaryFile.name }}</div>
             <div class="file-size text-muted small">{{ (store.binaryFile.size / 1024).toFixed(2) }} KB</div>
           </div>
-          <div v-else-if="activePresets.length > 0 && activePresets[0].value" class="file-info">
-            <div class="file-name">{{ activePresets[0].value.split(' (')[0] }}</div>
-            <div class="file-size text-muted small">{{ activePresets[0].value.split(' (')[1]?.replace(')', '') }}</div>
+          <div v-else-if="store.selectedFilePresetId && selectedFilePreset" class="file-info">
+            <div class="file-name">{{ selectedFilePreset.fileName }}</div>
+            <div class="file-size text-muted small">{{ selectedFilePreset.fileSize }}</div>
           </div>
           <div v-else class="text-muted">
             Click to select binary file
@@ -439,6 +459,66 @@ const triggerFileInput = (id: string) => {
       <div class="type-select-option" @click="selectType('file')">File</div>
     </div>
   </Teleport>
+
+  <Teleport to="body">
+    <div v-if="showPresetDropdown" class="preset-dropdown-backdrop" @click="showPresetDropdown = false">
+      <div class="preset-dropdown-menu" :style="presetDropdownStyle" @click.stop>
+        <!-- Binary: single-select (radio) from file presets -->
+        <template v-if="store.bodyType === 'binary'">
+          <div class="dropdown-header">Select File Preset</div>
+          <div class="dropdown-list">
+            <div
+              v-for="p in presetStore.filePresets"
+              :key="p.id"
+              class="dropdown-item"
+              @click="selectFilePreset(p.id)"
+            >
+              <SquareCheck v-if="store.selectedFilePresetId === p.id" :size="16" class="text-primary me-2" />
+              <Square v-else :size="16" class="text-muted me-2" />
+              <span class="item-name">{{ p.name }} <span class="text-muted small">({{ p.fileName }})</span></span>
+            </div>
+            <div v-if="!presetStore.filePresets.length" class="dropdown-empty">No file presets</div>
+          </div>
+        </template>
+        <!-- Non-binary: multi-select (checkboxes) from body presets -->
+        <template v-else>
+          <div class="dropdown-header">Select {{ store.bodyType }} Presets</div>
+          <div class="dropdown-list">
+            <div
+              v-for="p in filteredBodyPresets"
+              :key="p.id"
+              class="dropdown-item"
+              @click="togglePreset(p.id)"
+            >
+              <SquareCheck v-if="store.selectedBodyPresetIds.includes(p.id)" :size="16" class="text-primary me-2" />
+              <Square v-else :size="16" class="text-muted me-2" />
+              <span class="item-name">{{ p.name }}</span>
+            </div>
+            <div v-if="!filteredBodyPresets.length" class="dropdown-empty">No {{ store.bodyType }} presets</div>
+          </div>
+        </template>
+      </div>
+    </div>
+  </Teleport>
+
+  <Teleport to="body">
+    <div v-if="showFilePresetDropdown" class="preset-dropdown-backdrop" @click="showFilePresetDropdown = false">
+      <div class="preset-dropdown-menu" :style="filePresetDropdownStyle" @click.stop>
+        <div class="dropdown-header">Select File Preset</div>
+        <div class="dropdown-list">
+          <div
+            v-for="p in presetStore.filePresets"
+            :key="p.id"
+            class="dropdown-item"
+            @click="applyFilePresetToFormData(p.id)"
+          >
+            <span class="item-name">{{ p.name }} <span class="text-muted small">({{ p.fileName }})</span></span>
+          </div>
+          <div v-if="!presetStore.filePresets.length" class="dropdown-empty">No file presets</div>
+        </div>
+      </div>
+    </div>
+  </Teleport>
 </template>
 
 <style scoped lang="scss">
@@ -448,6 +528,7 @@ const triggerFileInput = (id: string) => {
   display: flex;
   flex-direction: column;
   height: 100%;
+  overflow: visible;
 }
 
 .body-type-toolbar {
@@ -458,6 +539,8 @@ const triggerFileInput = (id: string) => {
   background-color: var(--tab-bg-color);
   flex-shrink: 0;
   margin-bottom: 10px;
+  position: relative;
+  z-index: 10;
 }
 
 .body-type-item {
@@ -642,13 +725,25 @@ const triggerFileInput = (id: string) => {
   padding: 0 10px;
   font-size: 12px;
   cursor: pointer;
-  width: 100%;
+  flex: 1;
   height: 100%;
   text-align: left;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
   &:hover { background: #e0e0e0; }
+}
+
+.btn-file-preset {
+  background: #eee;
+  border: 1px solid #888888;
+  padding: 0 4px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  &:hover { background: #ddd; }
 }
 
 .icon-button-add-row {
@@ -748,6 +843,12 @@ const triggerFileInput = (id: string) => {
   border-radius: 2px;
   color: #333;
   &:hover { background: #ddd; }
+}
+
+.preset-dropdown-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 99999;
 }
 
 .preset-dropdown-menu {

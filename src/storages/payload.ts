@@ -75,6 +75,7 @@ export const useRequestParamsStorage = defineStore('request-params', {
       selectedHeaderPresetIds: [] as string[],
       selectedQueryPresetIds: [] as string[],
       selectedBodyPresetIds: [] as string[],
+      selectedFilePresetId: '' as string,
       
       authType: 'none' as 'none' | 'bearer' | 'preset',
       authToken: '',
@@ -302,8 +303,33 @@ export const useRequestParamsStorage = defineStore('request-params', {
 
     setBodyType(type: BodyType) {
       this.bodyType = type;
+      if (type !== 'binary') this.selectedFilePresetId = '';
       this.syncManagedBody();
       this.syncManagedHeaders();
+    },
+
+    async applyFilePresetToBinary(presetId: string) {
+      const { getFile } = await import('./file-db');
+      const presetStorage = usePresetStorage();
+      const preset = presetStorage.filePresets.find(p => p.id === presetId);
+      if (!preset) return;
+      const blob = await getFile(presetId);
+      if (blob) {
+        this.binaryFile = new File([blob], preset.fileName, { type: preset.mimeType });
+      }
+      this.selectedFilePresetId = presetId;
+    },
+
+    async applyFilePresetToFormData(index: number, presetId: string) {
+      const { getFile } = await import('./file-db');
+      const presetStorage = usePresetStorage();
+      const preset = presetStorage.filePresets.find(p => p.id === presetId);
+      if (!preset || !this.formData[index]) return;
+      const blob = await getFile(presetId);
+      if (blob) {
+        this.formData[index].file = new File([blob], preset.fileName, { type: preset.mimeType });
+        this.formData[index].value = preset.fileName;
+      }
     },
 
     addQueryParam() {
@@ -393,6 +419,7 @@ export const useRequestParamsStorage = defineStore('request-params', {
       this.selectedHeaderPresetIds = []
       this.selectedQueryPresetIds = []
       this.selectedBodyPresetIds = []
+      this.selectedFilePresetId = ''
       this.preRequestScript = ''
       this.postRequestScript = ''
       this.syncManagedHeaders();
@@ -411,6 +438,7 @@ export const useRequestParamsStorage = defineStore('request-params', {
         selectedHeaderPresetIds: this.selectedHeaderPresetIds,
         selectedQueryPresetIds: this.selectedQueryPresetIds,
         selectedBodyPresetIds: this.selectedBodyPresetIds,
+        selectedFilePresetId: this.selectedFilePresetId,
         preRequestScript: this.preRequestScript,
         postRequestScript: this.postRequestScript,
       }
@@ -433,6 +461,7 @@ export const useRequestParamsStorage = defineStore('request-params', {
           this.selectedHeaderPresetIds = data.selectedHeaderPresetIds || []
           this.selectedQueryPresetIds = data.selectedQueryPresetIds || []
           this.selectedBodyPresetIds = data.selectedBodyPresetIds || []
+          this.selectedFilePresetId = data.selectedFilePresetId || ''
           this.preRequestScript = data.preRequestScript || ''
           this.postRequestScript = data.postRequestScript || ''
           this.syncManagedHeaders();

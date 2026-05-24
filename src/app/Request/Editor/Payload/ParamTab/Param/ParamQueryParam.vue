@@ -121,14 +121,9 @@ function onDeleteClick(index: number) {
           <SquareX v-else stroke-width="1" class="icon-button icon-button-trash-x" />
         </div>
 
-        <!-- Active Presets with Inline Selector -->
-        <div class="ms-auto d-flex align-items-center flex-shrink-0 gap-1 overflow-visible position-relative" style="max-width: 400px;">
-          <span v-if="activePresets.length" class="preset-label">ACTIVE:</span>
-          <div v-for="p in activePresets" :key="p.id" class="active-preset-tag" :title="p.name">
-            {{ p.name }}
-          </div>
-          
-          <div class="preset-selector-wrap ms-1" v-click-outside="() => showPresetDropdown = false">
+        <!-- Preset Selector -->
+        <div class="ms-auto d-flex align-items-center flex-shrink-0 overflow-visible position-relative">
+          <div class="preset-selector-wrap ms-1">
             <button class="btn-add-preset" @click.stop="togglePresetDropdown" title="Toggle Presets">
               <Plus :size="14" stroke-width="3" />
               <ChevronDown :size="10" stroke-width="2" class="ms-1" />
@@ -214,20 +209,22 @@ function onDeleteClick(index: number) {
   </div>
 
   <Teleport to="body">
-    <div v-if="showPresetDropdown" class="preset-dropdown-menu" :style="presetDropdownStyle" v-click-outside="() => showPresetDropdown = false">
-      <div class="dropdown-header">Select Presets</div>
-      <div class="dropdown-list">
-        <div
-          v-for="p in presetStore.queryPresets"
-          :key="p.id"
-          class="dropdown-item"
-          @click="togglePreset(p.id)"
-        >
-          <SquareCheck v-if="store.selectedQueryPresetIds.includes(p.id)" :size="16" class="text-primary me-2" />
-          <Square v-else :size="16" class="text-muted me-2" />
-          <span class="item-name">{{ p.name }}</span>
+    <div v-if="showPresetDropdown" class="preset-dropdown-backdrop" @click="showPresetDropdown = false">
+      <div class="preset-dropdown-menu" :style="presetDropdownStyle" @click.stop>
+        <div class="dropdown-header">Select Presets</div>
+        <div class="dropdown-list">
+          <div
+            v-for="p in presetStore.queryPresets"
+            :key="p.id"
+            class="dropdown-item"
+            @click="togglePreset(p.id)"
+          >
+            <SquareCheck v-if="store.selectedQueryPresetIds.includes(p.id)" :size="16" class="text-primary me-2" />
+            <Square v-else :size="16" class="text-muted me-2" />
+            <span class="item-name">{{ p.name }}</span>
+          </div>
+          <div v-if="!presetStore.queryPresets.length" class="dropdown-empty">No presets found</div>
         </div>
-        <div v-if="!presetStore.queryPresets.length" class="dropdown-empty">No presets found</div>
       </div>
     </div>
   </Teleport>
@@ -300,6 +297,12 @@ function onDeleteClick(index: number) {
   border-radius: 2px;
   color: #333;
   &:hover { background: #ddd; }
+}
+
+.preset-dropdown-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 99999;
 }
 
 .preset-dropdown-menu {
