@@ -597,8 +597,23 @@ function onTrashClick() {
   display: flex;
   flex-direction: column;
   gap: 8px;
-  height: auto;
+  height: 100%;
   padding: 8px;
+  overflow: hidden;
+}
+
+.preset-content {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.preset-editor {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
 }
 
 .header-toolbar {
@@ -797,7 +812,14 @@ function onTrashClick() {
   &.active { background: #666; color: white; border-color: #333; }
 }
 
-.json-wrap { border: 1px solid #ddd; height: 100%; min-height: 350px; overflow: hidden; }
+.json-wrap {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  border: 1px solid #ddd;
+  overflow: hidden;
+}
 .binary-wrap { padding: 30px; background: #fcfcfc; border: 1px solid #ddd; }
 .binary-uploader { width: 100%; height: 120px; border: 2px dashed #ccc; display: flex; flex-direction: column; justify-content: center; align-items: center; cursor: pointer; &:hover { border-color: #999; } }
 
