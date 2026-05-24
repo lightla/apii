@@ -39,6 +39,7 @@ export interface FormDataParam {
   file?: File | null
   isPreset?: boolean
   presetId?: string
+  filePresetId?: string
 }
 
 export type BodyType = 'none' | 'json' | 'form-data' | 'binary'
@@ -267,27 +268,61 @@ export const useRequestParamsStorage = defineStore('request-params', {
                } catch (e) {}
              }
            } else if (this.bodyType === 'form-data') {
-             (preset.formData || []).forEach((item: any) => {
-                const existing = this.formData.find(row => 
-                  row.key.toLowerCase() === item.key.toLowerCase() && row.presetId === presetId
-                );
-                if (existing) {
-                  existing.value = item.value;
-                  existing.description = item.description || existing.description;
-                } else {
-                  this.formData.push({
-                    id: nanoid(),
-                    key: item.key,
-                    value: item.value,
-                    type: (item.type as any) || 'text',
-                    enabled: true,
-                    description: item.description || 'From Preset',
-                    isPreset: true,
-                    presetId: presetId
-                  });
-                }
-             });
-           }
+              (preset.formData || []).forEach((item: any) => {
+                 const existing = this.formData.find(row => 
+                   row.key.toLowerCase() === item.key.toLowerCase() && row.presetId === presetId
+                 );
+                 if (existing) {
+                   existing.value = item.value;
+                   existing.description = item.description || existing.description;
+                   const oldFilePresetId = existing.filePresetId;
+                   existing.filePresetId = item.filePresetId || '';
+                   
+                   if (existing.type === 'file' && existing.filePresetId && (oldFilePresetId !== existing.filePresetId || !existing.file)) {
+                     import('./file-db').then(async ({ getFile }) => {
+                       const blob = await getFile(existing.filePresetId!);
+                       if (blob) {
+                         const filePreset = presetStorage.filePresets.find((p: any) => p.id === existing.filePresetId);
+                         const fileName = filePreset ? filePreset.fileName : existing.value;
+                         const mimeType = filePreset ? filePreset.mimeType : 'application/octet-stream';
+                         existing.file = new File([blob], fileName, { type: mimeType });
+                         existing.value = fileName;
+                       }
+                     }).catch(err => {
+                       console.error('Failed to load file from preset in form-data:', err);
+                     });
+                   }
+                 } else {
+                   const newRow: FormDataParam = {
+                     id: nanoid(),
+                     key: item.key,
+                     value: item.value,
+                     type: (item.type as any) || 'text',
+                     enabled: true,
+                     description: item.description || 'From Preset',
+                     isPreset: true,
+                     presetId: presetId,
+                     filePresetId: item.filePresetId || ''
+                   };
+                   this.formData.push(newRow);
+
+                   if (newRow.type === 'file' && newRow.filePresetId) {
+                     import('./file-db').then(async ({ getFile }) => {
+                       const blob = await getFile(newRow.filePresetId!);
+                       if (blob) {
+                         const filePreset = presetStorage.filePresets.find((p: any) => p.id === newRow.filePresetId);
+                         const fileName = filePreset ? filePreset.fileName : newRow.value;
+                         const mimeType = filePreset ? filePreset.mimeType : 'application/octet-stream';
+                         newRow.file = new File([blob], fileName, { type: mimeType });
+                         newRow.value = fileName;
+                       }
+                     }).catch(err => {
+                       console.error('Failed to load file from preset in form-data:', err);
+                     });
+                   }
+                 }
+              });
+            }
         }
       });
 

@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { ref, computed, nextTick } from 'vue';
-import { Save, FileUp, SquareCheck, Square, SquareX, ShieldAlert, Eraser, Edit2, Trash2, X } from 'lucide-vue-next';
+import { ref, computed, nextTick, onMounted, onUnmounted } from 'vue';
+import { Save, FileUp, SquareCheck, Square, SquareX, ShieldAlert, Eraser, Edit2, Trash2, X, Plus } from 'lucide-vue-next';
 import { IconSquareRoundedPlus } from "@tabler/icons-vue"
 import type { RouteInfo } from '@/types'
 import { usePresetStorage } from '@/storages/presets';
@@ -18,10 +18,11 @@ const theme = ref('eclipse');
 const editingPresetId = ref<string | null>(null);
 const editName = ref('');
 const editType = ref<'json' | 'form-data'>('json');
-const editItems = ref<{ key: string; value: string; description: string; enabled: boolean; type?: 'text' | 'file' }[]>([]);
+const editItems = ref<{ key: string; value: string; description: string; enabled: boolean; type?: 'text' | 'file'; filePresetId?: string }[]>([]);
 const editJson = ref('');
 const editFileInput = ref<HTMLInputElement | null>(null);
 const editFileData = ref<File | null>(null);
+const editFileMeta = ref<{ fileName: string; fileSize: string; mimeType: string } | null>(null);
 const isFormData = computed(() => activeCategory.value === 'body' && editType.value === 'form-data');
 
 const onThemeUpdate = (t: string) => {
@@ -36,9 +37,14 @@ const startEdit = (category: 'headers' | 'query' | 'body' | 'file', preset?: any
         if (category === 'body') {
             editType.value = (preset.type as any) || 'json';
             if (editType.value === 'json') editJson.value = preset.json || preset.value || '';
-            else if (editType.value === 'form-data') editItems.value = JSON.parse(JSON.stringify(preset.formData || preset.items || [])).map((i: any) => ({ ...i, enabled: i.enabled ?? true, type: i.type || 'text' }));
+            else if (editType.value === 'form-data') editItems.value = JSON.parse(JSON.stringify(preset.formData || preset.items || [])).map((i: any) => ({ ...i, enabled: i.enabled ?? true, type: i.type || 'text', filePresetId: i.filePresetId || '' }));
         } else if (category === 'file') {
             editFileData.value = null;
+            editFileMeta.value = {
+                fileName: preset.fileName || '',
+                fileSize: preset.fileSize || '',
+                mimeType: preset.mimeType || ''
+            };
         } else {
             editItems.value = JSON.parse(JSON.stringify(preset.items || [])).map((i: any) => ({ ...i, enabled: i.enabled ?? true }));
         }
@@ -46,12 +52,13 @@ const startEdit = (category: 'headers' | 'query' | 'body' | 'file', preset?: any
         editingPresetId.value = 'new';
         editName.value = '';
         editItems.value = [
-            { key: '', value: '', description: '', enabled: true, type: category === 'body' ? 'text' : undefined },
-            { key: '', value: '', description: '', enabled: true, type: category === 'body' ? 'text' : undefined },
-            { key: '', value: '', description: '', enabled: true, type: category === 'body' ? 'text' : undefined }
+            { key: '', value: '', description: '', enabled: true, type: category === 'body' ? 'text' : undefined, filePresetId: category === 'body' ? '' : undefined },
+            { key: '', value: '', description: '', enabled: true, type: category === 'body' ? 'text' : undefined, filePresetId: category === 'body' ? '' : undefined },
+            { key: '', value: '', description: '', enabled: true, type: category === 'body' ? 'text' : undefined, filePresetId: category === 'body' ? '' : undefined }
         ];
         editJson.value = '';
         editFileData.value = null;
+        editFileMeta.value = null;
         if (category === 'body') editType.value = 'json';
     }
 };
@@ -64,20 +71,31 @@ const saveEdit = async () => {
     if (!editName.value.trim()) return;
 
     if (activeCategory.value === 'file') {
-        const file = editFileData.value;
-        if (!file) return;
-        const presetMeta = {
-            name: editName.value,
-            fileName: file.name,
-            fileSize: (file.size / 1024).toFixed(1) + ' KB',
-            mimeType: file.type || 'application/octet-stream',
-        };
         if (editingPresetId.value === 'new') {
+            const file = editFileData.value;
+            if (!file) return;
+            const presetMeta = {
+                name: editName.value,
+                fileName: file.name,
+                fileSize: (file.size / 1024).toFixed(1) + ' KB',
+                mimeType: file.type || 'application/octet-stream',
+            };
             await presetStore.addFilePreset(presetMeta, file);
         } else if (editingPresetId.value) {
-            presetStore.updatePreset(editingPresetId.value, presetMeta);
-            const { saveFile } = await import('@/storages/file-db');
-            await saveFile(editingPresetId.value, file);
+            const file = editFileData.value;
+            if (file) {
+                const presetMeta = {
+                    name: editName.value,
+                    fileName: file.name,
+                    fileSize: (file.size / 1024).toFixed(1) + ' KB',
+                    mimeType: file.type || 'application/octet-stream',
+                };
+                presetStore.updatePreset(editingPresetId.value, presetMeta);
+                const { saveFile } = await import('@/storages/file-db');
+                await saveFile(editingPresetId.value, file);
+            } else {
+                presetStore.updatePreset(editingPresetId.value, { name: editName.value });
+            }
         }
         editingPresetId.value = null;
         return;
@@ -94,7 +112,7 @@ const saveEdit = async () => {
             presetData.json = editJson.value;
             presetData.value = editJson.value;
         } else {
-            presetData.formData = editItems.value.filter(i => i.key.trim() || i.value.trim()).map(i => ({ key: i.key, value: i.value, description: i.description, type: i.type || 'text', enabled: i.enabled }));
+            presetData.formData = editItems.value.filter(i => i.key.trim() || i.value.trim() || i.filePresetId).map(i => ({ key: i.key, value: i.value, description: i.description, type: i.type || 'text', filePresetId: i.filePresetId || '', enabled: i.enabled }));
             presetData.items = presetData.formData;
         }
     } else {
@@ -111,7 +129,7 @@ const saveEdit = async () => {
 };
 
 const addItem = () => {
-    editItems.value.push({ key: '', value: '', description: '', enabled: true, type: activeCategory.value === 'body' ? 'text' : undefined });
+    editItems.value.push({ key: '', value: '', description: '', enabled: true, type: activeCategory.value === 'body' ? 'text' : undefined, filePresetId: activeCategory.value === 'body' ? '' : undefined });
 };
 
 const removeItem = (idx: number) => {
@@ -122,6 +140,14 @@ const handleFileChange = (e: any) => {
     const file = e.target.files[0];
     if (file) {
         editFileData.value = file;
+        editFileMeta.value = {
+            fileName: file.name,
+            fileSize: (file.size / 1024).toFixed(1) + ' KB',
+            mimeType: file.type || 'application/octet-stream'
+        };
+        if (!editName.value.trim()) {
+            editName.value = file.name;
+        }
     }
 };
 
@@ -131,9 +157,9 @@ const presetFdSelectItem = ref<any>(null);
 const presetFdSelectStyle = ref<Record<string, string>>({ top: '0px', left: '0px' });
 
 const togglePresetFdSelect = (idx: number, item: any, event: Event) => {
+  event.stopPropagation();
   if (presetFdSelectIndex.value === idx) {
-    presetFdSelectIndex.value = null;
-    document.removeEventListener('click', closePresetFdSelect);
+    closePresetFdSelect();
     return;
   }
   presetFdSelectIndex.value = idx;
@@ -147,31 +173,134 @@ const togglePresetFdSelect = (idx: number, item: any, event: Event) => {
         left: `${rect.left}px`,
       };
     }
-    document.addEventListener('click', closePresetFdSelect);
   });
 };
 
 const closePresetFdSelect = () => {
   presetFdSelectIndex.value = null;
-  document.removeEventListener('click', closePresetFdSelect);
+  presetFdSelectItem.value = null;
 };
 
 const selectPresetFdType = (type: 'text' | 'file') => {
-  if (presetFdSelectItem.value) presetFdSelectItem.value.type = type;
-  presetFdSelectIndex.value = null;
-  document.removeEventListener('click', closePresetFdSelect);
+  if (presetFdSelectItem.value) {
+    presetFdSelectItem.value.type = type;
+    if (type === 'text') {
+      presetFdSelectItem.value.filePresetId = '';
+    } else {
+      presetFdSelectItem.value.value = '';
+    }
+  }
+  closePresetFdSelect();
 };
 
-// File handling for preset form-data rows
-const presetFdFiles = ref<Record<number, File>>({});
+onMounted(() => {
+  window.addEventListener('click', closePresetFdSelect);
+  window.addEventListener('scroll', closePresetFdSelect, true);
+});
+
+onUnmounted(() => {
+  window.removeEventListener('click', closePresetFdSelect);
+  window.removeEventListener('scroll', closePresetFdSelect, true);
+});
+
+// File preset selection dropdown state and helper methods
+const showFilePresetDropdown = ref(false);
+const filePresetForIndex = ref<number>(-1);
+const filePresetDropdownStyle = ref<Record<string, string>>({ top: '0px', left: '0px' });
+
+const openFilePresetForPresetFormData = (idx: number) => {
+  filePresetForIndex.value = idx;
+  showFilePresetDropdown.value = true;
+  nextTick(() => {
+    const btn = document.querySelector(`[data-preset-fd-file-preset="${idx}"]`) as HTMLElement;
+    if (btn) {
+      const rect = btn.getBoundingClientRect();
+      const menuWidth = 240;
+      const overflowRight = rect.left + menuWidth > window.innerWidth;
+      filePresetDropdownStyle.value = {
+        top: `${rect.bottom + 4}px`,
+        ...(overflowRight
+          ? { right: `${window.innerWidth - rect.right}px` }
+          : { left: `${rect.left}px` }),
+        width: `${menuWidth}px`,
+      };
+    }
+  });
+};
+
+const applyFilePresetToPresetFormData = (presetId: string) => {
+  const idx = filePresetForIndex.value;
+  if (editItems.value[idx]) {
+    editItems.value[idx].filePresetId = presetId;
+    const preset = presetStore.filePresets.find(p => p.id === presetId);
+    editItems.value[idx].value = preset ? preset.fileName : '';
+  }
+  showFilePresetDropdown.value = false;
+};
+
+const getFilePresetName = (presetId?: string) => {
+  if (!presetId) return '';
+  const preset = presetStore.filePresets.find(p => p.id === presetId);
+  return preset ? `${preset.name} (${preset.fileName})` : '';
+};
 
 const triggerPresetFileInput = (idx: number) => {
   document.getElementById('preset-fd-file-' + idx)?.click()
 };
 
-const onPresetFdFileChange = (idx: number, e: any) => {
+const onPresetFdFileChange = async (idx: number, e: any) => {
   const file = e.target.files[0];
-  if (file) presetFdFiles.value[idx] = file;
+  if (file) {
+    const presetMeta = {
+      name: file.name,
+      fileName: file.name,
+      fileSize: (file.size / 1024).toFixed(1) + ' KB',
+      mimeType: file.type || 'application/octet-stream',
+    };
+    const presetId = await presetStore.addFilePreset(presetMeta, file);
+    if (editItems.value[idx]) {
+      editItems.value[idx].filePresetId = presetId;
+      editItems.value[idx].value = file.name;
+    }
+  }
+};
+
+// Import from Active Request functionality
+const importFromRequest = () => {
+  if (activeCategory.value === 'headers') {
+    editItems.value = store.headers
+      .filter(h => !h.isManaged && !h.isPreset)
+      .map(h => ({
+        key: h.key,
+        value: h.value,
+        description: h.description,
+        enabled: h.enabled
+      }));
+  } else if (activeCategory.value === 'query') {
+    editItems.value = store.queryParams
+      .filter(q => !q.isPreset)
+      .map(q => ({
+        key: q.key,
+        value: q.value,
+        description: q.description,
+        enabled: q.enabled
+      }));
+  } else if (activeCategory.value === 'body') {
+    if (editType.value === 'json') {
+      editJson.value = store.body;
+    } else if (editType.value === 'form-data') {
+      editItems.value = store.formData
+        .filter(f => !f.isPreset)
+        .map(f => ({
+          key: f.key,
+          value: f.value,
+          description: f.description,
+          enabled: f.enabled,
+          type: f.type,
+          filePresetId: f.filePresetId || ''
+        }));
+    }
+  }
 };
 
 // Row delete confirm logic (Copy from HeaderTab)
@@ -193,7 +322,7 @@ function onDeleteClick(index: number) {
 }
 
 function onMasterDeleteClick() {
-  editItems.value = editItems.value.filter(i => i.key.trim() !== '' || i.value.trim() !== '')
+  editItems.value = editItems.value.filter(i => i.key.trim() !== '' || i.value.trim() !== '' || (i.type === 'file' && i.filePresetId))
 }
 
 function toggleAll() {
@@ -255,6 +384,9 @@ function onTrashClick() {
         </div>
 
         <div class="d-flex gap-2 ms-auto">
+           <button v-if="activeCategory !== 'file'" class="btn-import d-flex align-items-center" @click="importFromRequest" title="Import active headers, query parameters, json body, or form-data directly from request">
+             IMPORT FROM REQUEST
+           </button>
            <button class="btn-cancel" @click="cancelEdit">CANCEL</button>
            <button class="btn-save d-flex align-items-center" @click="saveEdit">
              <Save size="14" class="me-1" /> SAVE
@@ -292,7 +424,7 @@ function onTrashClick() {
          </div>
 
          <!-- Table Editor -->
-         <div v-if="activeCategory !== 'body' || isFormData" class="table-outer-wrap">
+         <div v-if="(activeCategory !== 'body' && activeCategory !== 'file') || isFormData" class="table-outer-wrap">
             <div class="header-table-scroll-wrapper">
                <table class="header-param-table">
                   <colgroup>
@@ -359,7 +491,10 @@ function onTrashClick() {
                           <div v-else-if="isFormData && item.type === 'file'">
                             <div class="file-input-wrap">
                               <button class="btn-select-file" @click="triggerPresetFileInput(idx)">
-                                {{ presetFdFiles[idx]?.name || 'Select File' }}
+                                {{ getFilePresetName(item.filePresetId) || item.value || 'Select File' }}
+                              </button>
+                              <button class="btn-file-preset" :data-preset-fd-file-preset="idx" @click.stop="openFilePresetForPresetFormData(idx)" title="Select File Preset">
+                                <Plus :size="12" stroke-width="3" />
                               </button>
                               <input
                                 :id="'preset-fd-file-' + idx"
@@ -415,9 +550,9 @@ function onTrashClick() {
          <div v-else-if="activeCategory === 'file'" class="binary-wrap">
             <div class="binary-uploader" @click="editFileInput?.click()">
                <FileUp :size="40" :stroke-width="1" class="mb-3 text-muted" />
-               <div v-if="editFileData" class="file-info text-center">
-                  <div class="file-name fw-bold">{{ editFileData.name }}</div>
-                  <div class="file-size text-muted small">{{ (editFileData.size / 1024).toFixed(1) }} KB</div>
+               <div v-if="editFileMeta" class="file-info text-center">
+                  <div class="file-name fw-bold">{{ editFileMeta.fileName }}</div>
+                  <div class="file-size text-muted small">{{ editFileMeta.fileSize }}</div>
                </div>
                <div v-else class="text-muted">Click to select file</div>
                <input type="file" ref="editFileInput" class="d-none" @change="handleFileChange" />
@@ -431,6 +566,25 @@ function onTrashClick() {
       <div class="type-select-dropdown" v-if="presetFdSelectIndex !== null" :style="presetFdSelectStyle" @click.stop>
         <div class="type-select-option" @click="selectPresetFdType('text')">Text</div>
         <div class="type-select-option" @click="selectPresetFdType('file')">File</div>
+      </div>
+    </Teleport>
+
+    <Teleport to="body">
+      <div v-if="showFilePresetDropdown" class="preset-dropdown-backdrop" @click="showFilePresetDropdown = false">
+        <div class="preset-dropdown-menu" :style="filePresetDropdownStyle" @click.stop>
+          <div class="dropdown-header">Select File Preset</div>
+          <div class="dropdown-list">
+            <div
+              v-for="p in presetStore.filePresets"
+              :key="p.id"
+              class="dropdown-item"
+              @click="applyFilePresetToPresetFormData(p.id)"
+            >
+              <span class="item-name">{{ p.name }} <span class="text-muted small">({{ p.fileName }})</span></span>
+            </div>
+            <div v-if="!presetStore.filePresets.length" class="dropdown-empty">No file presets</div>
+          </div>
+        </div>
       </div>
     </Teleport>
   </div>
@@ -725,4 +879,86 @@ function onTrashClick() {
 }
 
 .help-text { font-size: 11px; }
+
+.btn-import {
+  background: #28a745;
+  color: white;
+  border: 1px solid #218838;
+  padding: 0 12px;
+  height: 28px;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  &:hover { background: #218838; }
+}
+
+.btn-file-preset {
+  background: #eee;
+  border: 1px solid #888888;
+  border-left: none;
+  padding: 0 8px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  &:hover { background: #ddd; }
+}
+
+.preset-dropdown-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 99999;
+}
+
+.preset-dropdown-menu {
+  position: fixed;
+  width: 220px;
+  background: var(--app-bg-color, #f4f4f4);
+  border: 1px solid #888;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+  z-index: 100000;
+  display: flex;
+  flex-direction: column;
+}
+
+.dropdown-header {
+  padding: 6px 10px;
+  background: var(--tab-bg-color, #ddd);
+  border-bottom: 1px solid #bbb;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: #666;
+}
+
+.dropdown-list {
+  max-height: 300px;
+  overflow-y: auto;
+  padding: 4px 0;
+}
+
+.dropdown-item {
+  display: flex;
+  align-items: center;
+  padding: 6px 12px;
+  cursor: pointer;
+  font-size: 13px;
+  &:hover { background: #f0f7ff; }
+  
+  .item-name {
+    flex: 1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+}
+
+.dropdown-empty {
+  padding: 10px;
+  text-align: center;
+  font-size: 12px;
+  color: #888;
+}
 </style>
