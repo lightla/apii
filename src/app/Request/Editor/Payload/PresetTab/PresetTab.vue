@@ -558,7 +558,6 @@ function onTrashClick() {
                <input type="file" ref="editFileInput" class="d-none" @change="handleFileChange" />
             </div>
          </div>
-         <div class="help-text mt-2 text-muted">These fields will be injected/merged into your request.</div>
       </div>
     </div>
 
@@ -577,10 +576,13 @@ function onTrashClick() {
             <div
               v-for="p in presetStore.filePresets"
               :key="p.id"
-              class="dropdown-item"
+              class="dropdown-item d-flex align-items-center justify-content-between"
               @click="applyFilePresetToPresetFormData(p.id)"
             >
               <span class="item-name">{{ p.name }} <span class="text-muted small">({{ p.fileName }})</span></span>
+              <button class="btn-delete-file-preset-item ms-2 flex-shrink-0" @click.stop="presetStore.deleteFilePreset(p.id)" title="Delete File Preset">
+                <X :size="12" />
+              </button>
             </div>
             <div v-if="!presetStore.filePresets.length" class="dropdown-empty">No file presets</div>
           </div>
@@ -982,5 +984,22 @@ function onTrashClick() {
   text-align: center;
   font-size: 12px;
   color: #888;
+}
+
+.btn-delete-file-preset-item {
+  background: none;
+  border: none;
+  padding: 2px;
+  color: #888;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 2px;
+  
+  &:hover {
+    background: rgba(0, 0, 0, 0.05);
+    color: #dc3545;
+  }
 }
 </style>
