@@ -19,6 +19,7 @@ import { useHistoryStorage, type HistoryItem } from '@/storages/history.ts'
 import { useRequestParamsStorage } from '@/storages/payload.ts'
 import { useResponseStorage } from '@/storages/response.ts'
 import { IconBookmark, IconTrash } from '@tabler/icons-vue'
+import { SquareX } from 'lucide-vue-next'
 
 const props = defineProps<{ route: RouteInfo, storageKey?: string }>()
 const historyStore = useHistoryStorage()
@@ -318,7 +319,12 @@ onUnmounted(() => {
                     />
                     <span v-else class="history-item-text">{{ getSavedDisplayName(item) }}</span>
                     <span class="history-item-edit" title="Rename saved item" @click.stop="startRenameSavedHistoryItem(item)">✎</span>
-                    <span class="history-item-remove" @click.stop="removeHistoryItem(`saved:${item.id}`)">x</span>
+                    <span class="history-item-remove" @click.stop="removeHistoryItem(`saved:${item.id}`)">
+                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="delete-x-svg">
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                      </svg>
+                    </span>
                   </button>
                 </div>
                 <div v-else class="history-dropdown-empty">No saved history yet.</div>
@@ -340,7 +346,12 @@ onUnmounted(() => {
                     <span class="history-item-save" title="Save to Saved" @click.stop="saveRecentHistoryItem(item.id)">
                       <IconBookmark size="10" />
                     </span>
-                    <span class="history-item-remove" @click.stop="removeHistoryItem(`recent:${item.id}`)">x</span>
+                    <span class="history-item-remove" @click.stop="removeHistoryItem(`recent:${item.id}`)">
+                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="delete-x-svg">
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                      </svg>
+                    </span>
                   </button>
                 </div>
                 <div v-else class="history-dropdown-empty">No recent history yet.</div>
@@ -527,168 +538,6 @@ onUnmounted(() => {
   font-size: 12px;
 }
 
-.history-dropdown-panel {
-  position: fixed;
-  width: max-content;
-  max-width: min(480px, 85vw);
-  max-height: 260px;
-  overflow-y: auto;
-  overflow-x: hidden;
-  border: 1px solid #888;
-  background: #efefef;
-  z-index: 30000;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
-  -ms-overflow-style: none;
-  scrollbar-width: none;
-}
-
-.history-dropdown-panel::-webkit-scrollbar {
-  display: none;
-}
-
-.history-dropdown-group-title {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  font-size: 11px;
-  font-weight: 700;
-  color: #666;
-  padding: 6px 8px 4px;
-  text-transform: uppercase;
-}
-
-.history-group-clear-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  border: 1px solid #aaa;
-  background: #efefef;
-  width: 18px;
-  height: 18px;
-  line-height: 1;
-  padding: 0;
-  text-transform: none;
-  cursor: pointer;
-}
-
-.history-dropdown-group-items {
-  max-height: 120px;
-  overflow-y: auto;
-  overflow-x: hidden;
-}
-
-.history-dropdown-empty {
-  padding: 6px 8px 8px;
-  font-size: 12px;
-  color: #888;
-}
-
-.history-dropdown-item {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  width: 100%;
-  max-width: 100%;
-  box-sizing: border-box;
-  border: none;
-  background: transparent;
-  text-align: left;
-  cursor: pointer;
-  font-size: 12px;
-  line-height: 1.3;
-  padding: 6px 8px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-
-  &:hover {
-    background: #ddd;
-  }
-}
-
-.history-item-text {
-  min-width: 0;
-  flex: 1;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.history-item-method {
-  flex: 0 0 auto;
-  font-size: 11px;
-  font-weight: 700;
-  color: #1d4ed8;
-  min-width: 20px;
-  margin-right: 0;
-}
-
-.history-item-input {
-  flex: 1;
-  min-width: 0;
-  height: 22px;
-  border: 1px solid #9ca3af;
-  padding: 0 6px;
-  font-size: 12px;
-}
-
-.history-item-remove {
-  display: grid;
-  place-items: center;
-  flex: 0 0 auto;
-  width: 16px;
-  height: 16px;
-  border: 1px solid #999;
-  color: #666;
-  font-size: 12px;
-  line-height: 1;
-  text-align: center;
-  font-weight: 400;
-  padding: 0;
-
-  &:hover {
-    background: #f6d7da;
-    color: #842029;
-    border-color: #dc3545;
-  }
-}
-
-.history-item-edit {
-  flex: 0 0 auto;
-  width: 16px;
-  height: 16px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  border: 1px solid #999;
-  font-size: 11px;
-  line-height: 1;
-  color: #666;
-
-  &:hover {
-    background: #dbeafe;
-    color: #1d4ed8;
-    border-color: #3b82f6;
-  }
-}
-
-.history-item-save {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  flex: 0 0 auto;
-  width: 16px;
-  height: 16px;
-  border: 1px solid #999;
-  color: #666;
-  line-height: 1;
-
-  &:hover {
-    background: #fff3cd;
-    color: #7a5d00;
-    border-color: #d4b106;
-  }
-}
 
 .preview-btn {
   width: 26px;
@@ -798,5 +647,175 @@ onUnmounted(() => {
 .preview-label {
   font-size: 12px;
   font-weight: 700;
+}
+</style>
+
+<style lang="scss">
+.history-dropdown-panel {
+  position: fixed;
+  width: max-content;
+  max-width: min(480px, 85vw);
+  max-height: 260px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  border: 1px solid #888;
+  background: #efefef;
+  z-index: 30000;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.history-dropdown-panel::-webkit-scrollbar {
+  display: none;
+}
+
+.history-dropdown-group-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 11px;
+  font-weight: 700;
+  color: #666;
+  padding: 6px 8px 4px;
+  text-transform: uppercase;
+}
+
+.history-group-clear-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #aaa;
+  background: #efefef;
+  width: 18px;
+  height: 18px;
+  line-height: 1;
+  padding: 0;
+  text-transform: none;
+  cursor: pointer;
+}
+
+.history-dropdown-group-items {
+  max-height: 120px;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+.history-dropdown-empty {
+  padding: 6px 8px 8px;
+  font-size: 12px;
+  color: #888;
+}
+
+.history-dropdown-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+  border: none;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+  font-size: 12px;
+  line-height: 1.3;
+  padding: 6px 8px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+
+  &:hover {
+    background: #ddd;
+  }
+}
+
+.history-item-text {
+  min-width: 0;
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.history-item-method {
+  flex: 0 0 auto;
+  font-size: 11px;
+  font-weight: 700;
+  color: #1d4ed8;
+  min-width: 20px;
+  margin-right: 0;
+}
+
+.history-item-input {
+  flex: 1;
+  min-width: 0;
+  height: 22px;
+  border: 1px solid #9ca3af;
+  padding: 0 6px;
+  font-size: 12px;
+}
+
+.history-item-remove, .history-item-edit, .history-item-save {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  align-self: center !important;
+  width: 18px !important;
+  height: 18px !important;
+  border: 1px solid #999 !important;
+  border-radius: 4px !important;
+  line-height: 0 !important;
+  cursor: pointer !important;
+  box-sizing: border-box !important;
+  transition: all 0.15s ease !important;
+  background: #fdfdfd !important;
+  flex-shrink: 0 !important;
+  padding: 0 !important;
+  margin: 0 !important;
+}
+
+.history-item-remove {
+  color: #666 !important;
+  
+  &:hover {
+    background: #fee2e2 !important;
+    color: #ef4444 !important;
+    border-color: #fca5a5 !important;
+  }
+
+  .delete-x-svg, svg {
+    width: 10px !important;
+    height: 10px !important;
+    display: block !important;
+    pointer-events: none;
+  }
+}
+
+.history-item-edit {
+  color: #666 !important;
+  font-size: 11px !important;
+
+  &:hover {
+    background: #dbeafe !important;
+    color: #1d4ed8 !important;
+    border-color: #93c5fd !important;
+  }
+}
+
+.history-item-save {
+  color: #666 !important;
+
+  &:hover {
+    background: #fef9c3 !important;
+    color: #ca8a04 !important;
+    border-color: #fde047 !important;
+  }
+
+  svg {
+    width: 10px !important;
+    height: 10px !important;
+    display: block !important;
+  }
 }
 </style>

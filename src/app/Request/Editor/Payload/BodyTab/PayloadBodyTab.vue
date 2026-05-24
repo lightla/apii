@@ -18,7 +18,7 @@ import {
   Lock,
   Plus,
   ChevronDown,
-  X
+  X as XIcon
 } from "lucide-vue-next";
 import { IconSquareRoundedPlus } from "@tabler/icons-vue";
 
@@ -480,7 +480,10 @@ const triggerFileInput = (id: string) => {
                 <span class="item-name">{{ p.name }} <span class="text-muted small">({{ p.fileName }})</span></span>
               </div>
               <button class="btn-delete-file-preset-item ms-2 flex-shrink-0" @click.stop="presetStore.deleteFilePreset(p.id)" title="Delete File Preset">
-                <X :size="12" />
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="delete-x-svg">
+                  <line x1="18" y1="6" x2="6" y2="18"></line>
+                  <line x1="6" y1="6" x2="18" y2="18"></line>
+                </svg>
               </button>
             </div>
             <div v-if="!presetStore.filePresets.length" class="dropdown-empty">No file presets</div>
@@ -520,7 +523,10 @@ const triggerFileInput = (id: string) => {
           >
             <span class="item-name">{{ p.name }} <span class="text-muted small">({{ p.fileName }})</span></span>
             <button class="btn-delete-file-preset-item ms-2 flex-shrink-0" @click.stop="presetStore.deleteFilePreset(p.id)" title="Delete File Preset">
-              <X :size="12" />
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="delete-x-svg">
+                <line x1="18" y1="6" x2="6" y2="18"></line>
+                <line x1="6" y1="6" x2="18" y2="18"></line>
+              </svg>
             </button>
           </div>
           <div v-if="!presetStore.filePresets.length" class="dropdown-empty">No file presets</div>
@@ -611,7 +617,6 @@ const triggerFileInput = (id: string) => {
   min-height: 0;
   height: fit-content;
   overflow-y: auto;
-  @include elements.scrollbar-hidden;
   border-bottom: var(--table-border);
 }
 
@@ -854,6 +859,36 @@ const triggerFileInput = (id: string) => {
   &:hover { background: #ddd; }
 }
 
+.text-primary { color: #007bff; }
+
+.form-data-table {
+  tr.is-preset, tr.is-managed {
+    background-color: #f0f7ff;
+  }
+}
+.no-body-wrapper {
+  padding: 20px;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.no-body-content {
+  width: 100%;
+  max-width: 400px;
+  min-height: 160px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: transparent;
+  border: var(--table-border);
+  border-radius: 8px;
+  font-size: 13px;
+}
+</style>
+
+<style lang="scss">
 .preset-dropdown-backdrop {
   position: fixed;
   inset: 0;
@@ -910,48 +945,32 @@ const triggerFileInput = (id: string) => {
   color: #999;
 }
 
-.text-primary { color: #007bff; }
-
-.form-data-table {
-  tr.is-preset, tr.is-managed {
-    background-color: #f0f7ff;
-  }
-}
-.no-body-wrapper {
-  padding: 20px;
-  height: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.no-body-content {
-  width: 100%;
-  max-width: 400px;
-  min-height: 160px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background-color: transparent;
-  border: var(--table-border);
-  border-radius: 8px;
-  font-size: 13px;
-}
-
 .btn-delete-file-preset-item {
-  background: none;
-  border: none;
-  padding: 2px;
+  width: 16px;
+  height: 16px;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  align-self: center !important;
+  background: none !important;
+  border: none !important;
+  padding: 0 !important;
+  margin: 0 !important;
   color: #888;
   cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 2px;
+  line-height: 0;
+  transition: color 0.15s ease;
   
   &:hover {
-    background: rgba(0, 0, 0, 0.05);
-    color: #dc3545;
+    color: #dc3545 !important;
+  }
+
+  .delete-x-svg, svg {
+    width: 16px !important;
+    height: 16px !important;
+    display: block !important;
+    pointer-events: none;
+    stroke-width: 1.2px;
   }
 }
 </style>

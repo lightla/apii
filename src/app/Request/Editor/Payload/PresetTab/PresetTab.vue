@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, nextTick, onMounted, onUnmounted } from 'vue';
-import { Save, FileUp, SquareCheck, Square, SquareX, ShieldAlert, Eraser, Edit2, Trash2, X, Plus } from 'lucide-vue-next';
+import { Save, FileUp, SquareCheck, Square, SquareX, ShieldAlert, Eraser, Edit2, Trash2, X as XIcon, Plus } from 'lucide-vue-next';
 import { IconSquareRoundedPlus } from "@tabler/icons-vue"
 import type { RouteInfo } from '@/types'
 import { usePresetStorage } from '@/storages/presets';
@@ -581,7 +581,10 @@ function onTrashClick() {
             >
               <span class="item-name">{{ p.name }} <span class="text-muted small">({{ p.fileName }})</span></span>
               <button class="btn-delete-file-preset-item ms-2 flex-shrink-0" @click.stop="presetStore.deleteFilePreset(p.id)" title="Delete File Preset">
-                <X :size="12" />
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="delete-x-svg">
+                  <line x1="18" y1="6" x2="6" y2="18"></line>
+                  <line x1="6" y1="6" x2="18" y2="18"></line>
+                </svg>
               </button>
             </div>
             <div v-if="!presetStore.filePresets.length" class="dropdown-empty">No file presets</div>
@@ -660,7 +663,6 @@ function onTrashClick() {
   height: fit-content;
   max-height: 400px; 
   overflow-y: auto;
-  @include elements.scrollbar-hidden;
 }
 
 .header-param-table {
@@ -929,7 +931,9 @@ function onTrashClick() {
   height: 100%;
   &:hover { background: #ddd; }
 }
+</style>
 
+<style lang="scss">
 .preset-dropdown-backdrop {
   position: fixed;
   inset: 0;
@@ -987,19 +991,33 @@ function onTrashClick() {
 }
 
 .btn-delete-file-preset-item {
-  background: none;
-  border: none;
-  padding: 2px;
-  color: #888;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 2px;
+  width: 20px;
+  height: 20px;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  align-self: center !important;
+  background: #fdfdfd !important;
+  border: 1px solid #999 !important;
+  border-radius: 4px !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  color: #666 !important;
+  cursor: pointer !important;
+  line-height: 0;
+  transition: all 0.15s ease;
   
   &:hover {
-    background: rgba(0, 0, 0, 0.05);
-    color: #dc3545;
+    background: #fee2e2 !important;
+    color: #ef4444 !important;
+    border-color: #fca5a5 !important;
+  }
+
+  .delete-x-svg, svg {
+    width: 10px !important;
+    height: 10px !important;
+    display: block !important;
+    pointer-events: none;
   }
 }
 </style>
